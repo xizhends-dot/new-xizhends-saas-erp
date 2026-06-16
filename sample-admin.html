@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XIZHEN — 超管后台（SaaS 租户管理）原型</title>
+<style>
+:root {
+  --sidebar-w: 220px; --border: #9CA3AF;
+  --text: #111827; --text-secondary: #6B7280; --text-muted: #9CA3AF;
+  --accent: #07C160; --accent-light: #ecfdf5;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: #f9fafb; color: var(--text);
+  display: flex; min-height: 100vh;
+  -webkit-font-smoothing: antialiased; font-size: 12px; line-height: 1.5;
+}
+
+/* ═══ SIDEBAR ═══ */
+.sidebar { width: var(--sidebar-w); background: #111827; border-right: 1px solid #374151; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; }
+.sb-brand { padding: 18px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.sb-brand .logo { font-size: 16px; font-weight: 700; color: #f9fafb; letter-spacing: 0.04em; }
+.sb-brand .logo span { color: var(--accent); }
+.sb-brand .role { font-size: 11px; color: #f59e0b; margin-top: 3px; display: flex; align-items: center; gap: 5px; font-weight: 500; }
+.sb-dot { width: 5px; height: 5px; background: #f59e0b; }
+.sb-sec { padding: 12px 16px 3px; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: #6b7280; text-transform: uppercase; }
+.sb-nav { list-style: none; padding: 0 8px; }
+.sb-nav li { padding: 8px 12px; margin-bottom: 1px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 7px; transition: all 0.12s ease; color: #9ca3af; font-weight: 450; }
+.sb-nav li:hover { background: rgba(255,255,255,0.06); color: #e5e7eb; }
+.sb-nav li.active { background: rgba(7,193,96,0.12); color: var(--accent); font-weight: 550; }
+.sb-nav li .badge { margin-left: auto; font-size: 9px; font-weight: 600; background: rgba(7,193,96,0.18); color: var(--accent); padding: 1px 6px; min-width: 16px; text-align: center; }
+.sb-footer { margin-top: auto; padding: 10px 12px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; gap: 8px; }
+.sb-footer .av { width: 28px; height: 28px; background: #f59e0b; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; }
+.sb-footer .un { font-size: 12px; font-weight: 500; color: #e5e7eb; }
+.sb-footer .ur { font-size: 10px; color: #9ca3af; }
+
+/* ═══ MAIN ═══ */
+.main { margin-left: var(--sidebar-w); flex: 1; padding: 14px 18px 18px; max-width: calc(100vw - var(--sidebar-w)); display: flex; flex-direction: column; min-height: 100vh; }
+.page-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.page-head h1 { font-size: 18px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+.page-head .sub { font-size: 11px; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
+.head-actions { display: flex; gap: 6px; }
+.btn { padding: 6px 14px; font-size: 11px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); font-family: inherit; transition: all 0.12s; display: inline-flex; align-items: center; gap: 4px; background: #fff; color: var(--text-secondary); }
+.btn:hover { background: #f3f4f6; border-color: #6B7280; }
+.btn-p { background: var(--accent); color: #fff; border-color: var(--accent); } .btn-p:hover { background: #06a851; }
+.btn-xs { padding: 3px 8px; font-size: 10px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--text-secondary); font-family: inherit; }
+.btn-xs:hover { background: #f3f4f6; }
+
+/* ═══ STATS ═══ */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+.stat { background: #fff; border: 1px solid var(--border); padding: 16px 18px; }
+.stat .stat-label { font-size: 13px; color: var(--text-secondary); font-weight: 500; margin-bottom: 8px; }
+.stat .stat-value { font-size: 30px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+.stat .stat-sub { font-size: 11px; color: var(--text-muted); } .stat .stat-sub .up { color: #059669; font-weight: 550; }
+
+/* ═══ PANELS / TABLE ═══ */
+.panel { background: #fff; border: 1px solid var(--border); margin-bottom: 16px; }
+.panel-head { padding: 10px 14px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
+.panel-head .sub { font-size: 10px; color: var(--text-muted); font-weight: 400; }
+.panel-body { padding: 14px; }
+
+.filter { background: #fff; border: 1px solid var(--border); padding: 10px 14px; margin-bottom: 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 11px; }
+.fg { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); }
+.fg select, .fg input { padding: 5px 8px; border: 1px solid var(--border); font-size: 11px; font-family: inherit; color: var(--text); background: #fff; outline: none; }
+.fg input[type="text"] { width: 200px; }
+.fg select:focus, .fg input:focus { border-color: #111827; }
+.fsp { flex: 1; } .fsum { font-size: 11px; color: var(--text-muted); } .fsum strong { color: var(--text); }
+
+table.grid { width: 100%; border-collapse: collapse; }
+table.grid thead th { padding: 8px 10px; text-align: left; font-weight: 600; font-size: 11px; background: #f3f4f6; color: #334155; border: 1px solid var(--border); white-space: nowrap; }
+table.grid tbody td { padding: 8px 10px; font-size: 11px; border: 1px solid var(--border); vertical-align: middle; }
+table.grid tbody tr:hover td { background: #fafdf8; }
+.mono { font-family: 'SF Mono','Cascadia Code','Consolas',monospace; font-size: 11px; color: var(--text-secondary); }
+.co-name { font-weight: 600; color: var(--text); }
+.co-sub { font-size: 10px; color: var(--text-muted); }
+
+.tag { display: inline-block; font-size: 9px; font-weight: 550; padding: 1px 7px; margin: 1px; }
+.tag.on { background: #d1fae5; color: #065f46; }
+.tag.lock { background: #fef3c7; color: #92400e; }
+.tag.off { background: #f3f4f6; color: #9ca3af; }
+.plan { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; }
+.plan.basic { background: #f1f5f9; color: #475569; }
+.plan.pro { background: #dbeafe; color: #1e40af; }
+.plan.ent { background: #ede9fe; color: #6d28d9; }
+.st { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; }
+.st .d { width: 6px; height: 6px; }
+.st.ok .d { background: #059669; } .st.ok { color: #065f46; }
+.st.stop .d { background: #e5484d; } .st.stop { color: #b91c1c; }
+.row-act a { color: var(--accent); text-decoration: none; font-size: 11px; margin-right: 8px; cursor: pointer; }
+.row-act a.danger { color: #e5484d; }
+.row-act a:hover { text-decoration: underline; }
+
+/* ═══ PLATFORM AUTH ═══ */
+.auth-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.auth-card { border: 1px solid var(--border); padding: 12px 14px; }
+.auth-card .pf-name { font-weight: 600; font-size: 13px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+.auth-card .pf-code { font-size: 10px; color: var(--text-muted); font-family: monospace; }
+.auth-line { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; font-size: 11px; color: var(--text-secondary); border-top: 1px solid #f3f4f6; }
+.switch { position: relative; width: 36px; height: 18px; background: #d1d5db; cursor: pointer; transition: background 0.15s; }
+.switch.on { background: var(--accent); }
+.switch.lock-on { background: #f59e0b; }
+.switch .knob { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: #fff; transition: left 0.15s; }
+.switch.on .knob, .switch.lock-on .knob { left: 20px; }
+
+/* ═══ ANNOUNCE ═══ */
+.ann-form { display: flex; flex-direction: column; gap: 8px; }
+.ann-form input, .ann-form textarea, .ann-form select { padding: 7px 10px; border: 1px solid var(--border); font-size: 12px; font-family: inherit; outline: none; }
+.ann-form textarea { min-height: 70px; resize: vertical; }
+.ann-form input:focus, .ann-form textarea:focus { border-color: #111827; }
+.ann-list .ann-item { padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+.ann-list .ann-item:last-child { border-bottom: none; }
+.ann-title { font-weight: 600; font-size: 12px; }
+.ann-meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.ann-body { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+
+.view { display: none; flex: 1; flex-direction: column; }
+.view.active { display: flex; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sb-brand"><div class="logo">XIZH<span>EN</span> 超管</div><div class="role"><span class="sb-dot"></span> 超级管理员</div></div>
+  <div class="sb-sec">运营</div>
+  <ul class="sb-nav">
+    <li data-view="overview" class="active">概览</li>
+    <li data-view="tenants">租户管理 <span class="badge">6</span></li>
+    <li data-view="auth">平台授权</li>
+    <li data-view="announce">系统公告</li>
+  </ul>
+  <div class="sb-sec">系统</div>
+  <ul class="sb-nav">
+    <li data-view="overview">数据库管理</li>
+    <li data-view="overview">操作日志</li>
+    <li data-view="overview">套餐 / 计费</li>
+    <li data-view="overview">系统设置</li>
+  </ul>
+  <div class="sb-footer"><div class="av">超</div><div><div class="un">超级管理员</div><div class="ur">platform owner</div></div></div>
+</aside>
+
+<main class="main">
+
+  <!-- ═══ 概览 ═══ -->
+  <div id="view-overview" class="view active">
+    <div class="page-head"><h1>概览 <span class="sub">SaaS 平台运营总览</span></h1><div class="head-actions"><button class="btn">导出报表</button><button class="btn btn-p" data-go="tenants">+ 新建租户</button></div></div>
+    <div class="stats">
+      <div class="stat"><div class="stat-label">租户公司</div><div class="stat-value">6</div><div class="stat-sub"><span class="up">↑ 1</span> 本月新增</div></div>
+      <div class="stat"><div class="stat-label">活跃租户</div><div class="stat-value">5</div><div class="stat-sub">1 个已停用</div></div>
+      <div class="stat"><div class="stat-label">员工账号总数</div><div class="stat-value">47</div><div class="stat-sub">跨 6 家公司</div></div>
+      <div class="stat"><div class="stat-label">平台授权数</div><div class="stat-value">21</div><div class="stat-sub">6 平台累计开通</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><span>最近租户</span><span class="sub">按创建时间</span></div>
+      <table class="grid">
+        <thead><tr><th>公司</th><th>数据库</th><th>套餐</th><th>平台授权</th><th>员工</th><th>状态</th><th>创建时间</th></tr></thead>
+        <tbody id="overview-tenants"></tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><span>系统状态</span></div>
+      <div class="panel-body" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+        <div><div class="co-sub">主库连接</div><div class="st ok"><span class="d"></span> 正常</div></div>
+        <div><div class="co-sub">租户库连接池</div><div class="st ok"><span class="d"></span> 6/6 在线</div></div>
+        <div><div class="co-sub">定时任务</div><div class="st ok"><span class="d"></span> 运行中</div></div>
+        <div><div class="co-sub">磁盘使用</div><div class="st ok"><span class="d"></span> 38%</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 租户管理 ═══ -->
+  <div id="view-tenants" class="view">
+    <div class="page-head"><h1>租户管理 <span class="sub">管理所有公司、数据库与套餐</span></h1><div class="head-actions"><button class="btn btn-p">+ 新建租户</button></div></div>
+    <div class="filter">
+      <div class="fg"><span>状态</span><select><option>全部</option><option>正常</option><option>已停用</option></select></div>
+      <div class="fg"><span>套餐</span><select><option>全部</option><option>基础版</option><option>专业版</option><option>企业版</option></select></div>
+      <div class="fg"><input type="text" placeholder="搜索公司名 / 数据库 / 子域名"></div>
+      <button class="btn btn-p" style="padding:5px 14px;">搜索</button>
+      <div class="fsp"></div>
+      <div class="fsum">共 <strong>6</strong> 家公司</div>
+    </div>
+    <div class="panel">
+      <table class="grid">
+        <thead><tr><th style="width:30px">#</th><th>公司</th><th>子域名 / 数据库</th><th>套餐</th><th>平台授权</th><th>员工</th><th>状态</th><th>创建时间</th><th style="width:150px">操作</th></tr></thead>
+        <tbody id="tenant-rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══ 平台授权 ═══ -->
+  <div id="view-auth" class="view">
+    <div class="page-head"><h1>平台授权 <span class="sub">控制每家公司可访问的电商平台（tenant_platform）</span></h1></div>
+    <div class="filter">
+      <div class="fg"><span>选择租户</span><select id="auth-tenant"></select></div>
+      <div class="fsp"></div>
+      <div class="fsum">绿色=已开通 · 橙色=锁定 · 灰色=未开通</div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><span>平台开通 / 锁定</span><span class="sub">改动即时生效，租户侧菜单据此渲染</span></div>
+      <div class="panel-body"><div class="auth-grid" id="auth-grid"></div></div>
+    </div>
+  </div>
+
+  <!-- ═══ 系统公告 ═══ -->
+  <div id="view-announce" class="view">
+    <div class="page-head"><h1>系统公告 <span class="sub">发布给全部租户可见的公告</span></h1></div>
+    <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:16px;">
+      <div class="panel">
+        <div class="panel-head"><span>发布新公告</span></div>
+        <div class="panel-body">
+          <div class="ann-form">
+            <input type="text" placeholder="公告标题">
+            <select><option>类型：通知</option><option>类型：维护</option><option>类型：新功能</option></select>
+            <select><option>可见范围：全部租户</option><option>指定租户...</option></select>
+            <textarea placeholder="公告内容..."></textarea>
+            <div><button class="btn btn-p">发布公告</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><span>已发布公告</span></div>
+        <div class="panel-body ann-list">
+          <div class="ann-item"><div class="ann-title">5月20日系统升级维护通知</div><div class="ann-meta">维护 · 全部租户 · 2026-05-14 10:20</div><div class="ann-body">系统将于5月20日凌晨 2:00-4:00 进行维护升级，期间暂停服务。</div></div>
+          <div class="ann-item"><div class="ann-title">批量导入功能已上线</div><div class="ann-meta">新功能 · 全部租户 · 2026-05-10 09:00</div><div class="ann-body">支持 CSV 格式批量导入订单，详见帮助文档。</div></div>
+          <div class="ann-item"><div class="ann-title">乐天 RMS API 鉴权方式变更提醒</div><div class="ann-meta">通知 · 指定租户(3) · 2026-05-06 16:30</div><div class="ann-body">请相关公司在 5 月底前完成 API 凭证更新。</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ═══ 平台目录（主库 platforms）═══
+var PLATFORMS = [
+  { code: 'y',  name: 'Yahoo 购物' },
+  { code: 'r',  name: '乐天 Rakuten' },
+  { code: 'w',  name: 'Wowma' },
+  { code: 'm',  name: 'Mercari' },
+  { code: 'q',  name: 'Qoo10' },
+  { code: 'yp', name: '雅虎拍卖' }
+];
+
+// ═══ 租户数据（主库 tenant + tenant_platform 的合并视图）═══
+// auth[code] = 'on'(开通) | 'lock'(锁定) | 'off'(未开通)
+var TENANTS = [
+  { id:1, name:'樱花商贸', sub:'sakura', db:'xz_sakura', plan:'ent',   staff:14, status:'ok',
+    auth:{ y:'on', r:'on', w:'on', m:'on', q:'lock', yp:'lock' }, created:'2025-11-02' },
+  { id:2, name:'海淘优选', sub:'haitao', db:'xz_haitao', plan:'pro',   staff:9,  status:'ok',
+    auth:{ y:'on', r:'on', w:'on', m:'off', q:'off', yp:'off' }, created:'2026-01-18' },
+  { id:3, name:'东瀛严选', sub:'toei',   db:'xz_toei',   plan:'pro',   staff:8,  status:'ok',
+    auth:{ y:'on', r:'on', w:'off', m:'on', q:'off', yp:'off' }, created:'2026-02-25' },
+  { id:4, name:'富士跨境', sub:'fuji',   db:'xz_fuji',   plan:'basic', staff:5,  status:'ok',
+    auth:{ y:'on', r:'off', w:'on', m:'off', q:'off', yp:'off' }, created:'2026-03-30' },
+  { id:5, name:'和风优品', sub:'wafu',   db:'xz_wafu',   plan:'basic', staff:6,  status:'ok',
+    auth:{ y:'on', r:'on', w:'off', m:'off', q:'off', yp:'off' }, created:'2026-04-21' },
+  { id:6, name:'北斗物产', sub:'hokuto', db:'xz_hokuto', plan:'basic', staff:5,  status:'stop',
+    auth:{ y:'off', r:'off', w:'off', m:'off', q:'off', yp:'off' }, created:'2026-05-09' }
+];
+
+var PLAN_LABEL = { basic:'基础版', pro:'专业版', ent:'企业版' };
+var pfName = {}; PLATFORMS.forEach(function (p) { pfName[p.code] = p.name; });
+
+function authTags(auth) {
+  return PLATFORMS.map(function (p) {
+    var s = auth[p.code];
+    if (s === 'on') return '<span class="tag on">' + p.code.toUpperCase() + '</span>';
+    if (s === 'lock') return '<span class="tag lock">' + p.code.toUpperCase() + '🔒</span>';
+    return '';
+  }).join('') || '<span class="co-sub">未开通</span>';
+}
+function statusCell(s) {
+  return s === 'ok' ? '<span class="st ok"><span class="d"></span> 正常</span>' : '<span class="st stop"><span class="d"></span> 已停用</span>';
+}
+function planCell(p) { return '<span class="plan ' + p + '">' + PLAN_LABEL[p] + '</span>'; }
+
+// 概览 - 最近租户（取最新 4 个）
+document.getElementById('overview-tenants').innerHTML = TENANTS.slice().sort(function (a, b) {
+  return a.created < b.created ? 1 : -1;
+}).slice(0, 4).map(function (t) {
+  return '<tr><td><span class="co-name">' + t.name + '</span></td><td class="mono">' + t.db + '</td><td>' + planCell(t.plan) + '</td><td>' + authTags(t.auth) + '</td><td>' + t.staff + '</td><td>' + statusCell(t.status) + '</td><td class="co-sub">' + t.created + '</td></tr>';
+}).join('');
+
+// 租户管理 - 全表
+document.getElementById('tenant-rows').innerHTML = TENANTS.map(function (t, i) {
+  return '<tr>' +
+    '<td>' + (i + 1) + '</td>' +
+    '<td><span class="co-name">' + t.name + '</span></td>' +
+    '<td><span class="mono">' + t.sub + '.xizhends.com</span><div class="co-sub mono">' + t.db + '</div></td>' +
+    '<td>' + planCell(t.plan) + '</td>' +
+    '<td>' + authTags(t.auth) + '</td>' +
+    '<td>' + t.staff + '</td>' +
+    '<td>' + statusCell(t.status) + '</td>' +
+    '<td class="co-sub">' + t.created + '</td>' +
+    '<td class="row-act"><a>进入</a><a>编辑</a><a class="danger">' + (t.status === 'ok' ? '停用' : '启用') + '</a></td>' +
+    '</tr>';
+}).join('');
+
+// ═══ 平台授权 ═══
+var authTenantSel = document.getElementById('auth-tenant');
+authTenantSel.innerHTML = TENANTS.map(function (t) { return '<option value="' + t.id + '">' + t.name + '（' + t.db + '）</option>'; }).join('');
+
+function renderAuthGrid(tenantId) {
+  var t = TENANTS.find(function (x) { return x.id == tenantId; });
+  document.getElementById('auth-grid').innerHTML = PLATFORMS.map(function (p) {
+    var s = t.auth[p.code];
+    var onCls = (s === 'on' || s === 'lock') ? ' on' : '';
+    var lockCls = (s === 'lock') ? ' lock-on' : '';
+    return '<div class="auth-card" data-code="' + p.code + '">' +
+      '<div class="pf-name">' + p.name + ' <span class="pf-code">' + p.code + '</span></div>' +
+      '<div class="auth-line"><span>开通访问</span><div class="switch toggle-on' + onCls + '"><div class="knob"></div></div></div>' +
+      '<div class="auth-line"><span>锁定（灰显不可用）</span><div class="switch toggle-lock' + lockCls + '"><div class="knob"></div></div></div>' +
+      '</div>';
+  }).join('');
+}
+renderAuthGrid(TENANTS[0].id);
+authTenantSel.addEventListener('change', function () { renderAuthGrid(this.value); });
+
+// 开通 / 锁定开关交互（仅原型演示，不回写数据）
+document.getElementById('auth-grid').addEventListener('click', function (e) {
+  var sw = e.target.closest('.switch');
+  if (!sw) return;
+  if (sw.classList.contains('toggle-on')) sw.classList.toggle('on');
+  else if (sw.classList.contains('toggle-lock')) sw.classList.toggle('lock-on');
+});
+
+// ═══ 视图切换 ═══
+function switchView(view) {
+  document.querySelectorAll('.view').forEach(function (v) { v.classList.remove('active'); });
+  var el = document.getElementById('view-' + view);
+  if (el) el.classList.add('active');
+  document.querySelectorAll('.sb-nav li').forEach(function (li) { li.classList.remove('active'); });
+  var nav = document.querySelector('.sb-nav li[data-view="' + view + '"]');
+  if (nav) nav.classList.add('active');
+}
+document.querySelector('.sidebar').addEventListener('click', function (e) {
+  var li = e.target.closest('li[data-view]');
+  if (li) switchView(li.dataset.view);
+});
+document.querySelectorAll('[data-go]').forEach(function (b) {
+  b.addEventListener('click', function () { switchView(b.dataset.go); });
+});
+</script>
+
+</body>
+</html>

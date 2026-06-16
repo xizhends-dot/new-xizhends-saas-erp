@@ -1,0 +1,187 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}超管后台 · 租户管理{% endblock title %}
+{% block nav_tenants %}active{% endblock nav_tenants %}
+
+{% block admin_head_extra %}
+<style>
+  .tenant-admin .page-head h1 .sub { max-width: 560px; }
+  .tenant-plan-note {
+    background: #fff;
+    border: 1px solid var(--border);
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(300px, .9fr);
+    gap: 14px;
+    align-items: start;
+  }
+  .tenant-plan-note-text { color: var(--text-secondary); font-size: 11px; line-height: 1.65; }
+  .tenant-plan-note-text strong { color: #111827; }
+  .tenant-rule-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+  .tenant-rule-list li { border-left: 3px solid var(--admin-accent); background: #f9fafb; padding: 6px 8px; color: #374151; font-size: 11px; }
+  .tenant-plan-chips { margin-top: 8px; display: flex; gap: 5px; flex-wrap: wrap; }
+  .tenant-table-wrap { overflow-x: auto; }
+  .tenant-admin table.grid { min-width: 1160px; }
+  .tenant-company-lines, .tenant-contact { display: grid; gap: 2px; margin-top: 3px; }
+  .tenant-company-lines span, .tenant-contact-line { color: var(--text-secondary); font-size: 10px; line-height: 1.35; }
+  .tenant-contact-label { color: var(--text-muted); margin-right: 5px; }
+  @media (max-width: 980px) {
+    .tenant-plan-note { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock admin_head_extra %}
+
+{% block admin_content %}
+<div class="tenant-admin">
+<header class="page-head">
+  <h1>租户管理 <span class="sub">管理公司资料、负责人、子域名、数据库连接、套餐与平台授权</span></h1>
+  <div class="head-actions">
+    <a class="btn btn-p" href="/admin/tenants/new">+ 新建租户</a>
+    <a class="btn" href="/admin/billing">套餐 / 计费</a>
+    <a class="btn" href="/admin/platform-auth">平台授权</a>
+  </div>
+</header>
+
+<section class="tenant-plan-note">
+  <div class="tenant-plan-note-text">
+    <strong>套餐不是由数据库自动决定。</strong> basic / pro / ent 是运营与权限分层标签，创建或编辑租户时由超管选择；后续可以在平台授权、员工账号、功能权限上按套餐做差异。
+    <div class="tenant-plan-chips" aria-label="套餐标签">
+      <span class="plan basic">basic</span>
+      <span class="plan pro">pro</span>
+      <span class="plan ent">ent</span>
+    </div>
+  </div>
+  <ul class="tenant-rule-list">
+    <li>能否进入系统：租户状态必须为“正常”。</li>
+    <li>计费规则：账号数 × 已开通平台数 × 每个平台账号月单价。</li>
+    <li>预存余额覆盖本月预估费用后，租户侧才允许正常登录使用。</li>
+  </ul>
+</section>
+
+<form class="filter" method="get" action="/admin/tenants">
+  <label class="fg">
+    <span>状态</span>
+    <select name="status">
+      <option value="" {% if filters.status == "" %}selected{% endif %}>全部</option>
+      <option value="active" {% if filters.status == "active" %}selected{% endif %}>正常</option>
+      <option value="suspended" {% if filters.status == "suspended" %}selected{% endif %}>已停用</option>
+    </select>
+  </label>
+  <label class="fg">
+    <span>套餐</span>
+    <select name="plan">
+      <option value="" {% if filters.plan == "" %}selected{% endif %}>全部</option>
+      <option value="basic" {% if filters.plan == "basic" %}selected{% endif %}>basic</option>
+      <option value="pro" {% if filters.plan == "pro" %}selected{% endif %}>pro</option>
+      <option value="ent" {% if filters.plan == "ent" %}selected{% endif %}>ent</option>
+    </select>
+  </label>
+  <label class="fg">
+    <input type="text" name="q" value="{{ filters.q }}" placeholder="搜索公司 / 负责人 / 数据库 / 子域名 / 平台">
+  </label>
+  <button class="btn btn-p" type="submit">筛选</button>
+  <a class="btn" href="/admin/tenants">清空</a>
+  <div class="fsp"></div>
+  <div class="fsum">显示 <strong>{{ tenants | length }}</strong> / {{ total_tenants }} 家公司</div>
+</form>
+
+<section class="panel">
+  <div class="panel-head">
+    <span>租户列表</span>
+    <span class="sub">数据库列已脱敏，只显示 host:port/database，不显示账号密码</span>
+  </div>
+  <div class="tenant-table-wrap">
+  <table class="grid">
+    <thead>
+      <tr>
+        <th style="width:36px">#</th>
+        <th>公司资料</th>
+        <th>负责人 / 联系方式</th>
+        <th>子域名 / 数据库</th>
+        <th>套餐</th>
+        <th>平台授权</th>
+        <th>员工</th>
+        <th>状态</th>
+        <th>创建时间</th>
+        <th style="width:190px">操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in tenants %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>
+          {% set company_short_name = t.company_short_name | default(value="") %}
+          {% set address = t.address | default(value="") %}
+          {% set remark = t.remark | default(value="") %}
+          <span class="co-name">{{ t.company_name }}</span>
+          <div class="tenant-company-lines">
+            {% if company_short_name %}<span>简称：{{ company_short_name }}</span>{% endif %}
+            {% if address %}<span>地址：{{ address }}</span>{% endif %}
+            {% if remark %}<span>备注：{{ remark }}</span>{% endif %}
+            {% if not company_short_name and not address and not remark %}
+            <span class="co-sub">公司简称、地址、备注待补充</span>
+            {% endif %}
+          </div>
+        </td>
+        <td>
+          {% set contact_name = t.contact_name | default(value="") %}
+          {% set contact_phone = t.contact_phone | default(value="") %}
+          {% set contact_email = t.contact_email | default(value="") %}
+          {% set contact_wechat = t.contact_wechat | default(value="") %}
+          <div class="tenant-contact">
+            {% if contact_name %}
+            <div class="tenant-contact-line"><span class="tenant-contact-label">负责人</span>{{ contact_name }}</div>
+            {% else %}
+            <div class="co-sub">负责人待补充</div>
+            {% endif %}
+            {% if contact_phone %}<div class="tenant-contact-line"><span class="tenant-contact-label">电话</span>{{ contact_phone }}</div>{% endif %}
+            {% if contact_email %}<div class="tenant-contact-line"><span class="tenant-contact-label">邮箱</span>{{ contact_email }}</div>{% endif %}
+            {% if contact_wechat %}<div class="tenant-contact-line"><span class="tenant-contact-label">微信</span>{{ contact_wechat }}</div>{% endif %}
+            {% if not contact_phone and not contact_email and not contact_wechat %}
+            <div class="co-sub">电话 / 邮箱 / 微信待补充</div>
+            {% endif %}
+          </div>
+        </td>
+        <td><span class="mono">{{ t.subdomain }}.xizhends.com</span><div class="co-sub mono">{{ t.db_label }}</div></td>
+        <td><span class="plan {{ t.plan }}">{{ t.plan }}</span></td>
+        <td>
+          {% for p in t.authorized_platforms %}
+          <span class="tag on">{{ p | upper }}</span>
+          {% else %}
+          <span class="co-sub">未开通</span>
+          {% endfor %}
+        </td>
+        <td>{{ t.staff_count }}</td>
+        <td>
+          {% if t.status == "active" %}
+          <span class="st ok"><span class="d"></span>正常</span>
+          {% else %}
+          <span class="st stop"><span class="d"></span>已停用</span>
+          {% endif %}
+        </td>
+        <td class="co-sub">{{ t.created_at }}</td>
+        <td>
+          <div class="row-act">
+            <a class="btn-xs" href="/admin/tenants/{{ t.id }}/edit">编辑</a>
+            <a class="btn-xs" href="/admin/platform-auth?tenant_id={{ t.id }}">授权</a>
+            <a class="btn-xs" href="/admin/billing?q={{ t.subdomain }}">计费</a>
+            {% if t.status == "active" %}
+            <form class="inline-form" method="post" action="/admin/tenants/{{ t.id }}/suspend"><button class="btn-xs btn-danger" type="submit">停用</button></form>
+            {% else %}
+            <form class="inline-form" method="post" action="/admin/tenants/{{ t.id }}/enable"><button class="btn-xs" type="submit">启用</button></form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="10">暂无符合筛选条件的租户</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+</div>
+{% endblock admin_content %}

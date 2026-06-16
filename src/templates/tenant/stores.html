@@ -1,0 +1,194 @@
+{% extends "tenant/layout.html" %}
+
+{% block title %}店铺管理 · {{ tenant_name }}{% endblock title %}
+
+{% block tenant_content %}
+<header class="page-head">
+  <div>
+    <h1>店铺管理 <span class="plat-tag">Rakuten RMS</span></h1>
+    <div class="head-sub">维护租户店铺、乐天 RMS Order API 凭证、手动导入与同步入口。</div>
+  </div>
+  <div class="head-actions">
+    <a class="btn" href="/orders">平台订单</a>
+    <a class="btn btn-p" href="/settings/stores">刷新</a>
+  </div>
+</header>
+
+{% if flash %}
+<div class="notice ok">{{ flash }}</div>
+{% endif %}
+{% if error %}
+<div class="notice err">{{ error }}</div>
+{% endif %}
+
+<section class="panel store-create">
+  <div class="panel-head">
+    <span>新建乐天店铺</span>
+    <span class="sub">平台代码 r · 下一步保存 RMS 凭证</span>
+  </div>
+  <div class="panel-body store-create-body">
+    <form class="store-form" method="post" action="/settings/stores/rakuten">
+      <input type="hidden" name="platform" value="r">
+      <label>
+        <span>店铺缩写</span>
+        <input name="dpqz" required maxlength="64" placeholder="例：rakuten-main">
+      </label>
+      <label>
+        <span>店铺全称</span>
+        <input name="dpquancheng" required maxlength="255" placeholder="例：乐天主店">
+      </label>
+      <label class="store-check">
+        <input type="checkbox" name="is_hidden" value="1">
+        <span>隐藏店铺</span>
+      </label>
+      <button class="btn btn-p" type="submit">新建店铺</button>
+    </form>
+    <div class="rms-note">
+      <strong>乐天 RMS 需要准备</strong>
+      <span>在 RMS 侧开通 RMS WEB SERVICE，并确认 Order API 可以使用。</span>
+      <span>从 RMS 取得 serviceSecret 和 licenseKey，新建店铺后进入“导入/同步”页面保存。</span>
+      <span>同步沿用旧系统流程：searchOrder 查询待配送订单，getOrder(version=8) 拉取详单。</span>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <span>店铺列表</span>
+    <span class="sub">RMS 需开通 RMS WEB SERVICE Order API 并取得 serviceSecret/licenseKey</span>
+  </div>
+  <div class="store-table-wrap">
+    <table class="grid store-table">
+      <thead>
+        <tr>
+          <th>平台</th>
+          <th>店铺</th>
+          <th>凭证</th>
+          <th>最近同步</th>
+          <th>状态</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for store in stores %}
+        <tr>
+          <td>
+            <span class="store-platform">{{ store.platform_label }}</span>
+            <span class="mono">{{ store.platform }}</span>
+          </td>
+          <td>
+            <strong>{{ store.dpquancheng }}</strong>
+            <span class="store-sub">{{ store.dpqz }}{% if store.is_hidden %} · 隐藏{% endif %}</span>
+          </td>
+          <td>
+            {% if store.has_rms_credentials %}
+            <span class="cred-ok">已保存</span>
+            <span class="store-sub">更新 {{ store.rms_credentials_updated_at }}</span>
+            {% else %}
+            <span class="cred-miss">未保存</span>
+            <span class="store-sub">需要 serviceSecret/licenseKey</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if store.last_sync_at %}
+            <span class="mono">{{ store.last_sync_at }}</span>
+            {% else %}
+            <span class="store-sub">尚未同步</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if store.last_sync_status %}
+            <span class="sync-status">{{ store.last_sync_status }}</span>
+            <span class="store-sub">{{ store.last_sync_message }}</span>
+            {% else %}
+            <span class="store-sub">无任务报告</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="row-actions">
+              <a class="btn-xs" href="/settings/stores/{{ store.id }}/import">{% if store.has_rms_credentials %}手动导入订单{% else %}凭证/导入{% endif %}</a>
+              <form method="post" action="/settings/stores/{{ store.id }}/rakuten/sync">
+                {% if store.has_rms_credentials and not store.is_hidden %}
+                <button class="btn-xs btn-p" type="submit">同步订单</button>
+                {% elif store.is_hidden %}
+                <button class="btn-xs" type="button" disabled>已隐藏</button>
+                {% else %}
+                <a class="btn-xs" href="/settings/stores/{{ store.id }}/import">先保存凭证</a>
+                {% endif %}
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6">
+            <div class="empty-state">
+              <strong>暂无店铺</strong>
+              <span>先新建一个乐天店铺，再保存 RMS 凭证。</span>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% if stores | length > 0 %}
+<section class="panel">
+  <div class="panel-head">
+    <span>店铺资料编辑</span>
+    <span class="sub">隐藏店铺不会参与导入和员工店铺范围选择</span>
+  </div>
+  <div class="store-edit-list">
+    {% for store in stores %}
+    <form class="store-edit-row" method="post" action="/settings/stores/{{ store.id }}">
+      <label>
+        <span>店铺缩写</span>
+        <input name="dpqz" required maxlength="64" value="{{ store.dpqz }}">
+      </label>
+      <label>
+        <span>店铺全称</span>
+        <input name="dpquancheng" required maxlength="255" value="{{ store.dpquancheng }}">
+      </label>
+      <label class="store-check">
+        <input type="checkbox" name="is_hidden" value="1" {% if store.is_hidden %}checked{% endif %}>
+        <span>{% if store.is_hidden %}当前隐藏{% else %}隐藏店铺{% endif %}</span>
+      </label>
+      <button class="btn-xs btn-p" type="submit">保存资料</button>
+      <a class="btn-xs" href="/settings/stores/{{ store.id }}/import">凭证/导入</a>
+    </form>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock tenant_content %}
+
+{% block tenant_head_extra %}
+<style>
+  .notice { margin-bottom: 10px; padding: 9px 12px; border: 1px solid var(--border); background: #fff; font-size: 12px; font-weight: 700; }
+  .notice.ok { border-color: #86efac; background: #f0fdf4; color: #166534; }
+  .notice.err { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+  .store-create-body { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 14px; align-items: start; }
+  .store-form { display: grid; grid-template-columns: minmax(160px, 1fr) minmax(220px, 1.4fr) auto auto; gap: 10px; align-items: end; }
+  .store-form label, .store-edit-row label { display: grid; gap: 4px; color: var(--text-secondary); font-size: 11px; font-weight: 700; }
+  .store-form input[type="text"], .store-form input:not([type]), .store-edit-row input[type="text"], .store-edit-row input:not([type]) { min-height: 30px; padding: 6px 8px; border: 1px solid var(--border); font: inherit; outline: none; }
+  .store-form input:focus, .store-edit-row input:focus { border-color: var(--tenant-accent); }
+  .rms-note { border: 1px solid var(--border); background: #f8fafc; padding: 10px 12px; display: grid; gap: 6px; color: var(--text-secondary); font-size: 11px; line-height: 1.5; }
+  .rms-note strong { color: #111827; font-size: 12px; }
+  .store-check { min-height: 30px; display: inline-flex !important; grid-template-columns: auto auto; align-items: center; gap: 6px !important; white-space: nowrap; }
+  .store-table-wrap { overflow-x: auto; }
+  .store-table { min-width: 920px; }
+  .store-platform { display: inline-block; margin-right: 6px; color: #111827; font-weight: 800; }
+  .store-sub { display: block; margin-top: 3px; color: var(--text-muted); font-size: 10px; line-height: 1.35; }
+  .cred-ok, .sync-status { display: inline-block; padding: 2px 7px; background: #ecfdf5; color: #047857; font-size: 10px; font-weight: 800; }
+  .cred-miss { display: inline-block; padding: 2px 7px; background: #f3f4f6; color: var(--text-secondary); font-size: 10px; font-weight: 800; }
+  .row-actions form { display: inline-flex; margin: 0; }
+  .store-edit-list { display: grid; gap: 8px; padding: 12px; }
+  .store-edit-row { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(220px, 1.4fr) auto auto auto; gap: 10px; align-items: end; border: 1px solid var(--border); background: #fff; padding: 10px; }
+  @media (max-width: 900px) {
+    .store-create-body, .store-form, .store-edit-row { grid-template-columns: 1fr; }
+    .store-check { justify-content: flex-start; }
+  }
+</style>
+{% endblock tenant_head_extra %}

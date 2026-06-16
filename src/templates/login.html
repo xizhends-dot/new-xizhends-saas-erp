@@ -1,0 +1,165 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ page_title }}{% endblock title %}
+{% block body_class %}{{ body_class }}{% endblock body_class %}
+
+{% block head_extra %}
+<style>
+  body {
+    background: #f9fafb;
+    color: #111827;
+  }
+  .app-header {
+    width: min(440px, calc(100vw - 32px));
+    margin: 40px auto 0;
+    padding: 0;
+  }
+  .app-header .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #111827;
+    font-size: 13px;
+    letter-spacing: .04em;
+  }
+  .app-header .brand::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    background: var(--tenant-accent);
+    display: inline-block;
+  }
+  .login-shell {
+    width: min(440px, calc(100vw - 32px));
+    margin: 18px auto 0;
+    border: 1px solid #9CA3AF;
+    background: #fff;
+    box-shadow: 0 12px 28px rgba(17, 24, 39, .08);
+  }
+  .login-head {
+    padding: 22px 24px 18px;
+    border-bottom: 1px solid #9CA3AF;
+  }
+  .login-title {
+    margin: 0;
+    color: #111827;
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: 0;
+  }
+  .login-subtitle {
+    margin: 6px 0 22px;
+    color: #6B7280;
+    font-size: 12px;
+  }
+  .login-subtitle:last-child { margin-bottom: 0; }
+  .login-error {
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    border: 1px solid #fecaca;
+    background: #fff1f2;
+    color: #b42318;
+    font-size: 13px;
+    font-weight: 650;
+  }
+  .login-body {
+    padding: 20px 24px 24px;
+  }
+  .login-field {
+    display: block;
+    margin-top: 14px;
+  }
+  .login-field:first-child { margin-top: 0; }
+  .login-label {
+    display: block;
+    margin-bottom: 6px;
+    color: #6B7280;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .login-input {
+    width: 100%;
+    height: 38px;
+    padding: 0 12px;
+    border: 1px solid #9CA3AF;
+    color: #111827;
+    font: inherit;
+    font-size: 13px;
+    outline: none;
+    background: #fff;
+  }
+  .login-input:focus {
+    border-color: var(--tenant-accent);
+    box-shadow: inset 3px 0 0 var(--tenant-accent);
+  }
+  .login-submit {
+    width: 100%;
+    min-height: 38px;
+    margin-top: 20px;
+    border: 1px solid var(--tenant-accent);
+    background: var(--tenant-accent);
+    color: #fff;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .login-submit:hover {
+    filter: brightness(.96);
+  }
+  .login-foot {
+    margin-top: 14px;
+    color: #9CA3AF;
+    font-size: 10px;
+    line-height: 1.6;
+  }
+  .login-scope {
+    display: inline-flex;
+    align-items: center;
+    min-height: 20px;
+    margin-bottom: 10px;
+    padding: 2px 8px;
+    background: #ecfdf5;
+    color: var(--tenant-accent);
+    font-size: 10px;
+    font-weight: 800;
+  }
+  body.admin-identity .login-scope { background: #ecfdf5; }
+  @media (max-width: 520px) {
+    .app-header { margin-top: 24px; }
+    .login-head, .login-body { padding-left: 18px; padding-right: 18px; }
+  }
+</style>
+{% endblock head_extra %}
+
+{% block content %}
+<section class="login-shell" data-login-scope="{{ scope }}">
+  <div class="login-head">
+    <div class="login-scope">{% if scope == "admin" %}SAAS ADMIN{% else %}TENANT ERP{% endif %}</div>
+    <h1 class="login-title">{{ page_title }}</h1>
+    <p class="login-subtitle">{{ subtitle }}</p>
+  </div>
+
+  <div class="login-body">
+    {% if error %}
+    <div class="login-error" role="alert">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/login" autocomplete="on">
+      <label class="login-field" for="username">
+        <span class="login-label">账号</span>
+        <input class="login-input" id="username" name="username" value="{{ username }}" autocomplete="username" required autofocus>
+      </label>
+
+      <label class="login-field" for="password">
+        <span class="login-label">密码</span>
+        <input class="login-input" id="password" name="password" type="password" autocomplete="current-password" required>
+      </label>
+
+      <button class="login-submit" type="submit">登录</button>
+    </form>
+    <div class="login-foot">登录后将进入当前域名对应的系统工作台。</div>
+  </div>
+</section>
+{% endblock content %}

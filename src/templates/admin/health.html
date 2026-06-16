@@ -1,0 +1,66 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}超管后台 · 服务健康{% endblock title %}
+{% block nav_health %}active{% endblock nav_health %}
+
+{% block admin_content %}
+<header class="page-head">
+  <h1>服务健康 <span class="sub">服务器与关键依赖状态</span></h1>
+  <div class="head-actions">
+    <a class="btn" href="/healthz">机器探针</a>
+    <a class="btn btn-p" href="/admin/overview">返回概览</a>
+  </div>
+</header>
+
+<section class="health-hero">
+  <div>
+    <div class="health-kicker">当前结论</div>
+    <div class="health-title st {{ overall_class }}"><span class="d"></span>{{ overall_label }}</div>
+    <div class="health-meta">检查时间戳 <span class="mono">{{ checked_at_unix }}</span></div>
+  </div>
+  <div class="health-note">
+    仅展示运行状态、连接池规模和安全摘要；数据库 DSN、密钥、口令、请求来源地址不会在此页面输出。
+  </div>
+</section>
+
+<section class="health-grid">
+  {% for card in cards %}
+  <article class="health-card {{ card.status_class }}">
+    <div class="health-card-top">
+      <h2>{{ card.name }}</h2>
+      <span class="st {{ card.status_class }}"><span class="d"></span>{{ card.status_label }}</span>
+    </div>
+    <div class="health-headline">{{ card.headline }}</div>
+    <p>{{ card.detail }}</p>
+    <ul>
+      {% for signal in card.signals %}
+      <li>{{ signal }}</li>
+      {% endfor %}
+    </ul>
+  </article>
+  {% endfor %}
+</section>
+{% endblock admin_content %}
+
+{% block admin_head_extra %}
+<style>
+  .health-hero { margin-bottom: 16px; padding: 16px 18px; border: 1px solid var(--border); background: #fff; display: grid; grid-template-columns: minmax(220px, .8fr) 1.2fr; gap: 18px; align-items: center; }
+  .health-kicker { color: var(--text-muted); font-size: 10px; font-weight: 800; letter-spacing: .06em; }
+  .health-title { margin-top: 4px; font-size: 22px; font-weight: 850; }
+  .health-meta { margin-top: 6px; color: var(--text-secondary); font-size: 11px; }
+  .health-note { color: #374151; font-size: 12px; line-height: 1.7; }
+  .health-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .health-card { min-height: 210px; border: 1px solid var(--border); background: #fff; padding: 14px; display: flex; flex-direction: column; }
+  .health-card-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb; }
+  .health-card h2 { margin: 0; color: #111827; font-size: 14px; font-weight: 850; }
+  .health-headline { margin-top: 12px; color: #111827; font-size: 20px; font-weight: 850; line-height: 1.15; }
+  .health-card p { margin: 8px 0 10px; color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+  .health-card ul { margin: auto 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+  .health-card li { min-height: 26px; padding: 6px 8px; background: #f9fafb; border-left: 3px solid #d1d5db; color: #374151; font-size: 11px; }
+  .health-card.stop li { border-left-color: #e5484d; }
+  .health-card.ok li { border-left-color: #059669; }
+  @media (max-width: 900px) {
+    .health-hero, .health-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock admin_head_extra %}

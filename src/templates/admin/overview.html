@@ -1,0 +1,80 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}超管后台 · 概览{% endblock title %}
+{% block nav_overview %}active{% endblock nav_overview %}
+
+{% block admin_content %}
+<header class="page-head">
+  <h1>概览 <span class="sub">SaaS 平台运营总览</span></h1>
+  <div class="head-actions">
+    <a class="btn btn-p" href="/admin/tenants/new">+ 新建租户</a>
+    <a class="btn" href="/admin/tenants">租户管理</a>
+    <a class="btn" href="/admin/platform-auth">平台授权</a>
+  </div>
+</header>
+
+<section class="stats">
+  <div class="stat">
+    <div class="stat-label">租户公司</div>
+    <div class="stat-value">{{ stats.total_tenants }}</div>
+    <div class="stat-sub">主库 tenants</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">活跃租户</div>
+    <div class="stat-value">{{ stats.active_tenants }}</div>
+    <div class="stat-sub">其余租户处于停用或待处理状态</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">员工账号总数</div>
+    <div class="stat-value">{{ stats.total_staff }}</div>
+    <div class="stat-sub">跨租户汇总</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">平台授权数</div>
+    <div class="stat-value">{{ stats.platform_authorizations }}</div>
+    <div class="stat-sub">tenant_platform.enabled</div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <span>最近租户</span>
+    <span class="sub">按创建时间</span>
+  </div>
+  <table class="grid">
+    <thead>
+      <tr><th>公司</th><th>子域名</th><th>套餐</th><th>员工</th><th>状态</th><th>创建时间</th></tr>
+    </thead>
+    <tbody>
+      {% for t in recent_tenants %}
+      <tr>
+        <td><span class="co-name">{{ t.company_name }}</span></td>
+        <td><span class="mono">{{ t.subdomain }}.xizhends.com</span></td>
+        <td><span class="plan {{ t.plan }}">{{ t.plan }}</span></td>
+        <td>{{ t.staff_count }}</td>
+        <td>
+          {% if t.status == "active" %}
+          <span class="st ok"><span class="d"></span>正常</span>
+          {% else %}
+          <span class="st stop"><span class="d"></span>已停用</span>
+          {% endif %}
+        </td>
+        <td class="co-sub">{{ t.created_at }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6">暂无租户</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><span>系统状态</span></div>
+  <div class="panel-body" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+    <div><div class="co-sub">主库连接</div><div class="st {% if system_status.master_db_ok %}ok{% else %}stop{% endif %}"><span class="d"></span>{% if system_status.master_db_ok %}正常{% else %}异常{% endif %}</div></div>
+    <div><div class="co-sub">租户连接池</div><div class="st ok"><span class="d"></span>{{ system_status.tenant_pool_count }} 个缓存</div></div>
+    <div><div class="co-sub">定时任务</div><div class="st {% if system_status.scheduler_running %}ok{% else %}stop{% endif %}"><span class="d"></span>{% if system_status.scheduler_running %}运行中{% else %}已停止{% endif %}</div></div>
+    <div><div class="co-sub">反向代理</div><div class="st ok"><span class="d"></span>Nginx</div></div>
+  </div>
+</section>
+{% endblock admin_content %}

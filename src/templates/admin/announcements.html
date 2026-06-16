@@ -1,0 +1,57 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}超管后台 · 系统公告{% endblock title %}
+{% block nav_announce %}active{% endblock nav_announce %}
+
+{% block admin_content %}
+<header class="page-head">
+  <h1>系统公告 <span class="sub">发布给全部或指定租户</span></h1>
+</header>
+
+<div class="two-col">
+  <section class="panel">
+    <div class="panel-head"><span>发布新公告</span></div>
+    <div class="panel-body">
+      <form class="ann-form" method="post" action="/admin/announcements" x-data="{ scope: 'global' }">
+        <input type="text" name="title" placeholder="公告标题" required>
+        <select name="kind">
+          <option value="info">通知</option>
+          <option value="feature">新功能</option>
+          <option value="maintenance">维护</option>
+          <option value="warning">提醒</option>
+        </select>
+        <select name="scope" x-model="scope">
+          <option value="global">全部租户</option>
+          <option value="tenant">指定租户</option>
+        </select>
+        <select name="tenant_id" x-bind:disabled="scope !== 'tenant'" x-bind:required="scope === 'tenant'">
+          <option value="">选择租户</option>
+          {% for t in tenants %}
+          <option value="{{ t.id }}">{{ t.company_name }}（{{ t.subdomain }}）</option>
+          {% endfor %}
+        </select>
+        <textarea name="content" placeholder="公告内容..." required></textarea>
+        <div><button class="btn btn-p" type="submit">发布公告</button></div>
+      </form>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <span>已发布公告</span>
+      <span class="sub">最新在前</span>
+    </div>
+    <div class="panel-body">
+      {% for a in announcements %}
+      <article class="ann-item">
+        <div class="ann-title">{{ a.title }}</div>
+        <div class="ann-meta">{{ a.kind }} · {{ a.scope }}{% if a.tenant_id %} #{{ a.tenant_id }}{% endif %} · {{ a.created_at }}</div>
+        <div class="ann-body">{{ a.content }}</div>
+      </article>
+      {% else %}
+      <div class="co-sub">暂无公告</div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock admin_content %}

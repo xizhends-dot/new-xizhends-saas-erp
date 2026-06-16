@@ -1,0 +1,312 @@
+{#
+  三视图共享订单块。
+  platform 默认 A+B1；purchase/jpstock 默认 B1+B2；展开后显示后续区块。
+#}
+{% set is_platform = view == "platform" %}
+<article class="order-block"
+         x-data="{ expanded: {% if is_platform %}false{% else %}true{% endif %}, showIntl: false, showLog: false }"
+         x-on:toggle-details.window="expanded = $event.detail"
+         x-on:toggle-intl.window="showIntl = $event.detail"
+         data-order-id="{{ order.id }}">
+  <div class="order-block-head">
+    <div class="order-title">
+      <strong>#{{ order.platform_order_id }}</strong>
+      <span class="platform-tag">{{ order.platform | upper }}</span>
+      <span class="order-date">{{ order.imported_at }}</span>
+    </div>
+    <div class="row-actions">
+      <button type="button" class="log-btn" @click="showLog = !showLog" :class="{ 'on': showLog }">日志</button>
+      <button type="button" class="log-btn" @click="expanded = !expanded" :class="{ 'on': expanded }" x-text="expanded ? '收起详情' : '展开详情'">展开详情</button>
+    </div>
+  </div>
+
+  {% if is_platform %}
+  <table class="otable sec-a">
+    <caption>A 区 · 客户信息</caption>
+    <colgroup>
+      <col class="c0"><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"><col class="c6"><col class="c7"><col class="c8"><col class="c9"><col class="c10"><col class="c11"><col class="c12"><col class="c13"><col class="c14">
+    </colgroup>
+    <thead>
+      <tr>
+        <th class="c0">选择</th>
+        <th class="c1" colspan="2">导入时间</th>
+        <th class="c3">收件人</th>
+        <th class="c4">假名</th>
+        <th class="c5">地址</th>
+        <th class="c6">邮编</th>
+        <th class="c7">电话</th>
+        <th class="c8">邮箱</th>
+        <th class="c9">支付方式</th>
+        <th class="c10">运送方式</th>
+        <th class="c11">已邀评</th>
+        <th class="c12">已评价</th>
+        <th class="c13"></th>
+        <th class="c14"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><input type="checkbox" class="js-order-select" name="order_id" value="{{ order.id }}"></td>
+        <td colspan="2">{{ order.imported_at }}</td>
+        <td>{{ order.customer_name }}</td>
+        <td>{{ order.customer_kana }}</td>
+        <td title="{{ order.customer_address }}">{{ order.customer_address }}</td>
+        <td>{{ order.customer_zip }}</td>
+        <td>{{ order.customer_phone }}</td>
+        <td>{{ order.customer_mail }}</td>
+        <td>{{ order.pay_method }}</td>
+        <td>{{ order.ship_method }}</td>
+        <td>{% if order.review_invited %}是{% else %}否{% endif %}</td>
+        <td>{% if order.reviewed %}是{% else %}否{% endif %}</td>
+        <td></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  {% endif %}
+
+  <table class="otable sec-b">
+    <caption>B1 区 · 商品明细</caption>
+    <colgroup>
+      <col class="c0"><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"><col class="c6"><col class="c7"><col class="c8"><col class="c9"><col class="c10"><col class="c11"><col class="c12"><col class="c13"><col class="c14">
+    </colgroup>
+    <thead>
+      <tr>
+        <th class="c0">{% if is_platform %}图片{% else %}选择{% endif %}</th>
+        <th class="c1" colspan="2">订单ID</th>
+        <th class="c3">订单时间</th>
+        <th class="c4">货源地 / 采购状态</th>
+        <th class="c5">ItemId</th>
+        <th class="c6">日本仓ID</th>
+        <th class="c7">商品属性</th>
+        <th class="c8" colspan="2">项目选择</th>
+        <th class="c10">数量</th>
+        <th class="c11">重量</th>
+        <th class="c12">材质</th>
+        <th class="c13">金额</th>
+        <th class="c14">操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in order.items %}
+      <tr class="item-row" data-item-id="{{ item.id }}">
+        <td>
+          {% if is_platform %}
+            {% if item.main_image %}<img class="item-img" src="{{ item.main_image }}" alt="">{% else %}<span class="img-ph">-</span>{% endif %}
+          {% else %}
+            <input type="checkbox" class="js-item-select" name="order_item_id" value="{{ item.id }}">
+          {% endif %}
+        </td>
+        <td colspan="2"><span class="oid-link">{{ order.platform_order_id }}</span><span class="oid-sub">{{ order.order_status }}</span></td>
+        <td>{% if order.order_date %}{{ order.order_date }}{% else %}{{ order.imported_at }}{% endif %}</td>
+        <td>
+          {% if is_platform %}
+          <div class="b1-source" data-order-item-id="{{ item.id }}" data-source="{{ item.source_type }}">
+            <input type="hidden" name="order_id" value="{{ order.id }}">
+            <input type="hidden" name="order_item_id" value="{{ item.id }}">
+            <input type="hidden" name="old_source" value="{{ item.source_type }}">
+            <select name="new_source" class="source-select"
+                    hx-post="/orders/source/rejudge"
+                    hx-trigger="change"
+                    hx-target="closest .b1-source"
+                    hx-swap="outerHTML"
+                    hx-include="closest .b1-source">
+              <option value="cn_purchase" {% if item.source_type == "cn_purchase" %}selected{% endif %}>国内采购</option>
+              <option value="jp_stock" {% if item.source_type == "jp_stock" %}selected{% endif %}>日本仓现货</option>
+              <option value="pending" {% if item.source_type == "pending" %}selected{% endif %}>待定</option>
+            </select>
+          </div>
+          {% else %}
+          <span class="source-tag source-{{ item.source_type }}">
+            {% if item.source_type == "cn_purchase" %}国内采购{% elif item.source_type == "jp_stock" %}日本仓现货{% else %}待定{% endif %}
+          </span>
+          {% endif %}
+          <span class="status-tag">{{ item.purchase_status }}</span>
+        </td>
+        <td>{{ item.item_code }}</td>
+        <td>{{ item.jp_warehouse_id | default(value="") }}</td>
+        <td>{{ item.item_option }}</td>
+        <td colspan="2" title="{{ item.chinese_option }}">{{ item.chinese_option }}</td>
+        <td><span class="qty-val">x{{ item.quantity }}</span></td>
+        <td>{{ item.weight }}</td>
+        <td>{{ item.material }}</td>
+        <td><span class="price-val">{{ item.amount }}</span></td>
+        <td><button type="button" class="log-btn" @click="showLog = !showLog">日志</button></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div x-show="expanded" {% if not is_platform %}style="display:block"{% endif %}>
+    <table class="otable sec-b">
+      <caption>B2 区 · 采购 / 出库信息</caption>
+      <colgroup>
+        <col class="c0"><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"><col class="c6"><col class="c7"><col class="c8"><col class="c9"><col class="c10"><col class="c11"><col class="c12"><col class="c13"><col class="c14">
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="c0" colspan="2">状态</th>
+          <th class="c2">负责人</th>
+          <th class="c3">时间</th>
+          <th class="c4" colspan="2">链接 / 仓位</th>
+          <th class="c6">备注</th>
+          <th class="c7">金额 / 成本</th>
+          <th class="c8" colspan="2">单号</th>
+          <th class="c10">物流公司</th>
+          <th class="c11" colspan="4">国内运单号 / 出库信息</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in order.items %}
+          {% if item.source_type == "cn_purchase" %}
+          <tr class="b2-purchase" data-item-id="{{ item.id }}">
+            <td colspan="15">
+              <form class="purchase-form"
+                    hx-post="/orders/purchase/save"
+                    hx-target="#purchase-save-{{ item.id }}"
+                    hx-swap="innerHTML">
+                <input type="hidden" name="order_id" value="{{ order.id }}">
+                <input type="hidden" name="order_item_id" value="{{ item.id }}">
+                <label><span>状态</span>
+                  <select name="purchase_status">
+                    {% for st in purchase_status_options %}
+                    <option value="{{ st }}" {% if item.purchase_status == st %}selected{% endif %}>{{ st }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label><span>采购人</span><input value="{% if item.purchase.caigou_user %}{{ item.purchase.caigou_user }}{% else %}{{ item.caigou_user | default(value='') }}{% endif %}" disabled></label>
+                <label><span>采购时间</span><input name="caigou_time" value="{{ item.purchase.caigou_time | default(value='') }}" placeholder="YYYY-MM-DD HH:MM:SS"></label>
+                <label class="wide"><span>1688链接</span><input name="caigou_link" value="{{ item.purchase.caigou_link }}" placeholder="https://..."></label>
+                <label><span>采购金额</span><input name="cn_amount" value="{{ item.purchase.cn_amount }}"></label>
+                <label><span>com</span><input name="com_amount" value="{{ item.purchase.com_amount | default(value='') }}"></label>
+                <label><span>1688单号</span><input name="tabaono" value="{{ item.purchase.tabaono }}"></label>
+                <label><span>采购单号</span><input name="caigou_ordernums" value="{{ item.purchase.caigou_ordernums | default(value='') }}"></label>
+                <label><span>国内运单</span><input name="cn_ship_number" value="{% if item.purchase.cn_ship_number %}{{ item.purchase.cn_ship_number }}{% else %}{% for ship in item.domestic_shipments %}{{ ship.ship_number }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}"></label>
+                <label class="wide"><span>补货链接</span><input name="buhuo_link" value="{{ item.purchase.buhuo_link | default(value='') }}"></label>
+                <button class="btn-xs btn-p" type="submit">保存采购</button>
+                <span id="purchase-save-{{ item.id }}" class="save-slot"></span>
+              </form>
+            </td>
+          </tr>
+          {% elif item.source_type == "jp_stock" %}
+          <tr class="b2-jpstock {% if item.jp_shipment.out_status == "待分配" %}row-unassigned{% endif %}" data-item-id="{{ item.id }}">
+            <td colspan="2" id="jp-status-{{ item.id }}"><span class="out-st wait">出库状态 {{ item.jp_shipment.out_status }}</span></td>
+            <td>
+              {% if item.jp_shipment.assignee %}
+              发货员 {{ item.jp_shipment.assignee }}
+              {% else %}
+              <form class="mini-inline"
+                    hx-post="/jp-warehouse/assign"
+                    hx-target="#jp-status-{{ item.id }}"
+                    hx-swap="innerHTML">
+                <input type="hidden" name="order_item_id" value="{{ item.id }}">
+                <input name="assignee" placeholder="发货员" required>
+                <button class="btn-xs" type="submit">分配</button>
+              </form>
+              {% endif %}
+            </td>
+            <td>{{ item.jp_shipment.out_time }}</td>
+            <td colspan="2">仓位 {{ item.jp_shipment.location }}</td>
+            <td>{{ item.product_title }}</td>
+            <td>{{ item.jp_shipment.out_cost }}</td>
+            <td colspan="2">出库单号 {{ item.jp_shipment.out_no }}</td>
+            <td>{{ item.jp_shipment.operator }}</td>
+            <td colspan="4">
+              {% if item.jp_shipment.out_status == "已分配" %}
+              <form class="mini-inline"
+                    hx-post="/jp-warehouse/batch-out"
+                    hx-target="#jp-status-{{ item.id }}"
+                    hx-swap="innerHTML">
+                <input type="hidden" name="order_item_ids" value="{{ item.id }}">
+                <input name="operator" placeholder="出库人" required>
+                <input name="location" placeholder="仓位">
+                <input name="out_no" placeholder="出库单号">
+                <input name="out_cost" placeholder="成本">
+                <button class="btn-xs" type="submit">出库</button>
+              </form>
+              {% elif item.jp_shipment.out_status == "已出库" %}
+              <form class="mini-inline"
+                    hx-post="/jp-warehouse/advance"
+                    hx-target="#jp-status-{{ item.id }}"
+                    hx-swap="innerHTML">
+                <input type="hidden" name="order_item_id" value="{{ item.id }}">
+                <button class="btn-xs" type="submit">交国际物流</button>
+              </form>
+              {% else %}
+              出库人 {{ item.jp_shipment.operator }}
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr class="b2-pending" data-item-id="{{ item.id }}">
+            <td colspan="15">货源待定，暂无采购 / 出库信息</td>
+          </tr>
+          {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div x-show="showIntl" style="display:none">
+    <table class="otable sec-c">
+      <caption>C 区 · 国际物流</caption>
+      <colgroup>
+        <col class="c0"><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"><col class="c6"><col class="c7"><col class="c8"><col class="c9"><col class="c10"><col class="c11"><col class="c12"><col class="c13"><col class="c14">
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="c0" colspan="4">国际运单号</th>
+          <th class="c4" colspan="2">运单状态</th>
+          <th class="c6">运费</th>
+          <th class="c7">件数</th>
+          <th class="c8">重量</th>
+          <th class="c9" colspan="6">备注</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in order.items %}
+          {% for intl in item.intl_shipments %}
+          <tr data-item-id="{{ item.id }}">
+            <td colspan="4">{{ intl.intl_number }}</td>
+            <td colspan="2">{{ intl.intl_status }}</td>
+            <td>{{ intl.intl_fee }}</td>
+            <td>{{ intl.intl_qty }}</td>
+            <td>{{ intl.intl_weight }}</td>
+            <td colspan="6">{{ intl.comment }}</td>
+          </tr>
+          {% else %}
+          <tr data-item-id="{{ item.id }}">
+            <td colspan="4">{{ item.item_code }}</td>
+            <td colspan="11">无国际物流记录</td>
+          </tr>
+          {% endfor %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="log-panel" x-show="showLog" style="display:none">
+    <div class="log-inner">
+      <h4>操作日志</h4>
+      <table class="log-table">
+        <thead>
+          <tr><th>时间</th><th>操作人</th><th>操作类型</th><th>字段</th><th>详情</th><th>IP</th></tr>
+        </thead>
+        <tbody>
+          {% for log in order.logs | default(value=[]) %}
+          <tr>
+            <td class="log-time">{{ log.created_at }}</td>
+            <td class="log-user">{{ log.operator }}</td>
+            <td>{{ log.action_type }}</td>
+            <td>{{ log.field_name }}</td>
+            <td><span class="log-old">{{ log.old_value }}</span><span class="log-arrow">→</span><span class="log-new">{{ log.new_value }}</span></td>
+            <td class="log-ip">{{ log.ip }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6">暂无操作日志</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</article>

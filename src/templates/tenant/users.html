@@ -1,0 +1,302 @@
+{% extends "tenant/layout.html" %}
+
+{% block title %}员工管理 · {{ tenant_name }}{% endblock title %}
+
+{% block tenant_content %}
+<header class="page-head">
+  <div>
+    <h1>员工管理 <span class="plat-tag">客服 / 采购 / 品检</span></h1>
+    <div class="head-sub">启用账号 {{ staff_count }} · 权限按模块授权 · 店铺范围按店铺 ID 写入</div>
+  </div>
+  <div class="head-actions">
+    <a class="btn" href="/settings/stores">店铺管理</a>
+    <a class="btn btn-p" href="/dashboard">返回首页</a>
+  </div>
+</header>
+
+<section class="panel">
+  <div class="panel-head">
+    <span>新建员工账号</span>
+    <span class="sub">客服、采购账号由租户管理员创建</span>
+  </div>
+  <div class="panel-body">
+    <form class="user-create"
+          method="post"
+          action="/settings/users"
+          x-data="permissionEditor('')"
+          @submit="sync()">
+      <label class="fg">
+        <span class="lb">登录账号</span>
+        <input name="username" required maxlength="128" placeholder="例如 kefu01">
+      </label>
+      <label class="fg">
+        <span class="lb">初始密码</span>
+        <input name="password" type="password" required minlength="8" placeholder="至少 8 个字符">
+      </label>
+      <label class="fg">
+        <span class="lb">账号类型</span>
+        <select name="role" x-ref="roleSelect" @change="applyRoleDefaults($event.target.value)">
+          {% for role in role_options %}
+          <option value="{{ role.value }}">{{ role.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <div class="fg actions">
+        <button class="btn btn-p" type="submit">创建账号</button>
+      </div>
+
+      <input type="hidden" name="permissions" x-ref="permissions">
+      <input type="hidden" name="store_ids" x-ref="storeIds">
+
+      <div class="role-summary">
+        {% for role in role_options %}
+        <button class="role-chip"
+                type="button"
+                :class="{ active: $refs.roleSelect && $refs.roleSelect.value === '{{ role.value }}' }"
+                @click="$refs.roleSelect.value='{{ role.value }}'; applyRoleDefaults('{{ role.value }}')">
+          <strong>{{ role.label }}</strong>
+          <span>{{ role.hint | default(value="") }}</span>
+        </button>
+        {% endfor %}
+      </div>
+
+      <div class="permission-box">
+        <div class="permission-head">
+          <strong>功能权限</strong>
+          <span>默认勾选客服常用权限，可按账号职责调整</span>
+        </div>
+        <div class="permission-grid">
+          {% for perm in permission_options %}
+          <label class="perm-check">
+            <input type="checkbox" value="{{ perm.key }}" {% if perm.checked %}checked{% endif %} @change="sync()">
+            <span>{{ perm.label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="permission-box">
+        <div class="permission-head">
+          <strong>店铺范围</strong>
+          <span>不限制时可查看全部非隐藏店铺</span>
+        </div>
+        <label class="scope-all">
+          <input type="checkbox" name="all_stores" value="1" checked x-ref="allStores" @change="toggleAllStores()">
+          <span>全部店铺</span>
+        </label>
+        <div class="store-grid" :class="{ 'scope-disabled': $refs.allStores && $refs.allStores.checked }">
+          {% for store in stores %}
+          <label class="store-check">
+            <input type="checkbox" value="{{ store.id }}" @change="selectStore()">
+            <span>{{ store.dpquancheng | default(value=store.dpqz) }}</span>
+            <em>{% if store.platform == "r" %}Rakuten{% elif store.platform == "y" %}Yahoo{% elif store.platform == "w" %}Wowma{% elif store.platform == "m" %}Mercari{% elif store.platform == "q" %}Qoo10{% else %}{{ store.platform | upper }}{% endif %} · {{ store.dpqz }}</em>
+          </label>
+          {% else %}
+          <div class="sub">暂无店铺。先在店铺管理中添加乐天店铺，再限制员工店铺范围。</div>
+          {% endfor %}
+        </div>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <span>账号列表</span>
+    <span class="sub">{{ users | length }} 个账号</span>
+  </div>
+  <div class="users-list">
+    {% for user in users %}
+    <article class="user-row {% if not user.is_active %}off{% endif %}">
+      <div class="user-main">
+        <div>
+          <div class="user-title">
+            <strong>{{ user.username }}</strong>
+            {% if user.is_company_admin %}
+            <span class="tag">管理员</span>
+            {% else %}
+            <span class="tag">{{ user.role_label }}</span>
+            {% endif %}
+            {% if not user.is_active %}<span class="tag muted">已停用</span>{% endif %}
+          </div>
+          <div class="sub">店铺范围：{{ user.scope_label }} · 创建 {{ user.created_at }}</div>
+        </div>
+        <div class="row-actions">
+          {% if not user.is_company_admin %}
+            {% if user.is_active %}
+            <form method="post" action="/settings/users/{{ user.id }}/disable">
+              <button class="btn-xs" type="submit">停用</button>
+            </form>
+            {% else %}
+            <form method="post" action="/settings/users/{{ user.id }}/enable">
+              <button class="btn-xs" type="submit">启用</button>
+            </form>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+
+      {% if not user.is_company_admin %}
+      <form class="user-edit"
+            method="post"
+            action="/settings/users/{{ user.id }}"
+            x-data="permissionEditor('{{ user.selected_permissions_csv }}')"
+            @submit="sync()">
+        <input type="hidden" name="permissions" value="{{ user.selected_permissions_csv }}" x-ref="permissions">
+        <input type="hidden" name="store_ids" value="{{ user.selected_store_ids_csv }}" x-ref="storeIds">
+        <div class="edit-grid">
+          <label class="fg">
+            <span class="lb">账号类型</span>
+            <select name="role" @change="applyRoleDefaults($event.target.value)">
+              {% for role in role_options %}
+              <option value="{{ role.value }}" {% if role.value == user.role_value %}selected{% endif %}>{{ role.label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="scope-all inline">
+            <input type="checkbox" name="all_stores" value="1" {% if user.all_stores %}checked{% endif %} x-ref="allStores" @change="toggleAllStores()">
+            <span>全部店铺</span>
+          </label>
+          <div class="fg actions">
+            <button class="btn-xs btn-p" type="submit">保存权限</button>
+          </div>
+        </div>
+
+        <div class="permission-grid compact">
+          {% for perm in user.permissions %}
+          <label class="perm-check">
+            <input type="checkbox" value="{{ perm.key }}" {% if perm.checked %}checked{% endif %} @change="sync()">
+            <span>{{ perm.label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+
+        <div class="store-grid compact" :class="{ 'scope-disabled': $refs.allStores && $refs.allStores.checked }">
+          {% for store in stores %}
+          <label class="store-check">
+            <input type="checkbox"
+                   value="{{ store.id }}"
+                   {% if store.id in user.selected_store_ids %}checked{% endif %}
+                   @change="selectStore()">
+            <span>{{ store.dpquancheng | default(value=store.dpqz) }}</span>
+            <em>{% if store.platform == "r" %}Rakuten{% elif store.platform == "y" %}Yahoo{% elif store.platform == "w" %}Wowma{% elif store.platform == "m" %}Mercari{% elif store.platform == "q" %}Qoo10{% else %}{{ store.platform | upper }}{% endif %} · {{ store.dpqz }}</em>
+          </label>
+          {% endfor %}
+        </div>
+      </form>
+      <form class="password-reset" method="post" action="/settings/users/{{ user.id }}/password">
+        <label class="fg">
+          <span class="lb">重置密码</span>
+          <input name="password" type="password" required minlength="8" placeholder="输入新密码">
+        </label>
+        <button class="btn-xs" type="submit">重置</button>
+      </form>
+      {% else %}
+      <div class="admin-note">公司管理员拥有租户内全部权限，不在这里限制店铺范围。</div>
+      {% endif %}
+    </article>
+    {% else %}
+    <div class="empty-state">
+      <strong>暂无员工账号</strong>
+      <span>在上方创建客服账号或采购账号。</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock tenant_content %}
+
+{% block tenant_head_extra %}
+<style>
+  .user-create { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 16px; align-items: end; }
+  .user-create > .permission-box, .role-summary { grid-column: 1 / -1; }
+  .role-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .role-chip { border: 1px solid #d1d5db; background: #fff; min-height: 54px; padding: 8px 10px; display: grid; gap: 3px; text-align: left; color: #374151; font: inherit; cursor: pointer; }
+  .role-chip strong { color: #111827; font-size: 12px; }
+  .role-chip span { color: var(--text-muted); font-size: 10px; line-height: 1.35; }
+  .role-chip.active { border-color: #86efac; background: #f0fdf4; }
+  .permission-box { border: 1px solid var(--border); background: #fff; padding: 12px; }
+  .permission-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 10px; color: var(--text-secondary); font-size: 11px; }
+  .permission-head strong { color: #111827; font-size: 12px; }
+  .permission-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .permission-grid.compact { grid-template-columns: repeat(7, minmax(0, 1fr)); margin-top: 10px; }
+  .perm-check, .store-check, .scope-all { min-height: 30px; border: 1px solid #d1d5db; padding: 6px 8px; display: flex; align-items: center; gap: 6px; color: #374151; font-size: 11px; background: #fff; }
+  .perm-check input, .store-check input, .scope-all input { accent-color: var(--tenant-accent); }
+  .perm-check:has(input:checked), .store-check:has(input:checked), .scope-all:has(input:checked) { border-color: #86efac; background: #f0fdf4; color: #065f46; }
+  .store-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .store-grid.compact { margin-top: 8px; }
+  .store-grid.scope-disabled { opacity: .58; }
+  .store-check { align-items: flex-start; flex-direction: column; gap: 2px; min-height: 44px; }
+  .store-check input { position: absolute; opacity: 0; pointer-events: none; }
+  .store-check span { font-weight: 700; }
+  .store-check em { color: var(--text-muted); font-style: normal; font-size: 10px; }
+  .users-list { display: grid; gap: 10px; padding: 12px; }
+  .user-row { border: 1px solid var(--border); background: #fff; }
+  .user-row.off { opacity: .72; }
+  .user-main { padding: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid #e5e7eb; }
+  .user-title { display: flex; align-items: center; gap: 6px; }
+  .tag { display: inline-flex; align-items: center; min-height: 18px; padding: 1px 7px; background: #ecfdf5; color: #047857; font-size: 10px; font-weight: 700; }
+  .tag.muted { background: #f3f4f6; color: #6b7280; }
+  .user-edit { padding: 12px; }
+  .edit-grid { display: grid; grid-template-columns: 280px 180px auto; gap: 10px; align-items: center; }
+  .password-reset { padding: 0 12px 12px; display: grid; grid-template-columns: 280px auto; gap: 10px; align-items: end; }
+  .scope-all.inline { min-height: 28px; }
+  .admin-note { padding: 12px; color: var(--text-secondary); }
+  @media (max-width: 1100px) {
+    .user-create, .role-summary, .permission-grid, .permission-grid.compact, .store-grid, .edit-grid, .password-reset { grid-template-columns: 1fr; }
+  }
+</style>
+<script>
+  const rolePermissionDefaults = {
+    {% for role in role_options %}
+    {% if role.permissions is defined %}
+    '{{ role.value }}': [
+      {% for perm in role.permissions %}
+      {% if perm.checked %}'{{ perm.key }}',{% endif %}
+      {% endfor %}
+    ],
+    {% endif %}
+    {% endfor %}
+  };
+
+  function permissionEditor(initial) {
+    return {
+      applyRoleDefaults(role) {
+        if (!Object.prototype.hasOwnProperty.call(rolePermissionDefaults, role)) {
+          this.sync();
+          return;
+        }
+        const defaults = rolePermissionDefaults[role] || [];
+        const root = this.$el;
+        root.querySelectorAll('.perm-check input[type="checkbox"]').forEach((box) => {
+          box.checked = defaults.includes(box.value);
+        });
+        this.sync();
+      },
+      toggleAllStores() {
+        const root = this.$el;
+        if (this.$refs.allStores && this.$refs.allStores.checked) {
+          root.querySelectorAll('.store-check input[type="checkbox"]').forEach((box) => {
+            box.checked = false;
+          });
+        }
+        this.sync();
+      },
+      selectStore() {
+        if (this.$refs.allStores) this.$refs.allStores.checked = false;
+        this.sync();
+      },
+      sync() {
+        const root = this.$el;
+        const permissions = Array.from(root.querySelectorAll('.perm-check input[type="checkbox"]:checked')).map((box) => box.value);
+        const useAllStores = this.$refs.allStores && this.$refs.allStores.checked;
+        const stores = useAllStores ? [] : Array.from(root.querySelectorAll('.store-check input[type="checkbox"]:checked')).map((box) => box.value);
+        if (this.$refs.permissions) this.$refs.permissions.value = permissions.join(',');
+        if (this.$refs.storeIds) this.$refs.storeIds.value = stores.join(',');
+      },
+      init() {
+        this.sync();
+      }
+    }
+  }
+</script>
+{% endblock tenant_head_extra %}

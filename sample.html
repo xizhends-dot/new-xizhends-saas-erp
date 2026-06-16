@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XIZHEN — 订单管理系统（新系统原型）</title>
+<style>
+:root {
+  --sidebar-w: 220px; --border: #9CA3AF;
+  --text: #111827; --text-secondary: #6B7280; --text-muted: #9CA3AF;
+  --accent: #07C160; --accent-light: #ecfdf5;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: #f9fafb; color: var(--text);
+  display: flex; min-height: 100vh;
+  -webkit-font-smoothing: antialiased; font-size: 12px; line-height: 1.5;
+}
+
+/* ═══ SIDEBAR ═══ */
+.sidebar { width: var(--sidebar-w); background: #1F2937; border-right: 1px solid #374151; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; }
+.sb-brand { padding: 18px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.sb-brand .logo { font-size: 17px; font-weight: 700; color: #f9fafb; letter-spacing: 0.06em; }
+.sb-brand .logo span { color: var(--accent); }
+.sb-brand .tenant { font-size: 11px; color: #9ca3af; margin-top: 2px; display: flex; align-items: center; gap: 5px; }
+.sb-dot { width: 5px; height: 5px; background: var(--accent); }
+.sb-sec { padding: 12px 16px 3px; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: #6b7280; text-transform: uppercase; }
+.sb-nav { list-style: none; padding: 0 8px; }
+.sb-nav li { padding: 8px 12px; margin-bottom: 1px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 7px; transition: all 0.12s ease; color: #9ca3af; font-weight: 450; }
+.sb-nav li:hover { background: rgba(255,255,255,0.06); color: #e5e7eb; }
+.sb-nav li.active { background: rgba(7,193,96,0.12); color: var(--accent); font-weight: 550; }
+.sb-nav li .badge { margin-left: auto; font-size: 9px; font-weight: 600; background: rgba(7,193,96,0.18); color: var(--accent); padding: 1px 6px; min-width: 16px; text-align: center; }
+.sb-nav li .badge.muted { background: transparent; color: #6b7280; font-weight: 400; }
+.sb-nav li.locked { opacity: 0.35; cursor: not-allowed; font-size: 12px; }
+.sb-nav li.locked:hover { background: transparent; color: #9ca3af; }
+.sb-footer { margin-top: auto; padding: 10px 12px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; gap: 8px; }
+.sb-footer .av { width: 28px; height: 28px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; }
+.sb-footer .un { font-size: 12px; font-weight: 500; color: #e5e7eb; }
+.sb-footer .ur { font-size: 10px; color: #9ca3af; }
+
+/* ═══ MAIN ═══ */
+.main { margin-left: var(--sidebar-w); flex: 1; padding: 14px 16px 16px; max-width: calc(100vw - var(--sidebar-w)); display: flex; flex-direction: column; min-height: 100vh; }
+.page-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.page-head h1 { font-size: 18px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+.plat-tag { font-size: 10px; font-weight: 500; background: var(--accent-light); color: var(--accent); padding: 3px 10px; }
+.head-actions { display: flex; gap: 6px; }
+.btn { padding: 6px 14px; font-size: 11px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); font-family: inherit; transition: all 0.12s; display: inline-flex; align-items: center; gap: 4px; background: #fff; color: var(--text-secondary); }
+.btn:hover { background: #f3f4f6; border-color: #6B7280; }
+.btn-p { background: var(--accent); color: #fff; border-color: var(--accent); } .btn-p:hover { background: #06a851; }
+
+.filter { background: #fff; border: 1px solid var(--border); padding: 12px 14px; margin-bottom: 10px; font-size: 11px; }
+/* 对齐网格：每个字段 = 固定宽标签 + 满格输入，列对齐 */
+.filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px 20px; }
+.fg { display: grid; grid-template-columns: 68px 1fr; align-items: center; gap: 8px; color: var(--text-secondary); }
+.fg > .lb { text-align: right; white-space: nowrap; }
+.fg select, .fg input { width: 100%; padding: 5px 8px; border: 1px solid var(--border); font-size: 11px; font-family: inherit; color: var(--text); background: #fff; outline: none; }
+.fg select:focus, .fg input:focus { border-color: #1F2937; }
+.fg.col2 { grid-column: span 2; }
+.fg .dwrap { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.fg .dwrap input[type="date"] { flex: 1; min-width: 0; padding: 5px 6px; }
+.fg .dwrap span { color: var(--text-muted); }
+.filter-foot { display: flex; align-items: center; gap: 16px; margin-top: 11px; padding-top: 11px; border-top: 1px dashed #e5e7eb; flex-wrap: wrap; }
+.filter-cks { display: flex; align-items: center; gap: 16px; }
+/* 高级搜索区：默认隐藏，点「更多筛选」展开 */
+.filter-adv { display: none; margin-top: 11px; padding-top: 12px; border-top: 1px dashed #d1d5db; }
+.filter-adv.show { display: block; }
+.filter-adv-title { font-size: 10px; font-weight: 600; color: var(--text-muted); letter-spacing: 0.04em; margin-bottom: 9px; }
+.more-btn { padding: 5px 12px; font-size: 11px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--text-secondary); font-family: inherit; display: inline-flex; align-items: center; gap: 4px; }
+.more-btn:hover { background: #f3f4f6; }
+.more-btn .arr { transition: transform 0.15s; font-size: 9px; }
+.more-btn.on { background: #D1FAE5; border-color: #059669; color: #065F46; }
+.more-btn.on .arr { transform: rotate(180deg); }
+label.ck { display: inline-flex; align-items: center; gap: 4px; color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
+label.ck.warn { color: #d97706; }
+.fsp { flex: 1; } .fsum { font-size: 11px; color: var(--text-muted); } .fsum strong { color: var(--text); }
+
+.tbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.tbar-count { font-size: 11px; color: var(--text-secondary); } .tbar-count strong { color: var(--text); font-weight: 600; }
+.tbar-actions { display: flex; gap: 6px; align-items: center; }
+.btn-xs { padding: 3px 8px; font-size: 10px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--text-secondary); font-family: inherit; }
+.tgl-all { padding: 5px 12px; font-size: 10px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--text-secondary); font-family: inherit; transition: all 0.1s; }
+.tgl-all:hover { background: #f3f4f6; }
+.tgl-all.on { background: #D1FAE5; border-color: #059669; color: #065F46; }
+
+/* ═══ DASHBOARD ═══ */
+.dash-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 14px; }
+.dash-stat { background: #fff; border: 1px solid var(--border); padding: 14px 16px; }
+.dash-stat .stat-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.dash-stat .stat-label { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
+.dash-stat .stat-icon { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.dash-stat .stat-icon.red { background: #fef2f2; } .dash-stat .stat-icon.amber { background: #fffbeb; }
+.dash-stat .stat-icon.blue { background: #eff6ff; } .dash-stat .stat-icon.green { background: #ecfdf5; }
+.dash-stat .stat-icon.purple { background: #f5f3ff; }
+.dash-stat .stat-value { font-size: 26px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.dash-stat .stat-sub { font-size: 10px; color: var(--text-muted); } .dash-stat .stat-sub .up { color: #059669; font-weight: 550; } .dash-stat .stat-sub .down { color: #e5484d; font-weight: 550; }
+
+.dash-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.dash-announce { background: #fff; border: 1px solid var(--border); padding: 12px 16px; }
+.dash-announce h3 { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+.ann-item { padding: 7px 0; border-bottom: 1px solid #f3f4f6; font-size: 11px; }
+.ann-item:last-child { border-bottom: none; }
+.ann-tag { display: inline-block; font-size: 9px; padding: 1px 5px; font-weight: 500; margin-right: 5px; }
+.ann-tag.sys { background: #E0E7FF; color: #3730A3; }
+.ann-tag.co { background: #D1FAE5; color: #065F46; }
+.ann-title { font-weight: 500; color: var(--text); }
+.ann-desc { color: var(--text-muted); font-size: 10px; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.dash-platforms { margin-bottom: 14px; }
+.dash-platforms h3 { font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+.dash-pf-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.dash-pf { background: #fff; border: 1px solid var(--border); padding: 14px 10px; text-align: center; cursor: pointer; }
+.dash-pf:hover { background: #f9fafb; }
+.dash-pf .pf-name { font-weight: 550; font-size: 12px; margin-bottom: 4px; }
+.dash-pf .pf-num { font-size: 22px; font-weight: 700; color: var(--text); }
+.dash-pf .pf-sub { font-size: 10px; color: var(--text-muted); }
+.dash-pf.locked { opacity: 0.35; cursor: not-allowed; }
+
+.dash-bottom { display: grid; grid-template-columns: 1.5fr 1fr; gap: 10px; }
+.dash-panel { background: #fff; border: 1px solid var(--border); overflow: hidden; }
+.dash-panel .panel-head { padding: 10px 14px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 12px; display: flex; justify-content: space-between; }
+.dash-panel .panel-head .sub { font-size: 10px; color: var(--text-muted); font-weight: 400; }
+.order-mini { display: grid; grid-template-columns: 1fr 110px 70px 75px; padding: 8px 14px; border-bottom: 1px solid #f3f4f6; font-size: 11px; align-items: center; }
+.order-mini:hover { background: #f9fafb; }
+.order-mini .om-oid { color: var(--accent); font-weight: 600; font-family: 'SF Mono','Cascadia Code','Consolas',monospace; font-size: 11px; }
+.order-mini .om-product { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.order-mini .om-plat { color: var(--text-muted); }
+.status { display: inline-block; font-size: 9px; font-weight: 550; padding: 1px 7px; }
+.s-pending { background: #fef3c7; color: #92400e; } .s-buying { background: #dbeafe; color: #1e40af; }
+.s-shipping { background: #d1fae5; color: #065f46; } .s-done { background: #f3f4f6; color: #6b7280; }
+.act-item { padding: 8px 14px; border-bottom: 1px solid #f3f4f6; font-size: 11px; display: flex; gap: 8px; align-items: flex-start; }
+.act-item:last-child { border-bottom: none; }
+.act-dot { width: 6px; height: 6px; margin-top: 5px; flex-shrink: 0; }
+.act-dot.import { background: #3b82f6; } .act-dot.buy { background: #f59e0b; } .act-dot.ship { background: #059669; }
+
+/* ═══ ORDER TABLES ═══ */
+.order-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; }
+.order-block { background: #fff; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 1px 2px rgba(17,24,39,0.04); }
+.otable { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.otable + .otable { border-top: 1px solid var(--border); }
+.otable thead th { padding: 6px 5px; text-align: center; font-weight: 600; font-size: 10px; border: 1px solid var(--border); white-space: nowrap; }
+.otable tbody td { padding: 6px 5px; text-align: center; font-size: 11px; border: 1px solid var(--border); vertical-align: middle; }
+.otable tbody tr:hover td { background: #fafdf8; }
+.sec-a thead th { background: #EAEDF7; color: #334155; }
+.seq-cell { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.seq-no { font-weight: 600; color: var(--text-secondary); }
+.sec-b thead th { background: #E4F3EA; color: #334155; }
+.sec-c thead th { background: #EEF2F6; color: #334155; }
+/* 货源类型标签 */
+.src-tag { display: inline-block; font-size: 9px; font-weight: 600; padding: 1px 6px; margin-bottom: 2px; }
+.src-tag.cn { background: #dcfce7; color: #166534; }
+.src-tag.jp { background: #dbeafe; color: #1e40af; }
+.src-sel { padding: 2px 4px; border: 1px solid var(--border); font-size: 10px; font-family: inherit; background: #fff; outline: none; }
+.src-sel:focus { border-color: #1F2937; }
+.jp-note { color: #1e40af; font-weight: 500; }
+/* 日本仓发货表 */
+.jtable { width: 100%; border-collapse: collapse; }
+.jtable thead th { padding: 8px 9px; text-align: left; font-weight: 600; font-size: 10px; background: #EEF2F6; color: #334155; border: 1px solid var(--border); white-space: nowrap; }
+.jtable tbody td { padding: 8px 9px; font-size: 11px; border: 1px solid var(--border); vertical-align: middle; }
+.jtable tbody tr:hover td { background: #fafdf8; }
+.jtable .jp-prod { display: flex; align-items: center; gap: 8px; }
+.jtable .jp-prod .ic { font-size: 18px; }
+.assign-sel { padding: 4px 6px; border: 1px solid var(--border); font-size: 11px; font-family: inherit; background: #fff; outline: none; }
+.assign-sel.unassigned { border-color: #d97706; background: #fffbeb; }
+.out-st { display: inline-block; font-size: 9px; font-weight: 600; padding: 2px 8px; }
+.out-st.wait { background: #fef3c7; color: #92400e; }
+.out-st.assigned { background: #dbeafe; color: #1e40af; }
+.out-st.out { background: #d1fae5; color: #065f46; }
+.out-st.sent { background: #f3f4f6; color: #6b7280; }
+.loc-cell { font-family: 'SF Mono','Cascadia Code','Consolas',monospace; color: var(--text-secondary); }
+.row-act-jp a { cursor: pointer; margin-right: 8px; }
+.table-hidden { display: none; } .table-hidden.show { display: table; }
+.c0{width:3.5%}.c1{width:3%}.c2{width:7.5%}.c3{width:7%}.c4{width:7%}.c5{width:10.5%}.c6{width:5.5%}.c7{width:7%}.c8{width:9%}.c9{width:7%}.c10{width:5.5%}.c11{width:5.5%}.c12{width:6%}.c13{width:3.5%}.c14{width:4%}
+.oid-link { color: var(--accent); font-weight: 650; font-family: 'SF Mono','Cascadia Code','Consolas',monospace; text-decoration: none; font-size: 11px; }
+.oid-sub { display: block; font-size: 9px; color: #9ca3af; margin-top: 1px; }
+.intl-ok { background: #d1fae5; color: #065f46; padding: 2px 8px; font-size: 10px; }
+.intl-pend { background: #fef3c7; color: #92400e; padding: 2px 8px; font-size: 10px; }
+.qty-val { color: #e5484d; font-weight: 700; }
+.price-val { font-weight: 600; }
+.accent-link { color: var(--accent); text-decoration: none; font-weight: 500; }
+.log-btn { padding: 3px 8px; font-size: 10px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--text-secondary); font-family: inherit; transition: all 0.1s; white-space: nowrap; }
+.log-btn:hover { background: #f3f4f6; border-color: #6B7280; }
+.log-btn.on { background: #D1FAE5; border-color: #059669; color: #065F46; }
+.log-panel { display: none; border-top: 1px solid var(--border); }
+.log-panel.show { display: block; }
+.log-inner { padding: 10px 14px; background: #fafbfc; }
+.log-inner h4 { font-size: 10px; font-weight: 600; color: #3730A3; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.03em; }
+.log-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+.log-table th { padding: 5px 8px; text-align: left; font-weight: 550; background: #f3f4f6; border: 1px solid var(--border); color: var(--text-secondary); font-size: 9px; white-space: nowrap; }
+.log-table td { padding: 4px 8px; border: 1px solid var(--border); vertical-align: middle; background: #fff; }
+.log-time { color: var(--text-muted); white-space: nowrap; }
+.log-user { color: #3730A3; font-weight: 500; white-space: nowrap; }
+.log-old { color: #e5484d; text-decoration: line-through; font-size: 9px; }
+.log-arrow { color: var(--text-muted); margin: 0 3px; }
+.log-new { color: #059669; font-weight: 500; font-size: 9px; }
+.log-ip { color: var(--text-muted); font-size: 9px; white-space: nowrap; }
+.pager { padding: 8px 0 0; display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
+.pager-info { font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
+.pager-info select { padding: 3px 6px; border: 1px solid var(--border); font-size: 11px; font-family: inherit; }
+.pager-btns { display: flex; gap: 2px; }
+.pg { width: 28px; height: 28px; border: 1px solid var(--border); background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 11px; font-family: inherit; color: var(--text-secondary); }
+.pg:hover { background: #f3f4f6; } .pg.active { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; } .pg:disabled { opacity: 0.4; cursor: not-allowed; }
+.view { display: none; flex: 1; flex-direction: column; }
+.view.active { display: flex; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sb-brand"><div class="logo">XIZH<span>EN</span></div><div class="tenant"><span class="sb-dot"></span> A公司 · 深圳</div></div>
+  <div class="sb-sec">主导航</div>
+  <ul class="sb-nav">
+    <li data-view="dashboard" class="active">首页仪表盘</li>
+  </ul>
+  <div class="sb-sec">平台订单</div>
+  <ul class="sb-nav" id="sb-platforms"><!-- 由 platforms / tenant_platform 数据渲染 --></ul>
+  <div class="sb-sec">履约</div>
+  <ul class="sb-nav">
+    <li data-view="purchase">采购订单 <span class="badge">8</span></li>
+    <li data-view="jpwarehouse">日本仓发货 <span class="badge">5</span></li>
+  </ul>
+  <div class="sb-sec">工具</div>
+  <ul class="sb-nav"><li>利润分析</li><li>采购统计</li><li>全局搜索</li></ul>
+  <div class="sb-sec">管理</div>
+  <ul class="sb-nav"><li>公司设置</li><li>员工管理</li><li>店铺管理</li></ul>
+  <div class="sb-footer"><div class="av">张</div><div><div class="un">张三</div><div class="ur">客服</div></div></div>
+</aside>
+
+<main class="main">
+
+  <!-- ═══ DASHBOARD ═══ -->
+  <div id="view-dashboard" class="view active">
+    <div class="page-head">
+      <h1>下午好，张三</h1>
+      <div class="head-actions"><button class="btn">快捷导入</button><button class="btn btn-p">+ 手动录入</button></div>
+    </div>
+    <div class="dash-stats">
+      <div class="dash-stat"><div class="stat-top"><span class="stat-label">待处理订单</span><span class="stat-icon red">📋</span></div><div class="stat-value">28</div><div class="stat-sub"><span class="up">↑ 12%</span> 较昨日</div></div>
+      <div class="dash-stat"><div class="stat-top"><span class="stat-label">今日采购订单</span><span class="stat-icon amber">📦</span></div><div class="stat-value">15</div><div class="stat-sub">待下单 8 单</div></div>
+      <div class="dash-stat"><div class="stat-top"><span class="stat-label">待发货订单</span><span class="stat-icon blue">🚚</span></div><div class="stat-value">6</div><div class="stat-sub">国际运输中 4 单</div></div>
+      <div class="dash-stat"><div class="stat-top"><span class="stat-label">今日采购金额</span><span class="stat-icon green">¥</span></div><div class="stat-value">¥12.8k</div><div class="stat-sub"><span class="down">↓ 8%</span> 较昨日</div></div>
+      <div class="dash-stat"><div class="stat-top"><span class="stat-label">物流异常</span><span class="stat-icon purple">⚠</span></div><div class="stat-value">3</div><div class="stat-sub">需人工跟进</div></div>
+    </div>
+    <div class="dash-2col">
+      <div class="dash-announce"><h3>系统公告</h3><div class="ann-item"><span class="ann-tag sys">维护</span><span class="ann-title">5月20日系统升级维护通知</span><div class="ann-desc">系统将于5月20日凌晨 2:00-4:00 进行维护升级</div></div><div class="ann-item"><span class="ann-tag sys">新功能</span><span class="ann-title">批量导入功能已上线</span><div class="ann-desc">支持 CSV 格式批量导入订单，详见帮助文档</div></div></div>
+      <div class="dash-announce"><h3>公司公告</h3><div class="ann-item"><span class="ann-tag co">排班</span><span class="ann-title">本周排班调整</span><div class="ann-desc">周一至周五：张三(早班) / 李四(晚班)。周六值班：王五</div></div><div class="ann-item"><span class="ann-tag co">通知</span><span class="ann-title">5月份绩效考核已发布</span><div class="ann-desc">请各位同事在5月15日前完成自评</div></div></div>
+    </div>
+    <div class="dash-platforms"><h3>平台总览</h3><div class="dash-pf-grid" id="dash-pf-grid"></div></div>
+    <div class="dash-bottom">
+      <div class="dash-panel"><div class="panel-head"><span>最近订单</span><span class="sub">今日更新</span></div>
+        <div class="order-mini"><span class="om-oid">R-202605130041</span><span class="om-product">SONY WH-1000XM5 耳机</span><span class="om-plat">乐天</span><span class="status s-pending">待处理</span></div>
+        <div class="order-mini"><span class="om-oid">R-202605130040</span><span class="om-product">資生堂 美容液 セット</span><span class="om-plat">乐天</span><span class="status s-buying">采购中</span></div>
+        <div class="order-mini"><span class="om-oid">Y-202605130039</span><span class="om-product">Nintendo Switch OLED</span><span class="om-plat">Yahoo</span><span class="status s-pending">待处理</span></div>
+        <div class="order-mini"><span class="om-oid">W-202605130038</span><span class="om-product">キッチン収納ラック</span><span class="om-plat">Wowma</span><span class="status s-shipping">运输中</span></div>
+        <div class="order-mini"><span class="om-oid">M-202605130037</span><span class="om-product">Apple Watch Series 9</span><span class="om-plat">Mercari</span><span class="status s-pending">待处理</span></div>
+      </div>
+      <div class="dash-panel"><div class="panel-head"><span>动态</span></div>
+        <div class="act-item"><span class="act-dot import"></span><span><strong>李四</strong> 导入了 23 单 Yahoo 订单 <span style="color:var(--text-muted);">14:32</span></span></div>
+        <div class="act-item"><span class="act-dot buy"></span><span><strong>王五</strong> 完成 5 单1688采购 <span style="color:var(--text-muted);">13:15</span></span></div>
+        <div class="act-item"><span class="act-dot import"></span><span><strong>张三</strong> 导入了 18 单乐天订单 <span style="color:var(--text-muted);">11:48</span></span></div>
+        <div class="act-item"><span class="act-dot ship"></span><span>快递已签收 YP-202605120015 <span style="color:var(--text-muted);">10:20</span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PLATFORM ORDERS ═══ -->
+  <div id="view-platform" class="view">
+    <div class="page-head"><h1>平台订单 <span class="plat-tag" id="plat-name">乐天 Rakuten</span></h1><div class="head-actions"><button class="btn">📥 导出</button><button class="btn">📤 导入订单</button><button class="btn btn-p">+ 手动录入</button></div></div>
+    <div class="filter">
+      <!-- 常用搜索区（默认显示） -->
+      <div class="filter-grid">
+        <div class="fg"><span class="lb">订单号</span><input type="text" placeholder="订单号"></div>
+        <div class="fg"><span class="lb">1688订单号</span><input type="text" placeholder="1688订单号"></div>
+        <div class="fg"><span class="lb">采购状态</span><select>
+          <option value="">— 待处理订单 —</option>
+          <option value="__ALL__">全部订单</option>
+          <option>未处理的订单</option>
+          <optgroup label="采购流程"><option>国内采购-准备</option><option>国内采购--问题</option><option>国内采购-已采购</option><option>国内采购-TB/PDD已采购</option><option>发货中</option><option>已到货</option><option>已发货代订单</option><option>已发日本</option><option>已发出荷通知</option></optgroup>
+          <optgroup label="问题"><option>已到货问题件</option><option>问题订单(后台处理)</option><option>已取消</option></optgroup>
+        </select></div>
+        <div class="fg"><span class="lb">店铺</span><select><option>全部店铺</option><option>楽天市場店</option><option>本店</option></select></div>
+        <div class="fg"><span class="lb">货源地</span><select><option>全部货源地</option><option>日本仓</option><option>国内采购</option></select></div>
+      </div>
+      <!-- 高级搜索区（折叠） -->
+      <div class="filter-adv" id="adv-platform">
+        <div class="filter-adv-title">高级搜索</div>
+        <div class="filter-grid">
+          <div class="fg"><span class="lb">ItemId</span><input type="text" placeholder="ItemId"></div>
+          <div class="fg"><span class="lb">客人邮箱</span><input type="text" placeholder="邮箱"></div>
+          <div class="fg"><span class="lb">收件人</span><input type="text" placeholder="收件人姓名"></div>
+          <div class="fg"><span class="lb">客人电话</span><input type="text" placeholder="电话"></div>
+          <div class="fg"><span class="lb">片假名</span><input type="text" placeholder="セイ メイ"></div>
+          <div class="fg"><span class="lb">运送方式</span><input type="text" placeholder="运送方式"></div>
+          <div class="fg"><span class="lb">国内运单号</span><input type="text" placeholder="国内发货单号"></div>
+          <div class="fg"><span class="lb">国际运单号</span><input type="text" placeholder="国际发货单号"></div>
+          <div class="fg"><span class="lb">采购人</span><select><option>全部</option><option>王五</option><option>李四</option></select></div>
+          <div class="fg"><span class="lb">国内签收地</span><select><option>请选择</option><option>未设置</option><option>东京仓</option><option>大阪仓</option></select></div>
+          <div class="fg"><span class="lb">邀评状态</span><select><option>全部</option><option>已邀评</option><option>未邀评</option></select></div>
+          <div class="fg"><span class="lb">评价状态</span><select><option>全部</option><option>已评价</option><option>未评价</option></select></div>
+          <div class="fg col2"><span class="lb">导入时间</span><div class="dwrap"><input type="date" value="2026-05-01"><span>至</span><input type="date" value="2026-05-14"></div></div>
+          <div class="fg"><span class="lb">每页</span><select><option>100</option><option selected>200</option><option>500</option><option>1000</option></select></div>
+        </div>
+        <div class="filter-foot" style="margin-top:9px;">
+          <div class="filter-cks">
+            <label class="ck warn"><input type="checkbox"> 超时发货</label>
+            <label class="ck"><input type="checkbox"> 配達中</label>
+            <label class="ck"><input type="checkbox"> 配達完了</label>
+          </div>
+        </div>
+      </div>
+      <!-- 操作条 -->
+      <div class="filter-foot">
+        <button class="more-btn" data-adv="adv-platform">更多筛选 <span class="arr">▾</span></button>
+        <div class="fsp"></div>
+        <div class="fsum">共 <strong>3</strong> 条结果</div>
+        <button class="btn btn-p" style="padding:5px 18px;">搜索</button>
+        <button class="btn" style="padding:5px 14px;">重置</button>
+      </div>
+    </div>
+    <div class="tbar"><div class="tbar-count">已选择 <strong>0</strong> / <strong>3</strong> 单</div><div class="tbar-actions"><button class="tgl-all detail-toggle">展开详情</button><span style="color:var(--border);margin:0 2px;">|</span><button class="btn-xs">批量改状态</button><button class="btn-xs">批量分配</button><button class="btn-xs" style="color:#e5484d;">批量删除</button></div></div>
+    <div class="order-list" id="platform-orders"></div>
+    <div class="pager"><div class="pager-info"><span>每页</span><select><option>50</option><option>100</option><option selected>200</option></select><span>第 1-3 条，共 3 条</span></div><div class="pager-btns"><button class="pg" disabled>«</button><button class="pg" disabled>‹</button><button class="pg active">1</button><button class="pg">›</button><button class="pg">»</button></div></div>
+  </div>
+
+  <!-- ═══ PURCHASE ORDERS ═══ -->
+  <div id="view-purchase" class="view">
+    <div class="page-head"><h1>采购订单 <span class="plat-tag">全部平台</span></h1><div class="head-actions"><button class="btn">📥 导出</button><button class="btn btn-p">+ 手动录入</button></div></div>
+    <div class="filter">
+      <!-- 常用搜索区 -->
+      <div class="filter-grid">
+        <div class="fg"><span class="lb">平台</span><select><option>全部平台</option><option>Yahoo</option><option>乐天</option><option>Wowma</option><option>Mercari</option></select></div>
+        <div class="fg"><span class="lb">订单号</span><input type="text" placeholder="订单号"></div>
+        <div class="fg"><span class="lb">1688订单号</span><input type="text" placeholder="1688订单号"></div>
+        <div class="fg"><span class="lb">采购状态</span><select>
+          <option value="">— 待处理订单 —</option>
+          <option value="__ALL__">全部订单</option>
+          <optgroup label="采购流程"><option>国内采购-准备</option><option>国内采购--问题</option><option>国内采购-已采购</option><option>国内采购-TB/PDD已采购</option><option>发货中</option><option>已到货</option></optgroup>
+          <optgroup label="问题"><option>已到货问题件</option><option>问题订单(后台处理)</option><option>已取消</option></optgroup>
+        </select></div>
+      </div>
+      <!-- 高级搜索区（折叠） -->
+      <div class="filter-adv" id="adv-purchase">
+        <div class="filter-adv-title">高级搜索</div>
+        <div class="filter-grid">
+          <div class="fg"><span class="lb">国内运单号</span><input type="text" placeholder="国内发货单号"></div>
+          <div class="fg"><span class="lb">ItemId</span><input type="text" placeholder="ItemId"></div>
+          <div class="fg"><span class="lb">商品名</span><input type="text" placeholder="商品名 / 项目选择"></div>
+          <div class="fg"><span class="lb">采购人</span><select><option>全部</option><option>王五</option><option>李四</option></select></div>
+          <div class="fg"><span class="lb">物流公司</span><select><option>全部</option><option>ヤマト</option><option>佐川急便</option></select></div>
+          <div class="fg col2"><span class="lb">采购时间</span><div class="dwrap"><input type="date" value="2026-05-01"><span>至</span><input type="date" value="2026-05-14"></div></div>
+          <div class="fg"><span class="lb">每页</span><select><option>100</option><option selected>200</option><option>500</option><option>1000</option></select></div>
+        </div>
+        <div class="filter-foot" style="margin-top:9px;">
+          <div class="filter-cks">
+            <label class="ck warn"><input type="checkbox"> 超时发货</label>
+          </div>
+        </div>
+      </div>
+      <!-- 操作条 -->
+      <div class="filter-foot">
+        <button class="more-btn" data-adv="adv-purchase">更多筛选 <span class="arr">▾</span></button>
+        <div class="fsp"></div>
+        <div class="fsum">共 <strong>3</strong> 条结果</div>
+        <button class="btn btn-p" style="padding:5px 18px;">搜索</button>
+        <button class="btn" style="padding:5px 14px;">重置</button>
+      </div>
+    </div>
+    <div class="tbar"><div class="tbar-count">已选择 <strong>0</strong> / <strong>3</strong> 单</div><div class="tbar-actions"><button class="tgl-all detail-toggle">展开详情</button><span style="color:var(--border);margin:0 2px;">|</span><button class="btn-xs">批量改状态</button><button class="btn-xs">批量分配</button></div></div>
+    <div class="order-list" id="purchase-orders"></div>
+    <div class="pager"><div class="pager-info"><span>每页</span><select><option>50</option><option>100</option><option selected>200</option></select><span>第 1-3 条，共 3 条</span></div><div class="pager-btns"><button class="pg" disabled>«</button><button class="pg" disabled>‹</button><button class="pg active">1</button><button class="pg">»</button></div></div>
+  </div>
+
+  <!-- ═══ 日本仓发货 ═══ -->
+  <div id="view-jpwarehouse" class="view">
+    <div class="page-head"><h1>日本仓发货 <span class="plat-tag" style="background:#dbeafe;color:#1e40af;">JP 仓库现货</span></h1><div class="head-actions"><button class="btn">📥 导出</button><button class="btn btn-p">+ 手动出库</button></div></div>
+    <div class="filter">
+      <div class="filter-grid">
+        <div class="fg"><span class="lb">平台</span><select><option>全部平台</option><option>Yahoo</option><option>乐天</option><option>Wowma</option><option>Mercari</option></select></div>
+        <div class="fg"><span class="lb">出库状态</span><select><option>全部</option><option>待分配</option><option>已分配</option><option>已出库</option><option>已发货</option></select></div>
+        <div class="fg"><span class="lb">发货员</span><select><option>全部</option><option>李四</option><option>王五</option><option>赵六</option></select></div>
+        <div class="fg"><span class="lb">订单号</span><input type="text" placeholder="订单号 / 日本仓ID"></div>
+      </div>
+      <div class="filter-foot">
+        <button class="more-btn" data-adv="adv-jp">更多筛选 <span class="arr">▾</span></button>
+        <div class="fsp"></div>
+        <div class="fsum">共 <strong>5</strong> 件待发</div>
+        <button class="btn btn-p" style="padding:5px 18px;">搜索</button>
+        <button class="btn" style="padding:5px 14px;">重置</button>
+      </div>
+      <div class="filter-adv" id="adv-jp">
+        <div class="filter-adv-title">高级搜索</div>
+        <div class="filter-grid">
+          <div class="fg"><span class="lb">店铺</span><select><option>全部店铺</option><option>楽天市場店</option></select></div>
+          <div class="fg"><span class="lb">仓位</span><input type="text" placeholder="如 A-12-3"></div>
+          <div class="fg"><span class="lb">商品名</span><input type="text" placeholder="商品名 / 项目选择"></div>
+          <div class="fg col2"><span class="lb">下单时间</span><div class="dwrap"><input type="date" value="2026-05-01"><span>至</span><input type="date" value="2026-05-14"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="tbar">
+      <div class="tbar-count">已选择 <strong>0</strong> / <strong>3</strong> 件</div>
+      <div class="tbar-actions">
+        <button class="tgl-all detail-toggle">展开详情</button>
+        <span style="color:var(--border);margin:0 2px;">|</span>
+        <span style="color:var(--text-secondary);">批量分配给</span>
+        <select class="assign-sel" id="batch-assignee"><option>选择发货员</option><option>李四</option><option>王五</option><option>赵六</option></select>
+        <button class="btn-xs" id="batch-assign-btn">分配</button>
+        <button class="btn-xs">批量出库</button>
+      </div>
+    </div>
+    <div class="order-list" id="jpwarehouse-orders"></div>
+    <div class="pager"><div class="pager-info"><span>每页</span><select><option>50</option><option selected>200</option></select><span>第 1-3 条，共 3 件</span></div><div class="pager-btns"><button class="pg" disabled>«</button><button class="pg" disabled>‹</button><button class="pg active">1</button><button class="pg">»</button></div></div>
+  </div>
+
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// 平台表驱动：模拟 platforms + tenant_platform 的合并结果
+// 真实系统中由后端按当前租户授权下发，前端只负责渲染
+// ═══════════════════════════════════════════════════════════════
+var PLATFORMS = [
+  { code: 'y',  name: 'Yahoo 购物',   enabled: true,  locked: false, pending: 3 },
+  { code: 'r',  name: '乐天 Rakuten', enabled: true,  locked: false, pending: 12 },
+  { code: 'w',  name: 'Wowma',       enabled: true,  locked: false, pending: 5 },
+  { code: 'm',  name: 'Mercari',     enabled: true,  locked: false, pending: 0 },
+  { code: 'q',  name: 'Qoo10',       enabled: false, locked: true,  pending: null },
+  { code: 'yp', name: '雅虎拍卖',     enabled: false, locked: true,  pending: null }
+];
+
+// 侧栏平台菜单
+(function renderSidebarPlatforms() {
+  var ul = document.getElementById('sb-platforms');
+  ul.innerHTML = PLATFORMS.map(function (p) {
+    if (p.locked) return '<li class="locked">' + p.name + '</li>';
+    var badge = p.pending > 0
+      ? '<span class="badge">' + p.pending + '</span>'
+      : '<span class="badge muted">—</span>';
+    return '<li data-view="platform" data-platform="' + p.code + '">' + p.name + ' ' + badge + '</li>';
+  }).join('');
+})();
+
+// 仪表盘平台总览
+(function renderDashPlatforms() {
+  var grid = document.getElementById('dash-pf-grid');
+  grid.innerHTML = PLATFORMS.map(function (p) {
+    if (p.locked) return '<div class="dash-pf locked"><div class="pf-name">' + p.name + '</div><div class="pf-num" style="color:#9ca3af;">—</div><div class="pf-sub">未授权</div></div>';
+    var num = p.pending > 0 ? p.pending : '<span style="color:#9ca3af;">0</span>';
+    var sub = p.pending > 0 ? '待处理' : '暂无';
+    return '<div class="dash-pf" data-nav="' + p.code + '"><div class="pf-name">' + p.name + '</div><div class="pf-num">' + num + '</div><div class="pf-sub">' + sub + '</div></div>';
+  }).join('');
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// 订单模板：四表堆叠（A 客户 / B1 商品采购 / B2 采购物流 / C 国际物流）
+// 共享 c0~c14 十五列网格。平台视图显示 A+B1+C，采购视图显示 B1+B2
+// ═══════════════════════════════════════════════════════════════
+var COL = '<colgroup><col class="c0"><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"><col class="c6"><col class="c7"><col class="c8"><col class="c9"><col class="c10"><col class="c11"><col class="c12"><col class="c13"><col class="c14"></colgroup>';
+var DASH = '<span style="color:#9ca3af;">—</span>';
+
+function makeOrder(o, platformView, srcFilter) {
+  var allItems = o.items || [o];
+  // 货源过滤：采购订单只看「国内采购」，日本仓队列另设；无符合子单则该订单不在此队列出现
+  var items = srcFilter ? allItems.filter(function (it) { return (it.src || 'cn') === srcFilter; }) : allItems;
+  if (items.length === 0) return '';
+  var n = items.length;
+  var multi = n > 1 ? ' is-merged' : '';
+  var aHidden  = platformView ? '' : ' table-hidden';   // A 区：平台视图可见
+  var b2Hidden = platformView ? ' table-hidden' : '';   // B2 区：采购视图可见
+  var h = '<div class="order-block">';
+
+  // A 区 — 客户信息（浅紫）：序号/勾选框占单格(c0)，导入时间补宽 2 格保持对齐
+  h += '<table class="otable sec-a' + aHidden + '">' + COL +
+    '<thead><tr><th class="c0"><span class="seq-no">' + o.seq + '</span></th><th class="c1" colspan="2">导入时间</th><th class="c3">收件人</th><th class="c4">假名</th><th class="c5">地址</th><th class="c6">邮编</th><th class="c7">电话</th><th class="c8">邮箱</th><th class="c9">支付方式</th><th class="c10">运送方式</th><th class="c11">已邀评</th><th class="c12">已评价</th><th class="c13"></th><th class="c14"></th></tr></thead>' +
+    '<tbody><tr><td><input type="checkbox"></td><td colspan="2">' + o.time_a + '</td><td>' + o.name + '</td><td>' + o.kana + '</td><td title="' + o.addr + '">' + o.addr + '</td><td>' + o.zip + '</td><td>' + o.tel + '</td><td>' + o.mail + '</td><td>' + o.pay + '</td><td>' + o.ship + '</td><td><input type="checkbox"' + (o.rv1 ? ' checked' : '') + '></td><td><input type="checkbox"' + (o.rv2 ? ' checked' : '') + '></td><td></td><td></td></tr></tbody></table>';
+
+  // B1 区 — 商品明细（浅绿）：每个子订单各一整行，订单ID/订单时间每行重复
+  var b1rows = items.map(function (it, i) {
+    var v = it.src || 'cn';
+    var srcTag;
+    if (platformView) {
+      // 平台订单 = 分流入口：客服可改判货源（系统自动预判后可手动改）
+      srcTag = '<select class="src-sel" data-oid="' + o.oid + '" data-idx="' + i + '">' +
+        '<option value="cn"' + (v === 'cn' ? ' selected' : '') + '>国内采购</option>' +
+        '<option value="jp"' + (v === 'jp' ? ' selected' : '') + '>日本仓</option>' +
+        '<option value="pending"' + (v === 'pending' ? ' selected' : '') + '>待定</option>' +
+        '</select>';
+    } else {
+      srcTag = (v === 'jp') ? '<span class="src-tag jp">日本仓</span>' : '<span class="src-tag cn">国内采购</span>';
+    }
+    var r = '<tr class="item-row">';
+    r += '<td>' + it.img + '</td>';
+    r += '<td colspan="2"><a href="#" class="oid-link">' + o.oid + '</a><span class="oid-sub">' + o.store + '</span></td>';
+    r += '<td>' + o.time_b + '</td>';
+    r += '<td>' + srcTag + '<br>' + it.buy_status + '</td>';
+    r += '<td>' + it.itemid + '</td>';
+    r += '<td>' + it.whid + '</td>';
+    r += '<td>' + it.attr + '</td>';
+    r += '<td colspan="2" title="' + it.choice + '">' + it.choice + '</td>';
+    r += '<td><span class="qty-val">' + it.qty + '</span></td>';
+    r += '<td><span class="price-val">' + it.price + '</span></td>';
+    r += '<td>' + it.fee + '</td>';
+    r += '<td><span class="price-val">' + it.req + '</span></td>';
+    r += '<td><button class="log-btn">日志</button></td>';
+    r += '</tr>';
+    return r;
+  }).join('');
+  h += '<table class="otable sec-b' + multi + '">' + COL +
+    '<thead><tr><th class="c0">图片</th><th class="c1" colspan="2">订单ID</th><th class="c3">订单时间</th><th class="c4">货源地 / 采购状态</th><th class="c5">ItemId</th><th class="c6">日本仓ID</th><th class="c7">商品属性</th><th class="c8" colspan="2">项目选择</th><th class="c10">数量</th><th class="c11">单价</th><th class="c12">运费/手续费</th><th class="c13">请求金额</th><th class="c14">操作</th></tr></thead>' +
+    '<tbody>' + b1rows + '</tbody></table>';
+
+  // B2 区 — 采购物流（浅绿，采购视图可见）：每个子商品各一条；按货源显示不同字段
+  var b2rows = items.map(function (it) {
+    if (it.src === 'jp') {
+      // 日本仓现货：无 1688 采购，改显示 仓位 / 出库 信息
+      return '<tr class="item-row"><td colspan="2"><span class="src-tag jp">日本仓现货</span></td><td>' + (it.jp_operator || DASH) + '</td><td>' + (it.jp_outtime || DASH) + '</td><td colspan="2"><span class="jp-note">仓位 ' + (it.jp_location || '-') + '</span></td><td>' + it.remark + '</td><td>' + (it.jp_cost || DASH) + '</td><td colspan="2">出库单 ' + (it.jp_outno || DASH) + '</td><td>' + it.shipcomp + '</td><td colspan="4">' + it.shipno + '</td></tr>';
+    }
+    return '<tr class="item-row"><td colspan="2">' + it.buy_status + '</td><td>' + it.buyer + '</td><td>' + it.buytime + '</td><td colspan="2">' + it.buylink + '</td><td>' + it.remark + '</td><td>' + it.buyamount + '</td><td colspan="2">' + it.tabao + '</td><td>' + it.shipcomp + '</td><td colspan="4">' + it.shipno + '</td></tr>';
+  }).join('');
+  h += '<table class="otable sec-b' + b2Hidden + multi + '">' + COL +
+    '<thead><tr><th class="c0" colspan="2">采购状态</th><th class="c2">采购人</th><th class="c3">采购时间</th><th class="c4" colspan="2">采购链接</th><th class="c6">订单备注</th><th class="c7">采购金额</th><th class="c8" colspan="2">1688订单号</th><th class="c10">物流公司</th><th class="c11" colspan="4">国内运单号</th></tr></thead>' +
+    '<tbody>' + b2rows + '</tbody></table>';
+
+  // C 区 — 国际物流（浅灰，默认隐藏）：每个子商品各一条
+  var crows = items.map(function (it) {
+    return '<tr class="item-row"><td colspan="4">' + it.intl_no + '</td><td colspan="2">' + it.intl_status + '</td><td>' + it.intl_fee + '</td><td>' + it.intl_qty + '</td><td>' + it.intl_wt + '</td><td colspan="6"></td></tr>';
+  }).join('');
+  h += '<table class="otable sec-c table-hidden' + multi + '">' + COL +
+    '<thead><tr><th class="c0" colspan="4">国际运单号</th><th class="c4" colspan="2">运单状态</th><th class="c6">运费</th><th class="c7">件数</th><th class="c8">重量</th><th class="c9" colspan="6"></th></tr></thead>' +
+    '<tbody>' + crows + '</tbody></table>';
+
+  // 操作日志面板
+  h += '<div class="log-panel"><div class="log-inner"><h4>操作日志</h4><table class="log-table"><thead><tr><th style="width:105px">时间</th><th style="width:45px">操作人</th><th style="width:75px">操作类型</th><th>变更字段</th><th>变更详情</th><th style="width:90px">IP</th></tr></thead><tbody>' + o.log + '</tbody></table></div></div>';
+
+  h += '</div>';
+  return h;
+}
+
+// ═══ 示例数据 ═══（每个子商品 = 一条独立记录：商品 + 采购 + 物流 都在 item 内；A 区客户信息为订单级，整单共享）
+var sampleOrders = [
+  // 普通单件订单
+  { seq:'1', time_a:'05-13 14:30', name:'山田 太郎', kana:'ヤマダ タロウ', addr:'東京都新宿区西新宿2-8-1', zip:'160-0023', tel:'090-1234-5678', mail:'yamada@email.jp', pay:'クレカ', ship:'宅配便', rv1:true, rv2:false,
+    oid:'R-202605130041', store:'楽天市場店', time_b:'05-13 14:30',
+    items:[
+      { img:'🎧', buy_status:'<span class="status s-pending">待处理</span>', itemid:'rmt55219000', whid:'SONY-WH5-BK', attr:'ブラック', choice:'ヘッドホン本体+ケース', qty:'×1', price:'¥12,800', fee:'¥660/¥0', req:'¥13,460',
+        buyer:DASH, buytime:DASH, buylink:DASH, remark:DASH, buyamount:DASH, tabao:DASH, shipcomp:'佐川急便', shipno:'<a href="#" class="accent-link">1234-5678-9012</a>',
+        intl_no:'<a href="#" class="accent-link">EMS EN123456789JP</a>', intl_status:'<span class="intl-ok">运输中</span>', intl_fee:'¥2,400', intl_qty:'1', intl_wt:'0.85kg' }
+    ],
+    log:'<tr><td class="log-time">05-13 14:35</td><td class="log-user">张三</td><td>修改运单号</td><td>国内运单号</td><td><span class="log-old">—</span><span class="log-arrow">→</span><span class="log-new">1234-5678-9012</span></td><td class="log-ip">192.168.1.100</td></tr><tr><td class="log-time">05-13 14:32</td><td class="log-user">系统</td><td>导入订单</td><td>—</td><td><span class="log-new">来源：乐天API · R-202605130041</span></td><td class="log-ip">API自动</td></tr>' },
+
+  // 合并订单：同一单号 R-202605130042 下 2 个子商品，各自独立采购/发货
+  { seq:'2', time_a:'05-13 13:02', name:'鈴木 一郎', kana:'スズキ イチロウ', addr:'愛知県名古屋市中区栄3-5-1', zip:'460-0008', tel:'070-2233-4455', mail:'suzuki@email.jp', pay:'クレカ', ship:'宅配便', rv1:false, rv2:false,
+    oid:'R-202605130042', store:'楽天市場店', time_b:'05-13 13:02',
+    items:[
+      // 子商品1：国内采购、已下单、有1688单号和运单号
+      { src:'cn', img:'👟', buy_status:'<span class="status s-buying">采购中</span>', itemid:'rmt66102200', whid:'NB-996-GRY', attr:'グレー / 27cm', choice:'New Balance 996 スニーカー', qty:'×1', price:'¥18,500', fee:'¥0/¥0', req:'¥18,500',
+        buyer:'王五', buytime:'05-13 13:20', buylink:'<a href="#" class="accent-link">1688 商品页</a>', remark:'已下单', buyamount:'¥620', tabao:'<a href="#" class="accent-link">T2026051300912</a>', shipcomp:'ヤマト', shipno:'<a href="#" class="accent-link">5566-7788-9900</a>',
+        intl_no:DASH, intl_status:'<span class="intl-pend">待发货</span>', intl_fee:DASH, intl_qty:DASH, intl_wt:DASH },
+      // 子商品2：日本仓现货，直接出库发货，无需 1688 采购
+      { src:'jp', img:'🧦', buy_status:'<span class="status s-shipping">日本仓发货</span>', itemid:'rmt66102255', whid:'NB-SOCK-3P', attr:'ホワイト', choice:'スポーツソックス 3足セット', qty:'×2', price:'¥1,200', fee:'¥550/¥0', req:'¥2,950',
+        remark:'与鞋一起发', shipcomp:'ヤマト', shipno:DASH,
+        jp_operator:'李四', jp_outtime:'05-13 13:25', jp_location:'A-12-3', jp_cost:'¥0', jp_outno:'JP-OUT-20826',
+        intl_no:DASH, intl_status:'<span class="intl-pend">待发货</span>', intl_fee:DASH, intl_qty:DASH, intl_wt:DASH }
+    ],
+    log:'<tr><td class="log-time">05-13 13:20</td><td class="log-user">王五</td><td>采购下单</td><td>1688订单号(子单1)</td><td><span class="log-new">New Balance 996 · T2026051300912</span></td><td class="log-ip">192.168.1.102</td></tr><tr><td class="log-time">05-13 13:05</td><td class="log-user">系统</td><td>导入订单</td><td>—</td><td><span class="log-new">来源：乐天API · 1 单 2 商品行</span></td><td class="log-ip">API自动</td></tr>' },
+
+  // 普通单件订单
+  { seq:'3', time_a:'05-13 11:48', name:'佐藤 花子', kana:'サトウ ハナコ', addr:'大阪府大阪市北区梅田1-1', zip:'530-0001', tel:'080-9876-5432', mail:'sato@email.jp', pay:'代引き', ship:'ネコポス', rv1:false, rv2:false,
+    oid:'R-202605130040', store:'楽天市場店', time_b:'05-13 11:48',
+    items:[
+      { img:'💄', buy_status:'<span class="status s-buying">采购中</span>', itemid:'rmt77821300', whid:'SHISEIDO-SET', attr:'美容液セット', choice:'資生堂 美容液 3点セット', qty:'×2', price:'¥8,900', fee:'¥0/¥330', req:'¥18,130',
+        buyer:'王五', buytime:'05-13 12:10', buylink:'<a href="#" class="accent-link">1688 商品页</a>', remark:'催发货', buyamount:'¥420', tabao:'<a href="#" class="accent-link">T2026051300891</a>', shipcomp:'ヤマト', shipno:DASH,
+        intl_no:DASH, intl_status:'<span class="intl-pend">待发货</span>', intl_fee:DASH, intl_qty:DASH, intl_wt:DASH }
+    ],
+    log:'<tr><td class="log-time">05-13 12:10</td><td class="log-user">王五</td><td>变更采购状态</td><td>采购状态</td><td><span class="log-old">待处理</span><span class="log-arrow">→</span><span class="log-new">采购中</span></td><td class="log-ip">192.168.1.102</td></tr>' },
+
+  // 日本仓现货订单（单件）
+  { seq:'4', time_a:'05-13 09:25', name:'高橋 美咲', kana:'タカハシ ミサキ', addr:'福岡県福岡市博多区博多駅前2-1-1', zip:'812-0011', tel:'080-3344-5566', mail:'takahashi@email.jp', pay:'クレカ', ship:'宅配便', rv1:false, rv2:false,
+    oid:'Y-202605130055', store:'Yahoo本店', time_b:'05-13 09:25',
+    items:[
+      { src:'jp', img:'🧴', buy_status:'<span class="status s-shipping">日本仓发货</span>', itemid:'y55219800', whid:'SHISEIDO-LT', attr:'保湿タイプ', choice:'資生堂 化粧水 200ml', qty:'×1', price:'¥3,200', fee:'¥0/¥0', req:'¥3,200',
+        remark:'尽快出库', shipcomp:'ヤマト', shipno:DASH,
+        jp_operator:'李四', jp_outtime:'05-13 10:00', jp_location:'B-03-1', jp_cost:'¥0', jp_outno:'JP-OUT-20831',
+        intl_no:DASH, intl_status:'<span class="intl-pend">待发货</span>', intl_fee:DASH, intl_qty:DASH, intl_wt:DASH }
+    ],
+    log:'<tr><td class="log-time">05-13 09:30</td><td class="log-user">系统</td><td>货源判定</td><td>货源地</td><td><span class="log-new">命中日本仓库存 → 日本仓</span></td><td class="log-ip">API自动</td></tr>' },
+
+  // 日本仓现货订单（单件，待分配发货员）
+  { seq:'5', time_a:'05-13 08:40', name:'渡辺 健', kana:'ワタナベ ケン', addr:'北海道札幌市中央区北1条西2', zip:'060-0001', tel:'090-7788-9900', mail:'watanabe@email.jp', pay:'代引き', ship:'宅配便', rv1:false, rv2:false,
+    oid:'W-202605130061', store:'Wowma店', time_b:'05-13 08:40',
+    items:[
+      { src:'jp', img:'🍵', buy_status:'<span class="status s-pending">待出库</span>', itemid:'w66103300', whid:'MATCHA-100', attr:'宇治産', choice:'抹茶パウダー 100g', qty:'×3', price:'¥1,800', fee:'¥0/¥0', req:'¥5,400',
+        remark:DASH, shipcomp:DASH, shipno:DASH,
+        jp_operator:DASH, jp_outtime:DASH, jp_location:'C-08-2', jp_cost:'¥0', jp_outno:DASH,
+        intl_no:DASH, intl_status:'<span class="intl-pend">待发货</span>', intl_fee:DASH, intl_qty:DASH, intl_wt:DASH }
+    ],
+    log:'<tr><td class="log-time">05-13 08:45</td><td class="log-user">系统</td><td>货源判定</td><td>货源地</td><td><span class="log-new">命中日本仓库存 → 日本仓</span></td><td class="log-ip">API自动</td></tr>' }
+];
+
+// ═══ 渲染 ═══
+function renderOrders() {
+  // 平台订单 = 全部子单（含货源下拉，分流入口）
+  document.getElementById('platform-orders').innerHTML = sampleOrders.map(function (o) { return makeOrder(o, true); }).join('');
+  // 采购订单 = 只显示「国内采购」货源的子单
+  document.getElementById('purchase-orders').innerHTML = sampleOrders.map(function (o) { return makeOrder(o, false, 'cn'); }).join('');
+  // 日本仓发货 = 只显示「日本仓」货源的子单（复用同一套订单块模板，B2 区显示出库信息）
+  document.getElementById('jpwarehouse-orders').innerHTML = sampleOrders.map(function (o) { return makeOrder(o, false, 'jp'); }).join('');
+}
+renderOrders();
+
+// 客服在平台订单改判货源 → 自动影响下游队列（采购订单只留国内采购）
+document.addEventListener('change', function (e) {
+  var sel = e.target.closest('.src-sel');
+  if (!sel) return;
+  var o = sampleOrders.find(function (x) { return x.oid === sel.dataset.oid; });
+  if (!o) return;
+  var its = o.items || [o];
+  its[sel.dataset.idx].src = sel.value;
+  renderOrders();
+});
+
+// ═══ 更多筛选（高级搜索区展开/收起）═══
+document.querySelectorAll('.more-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var adv = document.getElementById(btn.dataset.adv);
+    if (!adv) return;
+    var on = adv.classList.toggle('show');
+    btn.classList.toggle('on', on);
+    btn.firstChild.textContent = on ? '收起筛选 ' : '更多筛选 ';
+  });
+});
+
+// ═══ 视图切换 ═══
+var platNames = {}; PLATFORMS.forEach(function (p) { platNames[p.code] = p.name; });
+function switchView(view, platform) {
+  document.querySelectorAll('.view').forEach(function (v) { v.classList.remove('active'); });
+  document.getElementById('view-' + view).classList.add('active');
+  document.querySelectorAll('.sb-nav li').forEach(function (li) { li.classList.remove('active'); });
+  if (platform) {
+    var li = document.querySelector('.sb-nav li[data-platform="' + platform + '"]');
+    if (li) li.classList.add('active');
+    document.getElementById('plat-name').textContent = platNames[platform] || '';
+  } else {
+    var a = document.querySelector('.sb-nav li[data-view="' + view + '"]');
+    if (a) a.classList.add('active');
+  }
+}
+document.querySelector('.sidebar').addEventListener('click', function (e) {
+  var li = e.target.closest('li[data-view]');
+  if (li) switchView(li.dataset.view, li.dataset.platform);
+});
+document.getElementById('dash-pf-grid').addEventListener('click', function (e) {
+  var pf = e.target.closest('.dash-pf[data-nav]');
+  if (pf) switchView('platform', pf.dataset.nav);
+});
+
+// ═══ 展开详情 ═══
+document.querySelectorAll('.detail-toggle').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var on = btn.classList.toggle('on');
+    btn.textContent = on ? '收起详情' : '展开详情';
+    var list = btn.closest('.view').querySelector('.order-list');
+    // 平台视图展开 = 采购物流(B2: .sec-b.table-hidden) + 国际物流(C: .sec-c)
+    // 采购视图展开 = 国际物流(C)；B2 本就可见；A 区客户信息不在此选择器，保持隐藏
+    list.querySelectorAll('.sec-b.table-hidden, .sec-c').forEach(function (t) {
+      t.classList.toggle('show', on);
+    });
+  });
+});
+// 日志仅按单查看：每个订单行的「日志」按钮单独展开
+// 单个日志按钮
+document.querySelectorAll('.order-list').forEach(function (list) {
+  list.addEventListener('click', function (e) {
+    if (e.target.classList.contains('log-btn')) {
+      var block = e.target.closest('.order-block');
+      var panel = block.querySelector('.log-panel');
+      var on = panel.classList.toggle('show');
+      e.target.classList.toggle('on', on);
+    }
+  });
+});
+</script>
+
+</body>
+</html>

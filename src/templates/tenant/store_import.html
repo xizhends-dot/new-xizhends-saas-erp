@@ -1,0 +1,311 @@
+{% extends "tenant/layout.html" %}
+
+{% block title %}乐天导入/同步 · {{ store.dpquancheng }}{% endblock title %}
+
+{% block tenant_content %}
+<header class="page-head">
+  <div>
+    <h1>{{ store.dpquancheng }} <span class="plat-tag">乐天 RMS</span></h1>
+    <div class="head-sub">店铺缩写 {{ store.dpqz }} · RMS WEB SERVICE Order API</div>
+  </div>
+  <div class="head-actions">
+    <a class="btn" href="/settings/stores">返回店铺</a>
+    <a class="btn" href="/orders?platform=r">乐天订单</a>
+    <form method="post" action="/settings/stores/{{ store.id }}/rakuten/sync">
+      {% if store.has_rms_credentials and not store.is_hidden %}
+      <button class="btn btn-p" type="submit">同步订单</button>
+      {% elif store.is_hidden %}
+      <button class="btn" type="button" disabled>店铺已隐藏</button>
+      {% else %}
+      <button class="btn" type="button" disabled>先保存凭证</button>
+      {% endif %}
+    </form>
+  </div>
+</header>
+
+{% if flash %}
+<div class="notice ok">{{ flash }}</div>
+{% endif %}
+{% if error %}
+<div class="notice err">{{ error }}</div>
+{% endif %}
+
+<section class="panel rms-guide">
+  <div class="panel-head">
+    <span>接入说明</span>
+    <span class="sub">searchOrder / getOrder</span>
+  </div>
+  <div class="panel-body guide-grid">
+    <div>
+      <div class="guide-k">开通要求</div>
+      <div class="guide-v">乐天 RMS 需要开通 RMS WEB SERVICE 的 Order API，并取得 serviceSecret 与 licenseKey。</div>
+    </div>
+    <div>
+      <div class="guide-k">后续接线</div>
+      <div class="guide-v">系统按旧版流程执行预检、searchOrder 查单、getOrder(version=8) 拉取详单、过滤重复订单并落库。</div>
+    </div>
+    <div>
+      <div class="guide-k">当前行为</div>
+      <div class="guide-v">未启用同步服务时，按钮只返回任务状态；启用后会使用本页保存的凭证请求 RMS。</div>
+    </div>
+  </div>
+</section>
+
+<div class="import-grid">
+  <section class="panel">
+    <div class="panel-head">
+      <span>RMS 凭证</span>
+      <span class="sub">serviceSecret / licenseKey</span>
+    </div>
+    <div class="panel-body">
+      <form class="cred-form" method="post" action="/settings/stores/{{ store.id }}/rakuten/credentials">
+        <label>
+          <span>serviceSecret</span>
+          <input name="service_secret" type="password" autocomplete="off" placeholder="{{ store.masked_service_secret }}" required maxlength="255">
+        </label>
+        <label>
+          <span>licenseKey</span>
+          <input name="license_key" type="password" autocomplete="off" placeholder="{{ store.masked_license_key }}" required maxlength="255">
+        </label>
+        <button class="btn btn-p" type="submit">保存凭证</button>
+      </form>
+      <div class="cred-help">在 RMS WEB SERVICE 的 Order API 相关页面取得两项凭证。系统不会在页面回显原值；更新时需要重新输入 serviceSecret 和 licenseKey。</div>
+      <div class="cred-meta">
+        <span>当前状态：</span>
+        {% if store.has_rms_credentials %}
+        <strong>已保存</strong>
+        <span>更新 {{ store.rms_credentials_updated_at }}</span>
+        {% else %}
+        <strong>未保存</strong>
+        <span>同步前必须先保存 serviceSecret/licenseKey。</span>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <span>订单导入</span>
+      <span class="sub">手动 CSV</span>
+    </div>
+    <div class="panel-body">
+      <form class="manual-import"
+            method="post"
+            action="/settings/stores/{{ store.id }}/import"
+            x-data="csvLoader()">
+        <div class="file-loader">
+          <label>
+            <span>本地 CSV 文件</span>
+            <input type="file" accept=".csv,text/csv" @change="loadFile($event)">
+          </label>
+          <label>
+            <span>文件编码</span>
+            <select x-model="encoding">
+              <option value="shift_jis">乐天 CSV / Shift-JIS</option>
+              <option value="utf-8">UTF-8</option>
+            </select>
+          </label>
+          <div>
+            <strong x-text="fileName || '未选择文件'"></strong>
+            <span x-text="fileMessage"></span>
+          </div>
+        </div>
+        <label>
+          <span>CSV 内容</span>
+          <textarea name="csv_text" rows="12" x-ref="csvText" placeholder="第一行粘贴表头，例如：orderId,orderDetailId,ItemId,ShipName,ShipPhoneNumber,totalPrice"></textarea>
+        </label>
+        <div class="import-actions">
+          <button class="btn" type="submit" name="action" value="preview">预检字段</button>
+          <button class="btn btn-p" type="submit" name="action" value="import">导入订单</button>
+        </div>
+        <div class="store-sub">手动导入沿用旧系统字段映射：orderId 作为订单号，乐天/Yahoo 使用 ItemId 作为商品编码。支持普通表头 CSV，也支持旧 Rakuten 162 列固定格式；乐天导出的 Shift-JIS CSV 可先选择编码后读入内容框，再预检字段。</div>
+      </form>
+      <form class="sync-inline" method="post" action="/settings/stores/{{ store.id }}/rakuten/sync">
+        {% if store.has_rms_credentials and not store.is_hidden %}
+        <button class="btn" type="submit">同步订单</button>
+        <span>同步会先查近 7 天待配送订单，过滤已存在订单，再按每批 5 单拉取详单并导入。</span>
+        {% elif store.is_hidden %}
+        <button class="btn" type="button" disabled>店铺已隐藏</button>
+        <span>隐藏店铺不能导入或同步订单，请先在店铺管理中取消隐藏。</span>
+        {% else %}
+        <button class="btn" type="button" disabled>先保存凭证</button>
+        <span>保存 serviceSecret 和 licenseKey 后才能同步乐天订单；手动导入 CSV 不依赖 RMS 凭证。</span>
+        {% endif %}
+      </form>
+    </div>
+  </section>
+</div>
+
+{% if import_report %}
+<section class="panel">
+  <div class="panel-head">
+    <span>{% if import_report.dry_run %}导入预检{% else %}导入结果{% endif %}</span>
+    <span class="sub">可导入 {{ import_report.preview.importable_rows }} / 总行 {{ import_report.preview.total_rows }}</span>
+  </div>
+  <div class="panel-body">
+    <div class="import-summary">
+      <div><strong>{{ import_report.imported_rows }}</strong><span>新增</span></div>
+      <div><strong>{{ import_report.skipped_rows }}</strong><span>跳过</span></div>
+      <div><strong>{{ import_report.failed_rows }}</strong><span>失败</span></div>
+      <div><strong>{{ import_report.preview.errors | length }}</strong><span>问题</span></div>
+    </div>
+
+    {% if import_report.preview.field_mapping_preview | length > 0 %}
+    <table class="grid import-map">
+      <thead>
+        <tr>
+          <th>原始表头</th>
+          <th>目标字段</th>
+          <th>层级</th>
+          <th>样例</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for field in import_report.preview.field_mapping_preview %}
+        <tr>
+          <td class="mono">{{ field.source }}</td>
+          <td>{{ field.target }}</td>
+          <td>{{ field.scope }}</td>
+          <td>{{ field.sample }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    {% if import_report.preview.errors | length > 0 or import_report.issues | length > 0 %}
+    <div class="issue-list">
+      {% for issue in import_report.preview.errors %}
+      <div class="issue {{ issue.severity }}">
+        <strong>{% if issue.row %}第 {{ issue.row }} 行{% else %}表头{% endif %}</strong>
+        <span>{{ issue.message }}</span>
+      </div>
+      {% endfor %}
+      {% for issue in import_report.issues %}
+      <div class="issue {{ issue.kind }}">
+        <strong>第 {{ issue.row }} 行</strong>
+        <span>{{ issue.message }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if import_report.imported_order_ids | length > 0 %}
+    <div class="imported-links">
+      {% for order_id in import_report.imported_order_ids %}
+      <a class="btn-xs" href="/orders">订单 #{{ order_id }}</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+{% if report %}
+<section class="panel">
+  <div class="panel-head">
+    <span>同步任务报告</span>
+    <span class="sub">{% if report.ok %}检查通过{% else %}需要处理{% endif %}</span>
+  </div>
+  <div class="panel-body">
+    <div class="{% if report.ok %}report-ok{% else %}report-warn{% endif %}">
+      <strong>{{ report.message }}</strong>
+      <span>店铺：{{ report.store_name }} · 状态：{{ report.status }}</span>
+    </div>
+    <div class="import-summary sync-summary">
+      <div><strong>{{ report.total_found | default(value=0) }}</strong><span>查询订单</span></div>
+      <div><strong>{{ report.skipped_existing | default(value=0) }}</strong><span>已存在</span></div>
+      <div><strong>{{ report.imported_rows | default(value=0) }}</strong><span>新增行</span></div>
+      <div><strong>{{ report.failed_rows | default(value=0) }}</strong><span>失败行</span></div>
+    </div>
+    <ol class="step-list">
+      {% for step in report.checked_steps %}
+      <li>{{ step }}</li>
+      {% endfor %}
+    </ol>
+  </div>
+</section>
+{% elif store.last_sync_status %}
+<section class="panel">
+  <div class="panel-head">
+    <span>最近任务报告</span>
+    <span class="sub">{{ store.last_sync_status }}</span>
+  </div>
+  <div class="panel-body">
+    <div class="report-ok">
+      <strong>{{ store.last_sync_message }}</strong>
+      <span>{{ store.last_sync_at }}</span>
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock tenant_content %}
+
+{% block tenant_head_extra %}
+<style>
+  .page-head form { margin: 0; display: inline-flex; }
+  .notice { margin-bottom: 10px; padding: 9px 12px; border: 1px solid var(--border); background: #fff; font-size: 12px; font-weight: 700; }
+  .notice.ok { border-color: #86efac; background: #f0fdf4; color: #166534; }
+  .notice.err { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+  .guide-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .guide-k { margin-bottom: 5px; color: var(--tenant-accent); font-size: 11px; font-weight: 800; }
+  .guide-v { color: #111827; font-size: 12px; line-height: 1.6; }
+  .import-grid { display: grid; grid-template-columns: minmax(300px, .7fr) minmax(0, 1.3fr); gap: 12px; }
+  .cred-form { display: grid; gap: 10px; }
+  .cred-form label, .manual-import label { display: grid; gap: 4px; color: var(--text-secondary); font-size: 11px; font-weight: 700; }
+  .cred-form input, .manual-import textarea, .file-loader input, .file-loader select { min-height: 32px; padding: 7px 9px; border: 1px solid var(--border); font: inherit; outline: none; background: #fff; }
+  .manual-import textarea { resize: vertical; min-height: 210px; font-family: "SF Mono","Cascadia Code","Consolas",monospace; font-size: 11px; line-height: 1.5; }
+  .cred-form input:focus, .manual-import textarea:focus { border-color: var(--tenant-accent); }
+  .cred-help { margin-top: 8px; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+  .cred-meta { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; color: var(--text-secondary); font-size: 11px; }
+  .cred-meta strong { color: var(--tenant-accent); }
+  .file-loader { margin-bottom: 10px; display: grid; grid-template-columns: minmax(220px, .8fr) 150px minmax(0, 1fr); gap: 10px; align-items: end; }
+  .file-loader label { min-width: 0; }
+  .file-loader > div { min-height: 32px; padding: 6px 8px; border: 1px dashed #d1d5db; background: #f9fafb; display: grid; gap: 1px; color: var(--text-muted); font-size: 10px; }
+  .file-loader strong { color: #111827; font-size: 11px; }
+  .import-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .sync-inline { margin-top: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--text-muted); font-size: 11px; }
+  .store-sub { color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+  .report-ok, .report-warn { padding: 10px 12px; display: grid; gap: 4px; border: 1px solid #86efac; background: #f0fdf4; color: #166534; }
+  .report-warn { border-color: #fcd34d; background: #fffbeb; color: #92400e; }
+  .report-ok span, .report-warn span { font-size: 11px; font-weight: 600; opacity: .86; }
+  .step-list { margin: 12px 0 0; padding-left: 20px; color: #111827; font-size: 12px; line-height: 1.7; }
+  .import-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .sync-summary { margin-top: 12px; }
+  .import-summary div { border: 1px solid var(--border); padding: 10px; background: #fff; display: grid; gap: 3px; }
+  .import-summary strong { font-size: 20px; color: #111827; line-height: 1; }
+  .import-summary span { color: var(--text-secondary); font-size: 11px; }
+  .import-map { margin-bottom: 12px; }
+  .issue-list { display: grid; gap: 6px; }
+  .issue { border: 1px solid #d1d5db; background: #fff; padding: 8px 10px; display: flex; gap: 8px; font-size: 11px; }
+  .issue.Error, .issue.failed { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
+  .issue.Warning, .issue.skipped { border-color: #fde68a; background: #fffbeb; color: #92400e; }
+  .imported-links { margin-top: 12px; display: flex; gap: 6px; flex-wrap: wrap; }
+  @media (max-width: 900px) {
+    .guide-grid, .import-grid, .import-summary, .file-loader { grid-template-columns: 1fr; }
+  }
+</style>
+<script>
+  function csvLoader() {
+    return {
+      fileName: '',
+      encoding: 'shift_jis',
+      fileMessage: '可选择 CSV 文件自动填入下方内容框',
+      loadFile(event) {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+        this.fileName = file.name;
+        const reader = new FileReader();
+        reader.onload = () => {
+          this.$refs.csvText.value = reader.result || '';
+          this.fileMessage = '已读取到内容框，请先预检字段再导入';
+        };
+        reader.onerror = () => {
+          this.fileMessage = '文件读取失败，请改用复制粘贴 CSV 内容';
+        };
+        reader.readAsText(file, this.encoding);
+      }
+    };
+  }
+</script>
+{% endblock tenant_head_extra %}

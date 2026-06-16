@@ -1,0 +1,206 @@
+{% extends "tenant/layout.html" %}
+
+{% block title %}
+{% if view == "purchase" %}采购订单{% elif view == "jpstock" %}日本仓发货{% else %}平台订单{% endif %} · {{ tenant_name }}
+{% endblock title %}
+
+{% block tenant_content %}
+<div class="order-page"
+     x-data="{
+       advanced: {{ advanced_expanded }},
+       details: false,
+       intl: false,
+       allChecked: false,
+       selected: 0,
+       batchStatus: '',
+       batchAssignee: '',
+       batchOperator: '',
+       batchLocation: '',
+       batchOutNo: '',
+       batchOutCost: '',
+       selector: '{% if view == "platform" %}.js-order-select{% else %}.js-item-select{% endif %}',
+       syncSelection(){ this.selected = document.querySelectorAll(this.selector + ':checked').length },
+       selectedIds(){ return Array.from(document.querySelectorAll(this.selector + ':checked')).map(function(box){ return box.value }).join(',') },
+       toggleAll(){ this.allChecked = !this.allChecked; document.querySelectorAll(this.selector).forEach((box) => { box.checked = this.allChecked }); this.syncSelection() }
+     }"
+     x-init="syncSelection()"
+     @change.window="syncSelection()">
+  <header class="page-head">
+    <div>
+      <h1>
+        {% if view == "purchase" %}采购订单{% elif view == "jpstock" %}日本仓发货{% else %}平台订单{% endif %}
+        <span class="plat-tag">{% if view == "platform" %}分流入口{% elif view == "purchase" %}国内采购{% else %}日本仓{% endif %}</span>
+      </h1>
+      <div class="head-sub">按订单聚合展示，子商品独立履约</div>
+    </div>
+    <div class="head-actions">
+      <button class="btn" type="button" disabled title="导出接口尚未接入">导出</button>
+      <button class="btn" type="button" disabled title="导入接口尚未接入">导入订单</button>
+      <button class="btn" type="button" disabled title="手动录入接口尚未接入">手动录入</button>
+      <a class="btn" href="{% if view == "purchase" %}/purchase-orders{% elif view == "jpstock" %}/jp-shipments{% else %}/orders{% endif %}">刷新</a>
+      <a class="btn btn-p" href="/search">搜索</a>
+    </div>
+  </header>
+
+  <form class="filter" method="get">
+    {% if filter.platform %}
+    <input type="hidden" name="platform" value="{{ filter.platform }}">
+    {% endif %}
+    <div class="filter-grid">
+      <label class="fg">
+        <span class="lb">订单号</span>
+        <input name="keyword" value="{% if filter.keyword %}{{ filter.keyword }}{% endif %}" placeholder="订单号 / 商品名 / 电话">
+      </label>
+      <label class="fg">
+        <span class="lb">1688订单号</span>
+        <input name="purchase_no" value="{% if filter.purchase_no %}{{ filter.purchase_no }}{% endif %}" placeholder="1688 / 采购单号">
+      </label>
+      <label class="fg">
+        <span class="lb">{% if view == "jpstock" %}出库状态{% else %}采购状态{% endif %}</span>
+        {% if view == "jpstock" %}
+        <select name="out_status">
+          <option value="" {% if not filter.out_status %}selected{% endif %}>全部</option>
+          <option value="待分配" {% if filter.out_status == "待分配" %}selected{% endif %}>待分配</option>
+          <option value="已分配" {% if filter.out_status == "已分配" %}selected{% endif %}>已分配</option>
+          <option value="已出库" {% if filter.out_status == "已出库" %}selected{% endif %}>已出库</option>
+          <option value="已发货" {% if filter.out_status == "已发货" %}selected{% endif %}>已发货</option>
+        </select>
+        {% else %}
+        <select name="purchase_status">
+          <option value="" {% if not filter.purchase_status %}selected{% endif %}>全部</option>
+          {% for st in purchase_status_options %}
+          <option value="{{ st }}" {% if filter.purchase_status == st %}selected{% endif %}>{{ st }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+      </label>
+      {% if show_source_dropdown %}
+      <label class="fg">
+        <span class="lb">货源地</span>
+        <select name="source">
+          {% for opt in source_options %}
+          <option value="{{ opt.value }}" {% if opt.selected %}selected{% endif %}>{{ opt.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% endif %}
+    </div>
+
+    <div class="filter-adv" x-show="advanced" {% if advanced_expanded %}style="display:block"{% endif %}>
+      <div class="filter-adv-title">高级搜索</div>
+      <div class="filter-grid">
+        <label class="fg"><span class="lb">ItemId</span><input name="item_id" value="{% if filter.item_id %}{{ filter.item_id }}{% endif %}"></label>
+        <label class="fg"><span class="lb">邮箱</span><input name="email" value="{% if filter.email %}{{ filter.email }}{% endif %}"></label>
+        <label class="fg"><span class="lb">收件人</span><input name="recipient" value="{% if filter.recipient %}{{ filter.recipient }}{% endif %}"></label>
+        <label class="fg"><span class="lb">电话</span><input name="phone" value="{% if filter.phone %}{{ filter.phone }}{% endif %}"></label>
+        <label class="fg"><span class="lb">假名</span><input name="kana" value="{% if filter.kana %}{{ filter.kana }}{% endif %}"></label>
+        <label class="fg"><span class="lb">运送方式</span><input name="ship_method" value="{% if filter.ship_method %}{{ filter.ship_method }}{% endif %}"></label>
+        {% if view == "jpstock" %}
+        <label class="fg"><span class="lb">发货员</span><input name="assignee" value="{% if filter.assignee %}{{ filter.assignee }}{% endif %}"></label>
+        <label class="fg"><span class="lb">仓位</span><input name="location" value="{% if filter.location %}{{ filter.location }}{% endif %}"></label>
+        {% endif %}
+        <label class="fg"><span class="lb">运单号</span><input name="tracking_no" value="{% if filter.tracking_no %}{{ filter.tracking_no }}{% endif %}"></label>
+        <label class="fg"><span class="lb">采购人</span><input name="buyer" value="{% if filter.buyer %}{{ filter.buyer }}{% endif %}"></label>
+        <label class="fg"><span class="lb">评价</span><input name="review_status" value="{% if filter.review_status %}{{ filter.review_status }}{% endif %}" placeholder="已评价 / 未评价 / 已邀评"></label>
+        <label class="fg"><span class="lb">导入起</span><input type="date" name="imported_from" value="{% if filter.imported_from %}{{ filter.imported_from }}{% endif %}"></label>
+        <label class="fg"><span class="lb">导入止</span><input type="date" name="imported_to" value="{% if filter.imported_to %}{{ filter.imported_to }}{% endif %}"></label>
+      </div>
+    </div>
+
+    <div class="filter-foot">
+      <button class="more-btn" type="button" @click="advanced = !advanced" :class="{ 'on': advanced }">
+        <span x-text="advanced ? '收起筛选' : '更多筛选'">更多筛选</span><span class="arr">▾</span>
+      </button>
+      <div class="filter-cks">
+        <label class="ck muted"><input type="checkbox" disabled> 超时发货</label>
+        <label class="ck muted"><input type="checkbox" disabled> 配達中</label>
+        <label class="ck muted"><input type="checkbox" disabled> 配達完了</label>
+      </div>
+      <div class="fsp"></div>
+      <div class="fsum">共 <strong>{{ order_count }}</strong> 单 / <strong>{{ item_count }}</strong> 件，当前最多加载最近 200 条</div>
+      <button class="btn btn-p" type="submit">搜索</button>
+      <a class="btn" href="{% if view == "purchase" %}/purchase-orders{% elif view == "jpstock" %}/jp-shipments{% else %}{% if filter.platform %}/orders?platform={{ filter.platform }}{% else %}/orders{% endif %}{% endif %}">重置</a>
+    </div>
+  </form>
+
+  <section class="tbar">
+    <div class="tbar-count">已选择 <strong x-text="selected">0</strong> / <strong>{% if view == "platform" %}{{ order_count }}{% else %}{{ item_count }}{% endif %}</strong> {% if view == "platform" %}单{% else %}件{% endif %}</div>
+    <div class="tbar-actions">
+      {% if toolbar.select_all %}
+      <button class="btn-xs" type="button" @click="toggleAll()" x-text="allChecked ? '取消全选' : '全选'">全选</button>
+      {% endif %}
+      {% if toolbar.expand_details %}
+      <button class="btn-xs detail-toggle" type="button" @click="details = !details; window.dispatchEvent(new CustomEvent('toggle-details', { detail: details }))" x-text="details ? '收起详情' : '展开详情'">展开详情</button>
+      <button class="btn-xs detail-toggle" type="button" @click="intl = !intl; window.dispatchEvent(new CustomEvent('toggle-intl', { detail: intl }))" x-text="intl ? '收起国际物流' : '国际物流'">国际物流</button>
+      {% endif %}
+      {% if view == "purchase" and toolbar.batch_status %}
+      <form class="batch-form"
+            hx-post="/orders/purchase/batch-status"
+            hx-target="#batch-result"
+            hx-swap="innerHTML"
+            @submit="$refs.purchaseIds.value = selectedIds()">
+        <input type="hidden" name="order_item_ids" x-ref="purchaseIds">
+        <select name="purchase_status" x-model="batchStatus" required>
+          <option value="">批量改状态</option>
+          {% for st in purchase_status_options %}
+          <option value="{{ st }}">{{ st }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn-xs" type="submit" :disabled="selected === 0 || !batchStatus">应用</button>
+      </form>
+      {% endif %}
+      {% if view == "jpstock" and toolbar.batch_assign %}
+      <form class="batch-form"
+            hx-post="/jp-warehouse/batch-assign"
+            hx-target="#batch-result"
+            hx-swap="innerHTML"
+            @submit="$refs.assignIds.value = selectedIds()">
+        <input type="hidden" name="order_item_ids" x-ref="assignIds">
+        <input name="assignee" x-model="batchAssignee" placeholder="发货员">
+        <button class="btn-xs" type="submit" :disabled="selected === 0 || !batchAssignee">分配</button>
+      </form>
+      <form class="batch-form out"
+            hx-post="/jp-warehouse/batch-out"
+            hx-target="#batch-result"
+            hx-swap="innerHTML"
+            @submit="$refs.outIds.value = selectedIds()">
+        <input type="hidden" name="order_item_ids" x-ref="outIds">
+        <input name="operator" x-model="batchOperator" placeholder="出库人">
+        <input name="location" x-model="batchLocation" placeholder="仓位">
+        <input name="out_no" x-model="batchOutNo" placeholder="出库单号">
+        <input name="out_cost" x-model="batchOutCost" placeholder="成本">
+        <button class="btn-xs" type="submit" :disabled="selected === 0 || !batchOperator">出库</button>
+      </form>
+      {% endif %}
+      {% if toolbar.batch_delete %}<button class="btn-xs danger" type="button" disabled title="批量删除接口尚未接入">批量删除</button>{% endif %}
+    </div>
+  </section>
+  <div id="batch-result" class="batch-result-slot"></div>
+
+  <section class="order-list">
+    {% if order_blocks %}
+      {{ order_blocks | safe }}
+    {% else %}
+      <div class="empty-state">
+        <strong>暂无符合条件的订单</strong>
+        <span>换一个筛选条件，或确认该租户库已经导入订单。</span>
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="pager">
+    <div class="pager-info">
+      <span>每页</span>
+      <select disabled><option selected>200</option></select>
+      <span>第 1-{{ order_count }} 条，共 {{ order_count }} 条</span>
+    </div>
+    <div class="pager-btns">
+      <button class="pg" type="button" disabled>«</button>
+      <button class="pg" type="button" disabled>‹</button>
+      <button class="pg active" type="button" disabled>1</button>
+      <button class="pg" type="button" disabled>›</button>
+      <button class="pg" type="button" disabled>»</button>
+    </div>
+  </section>
+</div>
+{% endblock tenant_content %}

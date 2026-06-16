@@ -1,0 +1,134 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}超管后台 · 操作日志{% endblock title %}
+{% block nav_logs %}active{% endblock nav_logs %}
+
+{% block admin_content %}
+<header class="page-head">
+  <h1>操作日志 <span class="sub">基于 sessions 的会话审计草案</span></h1>
+  <div class="head-actions">
+    <a class="btn" href="/admin/health">服务健康</a>
+    <a class="btn" href="/admin/tenants">租户管理</a>
+  </div>
+</header>
+
+<section class="stats">
+  <div class="stat">
+    <div class="stat-label">取样记录</div>
+    <div class="stat-value">{{ total_source_rows }}</div>
+    <div class="stat-sub">最近 {{ total_source_rows }} 条 sessions 记录</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">当前显示</div>
+    <div class="stat-value">{{ visible_rows }}</div>
+    <div class="stat-sub">受筛选条件与条数限制影响</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">有效会话</div>
+    <div class="stat-value">{{ active_sessions }}</div>
+    <div class="stat-sub">expires_at 晚于数据库当前时间</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">过期会话</div>
+    <div class="stat-value">{{ expired_sessions }}</div>
+    <div class="stat-sub">expires_at 已到期</div>
+  </div>
+</section>
+
+<form class="filter" method="get" action="/admin/audit-logs">
+  <label class="fg">
+    <span>租户</span>
+    <select name="tenant_id">
+      <option value="" {% if not filters.tenant_id %}selected{% endif %}>全部</option>
+      {% for t in tenant_options %}
+      <option value="{{ t.id }}" {% if filters.tenant_id == t.id %}selected{% endif %}>{{ t.label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="fg">
+    <span>主体</span>
+    <select name="principal_kind">
+      <option value="" {% if filters.principal_kind == "" %}selected{% endif %}>全部</option>
+      <option value="super_admin" {% if filters.principal_kind == "super_admin" %}selected{% endif %}>超管</option>
+      <option value="company_admin" {% if filters.principal_kind == "company_admin" %}selected{% endif %}>公司管理员</option>
+      <option value="employee" {% if filters.principal_kind == "employee" %}selected{% endif %}>员工</option>
+    </select>
+  </label>
+  <label class="fg">
+    <span>状态</span>
+    <select name="status">
+      <option value="" {% if filters.status == "" %}selected{% endif %}>全部</option>
+      <option value="active" {% if filters.status == "active" %}selected{% endif %}>有效</option>
+      <option value="expired" {% if filters.status == "expired" %}selected{% endif %}>已过期</option>
+    </select>
+  </label>
+  <label class="fg">
+    <span>条数</span>
+    <select name="limit">
+      <option value="20" {% if filters.limit == 20 %}selected{% endif %}>20</option>
+      <option value="50" {% if filters.limit == 50 %}selected{% endif %}>50</option>
+      <option value="100" {% if filters.limit == 100 %}selected{% endif %}>100</option>
+    </select>
+  </label>
+  <label class="fg">
+    <input type="text" name="q" value="{{ filters.q }}" placeholder="搜索主体 ID / 租户 / IP / UA">
+  </label>
+  <button class="btn btn-p" type="submit">筛选</button>
+  <a class="btn" href="/admin/audit-logs">清空</a>
+  <div class="fsp"></div>
+  <div class="fsum">仅展示 <strong>sessions</strong> 与 <strong>tenants</strong> 派生信息</div>
+</form>
+
+<section class="panel">
+  <div class="panel-head">
+    <span>会话审计列表</span>
+    <span class="sub">不读取、不显示会话令牌；暂无 operation_logs 时不伪造业务操作</span>
+  </div>
+  <table class="grid">
+    <thead>
+      <tr>
+        <th style="width:42px">#</th>
+        <th>事件</th>
+        <th>主体</th>
+        <th>租户</th>
+        <th>状态</th>
+        <th>IP</th>
+        <th>最近访问</th>
+        <th>创建 / 过期</th>
+        <th>UA</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td class="mono">{{ log.session_id }}</td>
+        <td><span class="tag on">{{ log.event_label }}</span></td>
+        <td>
+          <span class="co-name">{{ log.principal_label }}</span>
+          <div class="co-sub mono">{{ log.principal_kind }} #{{ log.principal_id }}</div>
+        </td>
+        <td>
+          <span class="co-name">{{ log.tenant_label }}</span>
+          <div class="co-sub mono">
+            {% if log.tenant_id %}tenant #{{ log.tenant_id }}{% else %}tenant NULL{% endif %}
+            · {{ log.tenant_status }}
+          </div>
+        </td>
+        <td>
+          <span class="st {{ log.status_class }}"><span class="d"></span>{{ log.status_label }}</span>
+        </td>
+        <td class="mono">{{ log.ip }}</td>
+        <td class="co-sub">{{ log.last_seen_at }}</td>
+        <td>
+          <div class="co-sub">{{ log.created_at }}</div>
+          <div class="co-sub">{{ log.expires_at }}</div>
+        </td>
+        <td class="mono" title="{{ log.user_agent }}">{{ log.user_agent }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9">暂无符合筛选条件的会话审计记录</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock admin_content %}

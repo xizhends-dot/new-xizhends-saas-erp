@@ -1,0 +1,156 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}超管后台 · 新建租户{% endblock title %}
+{% block nav_tenants %}active{% endblock nav_tenants %}
+
+{% block admin_head_extra %}
+<style>
+  .tenant-new .page-head h1 .sub { max-width: 620px; }
+  .tenant-new-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; }
+  .tenant-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
+  .tenant-form label { display: grid; gap: 5px; color: var(--text-secondary); font-size: 10px; font-weight: 800; }
+  .tenant-form input, .tenant-form select, .tenant-form textarea {
+    width: 100%;
+    min-height: 32px;
+    padding: 6px 9px;
+    border: 1px solid var(--border);
+    color: #111827;
+    font: inherit;
+    background: #fff;
+    outline: none;
+  }
+  .tenant-form textarea { min-height: 74px; resize: vertical; }
+  .tenant-form input:focus, .tenant-form select:focus, .tenant-form textarea:focus { border-color: var(--admin-accent); box-shadow: inset 3px 0 0 var(--admin-accent); }
+  .tenant-form .full, .tenant-form-section, .tenant-form-actions { grid-column: 1 / -1; }
+  .tenant-form-section {
+    margin-top: 2px;
+    padding-top: 10px;
+    border-top: 1px dashed #e5e7eb;
+    color: #111827;
+    font-size: 12px;
+    font-weight: 850;
+  }
+  .tenant-form-section:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+  .tenant-form-actions { display: flex; gap: 8px; padding-top: 2px; flex-wrap: wrap; }
+  .tenant-help { background: #fff; border: 1px solid var(--border); padding: 12px 14px; display: grid; gap: 12px; }
+  .tenant-help-title { color: #111827; font-size: 12px; font-weight: 850; margin-bottom: 5px; }
+  .tenant-help p { margin: 0; color: var(--text-secondary); font-size: 11px; line-height: 1.65; }
+  .tenant-help strong { color: #047857; }
+  .tenant-help-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+  .tenant-help-list li { border-left: 3px solid var(--admin-accent); background: #f9fafb; padding: 6px 8px; color: #374151; font-size: 11px; }
+  .dsn-warning { border: 1px solid #d1d5db; background: #f9fafb; padding: 9px 10px; color: #374151; font-size: 11px; line-height: 1.55; }
+  @media (max-width: 900px) {
+    .tenant-new-wrap { grid-template-columns: 1fr; }
+    .tenant-form { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock admin_head_extra %}
+
+{% block admin_content %}
+<div class="tenant-new">
+  <header class="page-head">
+    <h1>新建租户 <span class="sub">创建公司档案、负责人资料、子域名、独立租户库连接与初始预存余额</span></h1>
+    <div class="head-actions">
+      <a class="btn" href="/admin/tenants">返回列表</a>
+      <a class="btn" href="/admin/billing">套餐 / 计费</a>
+    </div>
+  </header>
+
+  <div class="tenant-new-wrap">
+    <section class="panel">
+      <div class="panel-head">
+        <span>租户资料</span>
+        <span class="sub">提交后写入主库 tenants，并初始化该租户的计费账户</span>
+      </div>
+      <div class="panel-body">
+        <form class="tenant-form" method="post" action="/admin/tenants">
+          <div class="tenant-form-section">公司资料</div>
+          <label>
+            公司名
+            <input name="company_name" required autocomplete="organization" placeholder="例如：西阵科技有限公司">
+          </label>
+          <label>
+            公司简称
+            <input name="company_short_name" autocomplete="organization-title" placeholder="例如：西阵科技">
+          </label>
+          <label>
+            子域名
+            <input name="subdomain" required placeholder="xizhen" autocomplete="off">
+          </label>
+          <label>
+            套餐
+            <select name="plan">
+              <option value="basic">basic · 基础版</option>
+              <option value="pro">pro · 专业版</option>
+              <option value="ent">ent · 企业版</option>
+            </select>
+          </label>
+
+          <div class="tenant-form-section">负责人资料</div>
+          <label>
+            负责人姓名
+            <input name="contact_name" required autocomplete="name">
+          </label>
+          <label>
+            电话
+            <input name="contact_phone" required autocomplete="tel">
+          </label>
+          <label>
+            邮箱
+            <input name="contact_email" type="email" autocomplete="email">
+          </label>
+          <label>
+            微信
+            <input name="contact_wechat" autocomplete="off">
+          </label>
+          <label class="full">
+            地址
+            <input name="address" autocomplete="street-address">
+          </label>
+          <label class="full">
+            备注
+            <textarea name="remark" placeholder="内部备注、对接事项、开通范围等"></textarea>
+          </label>
+
+          <div class="tenant-form-section">数据库与预存</div>
+          <label class="full">
+            DSN
+            <input name="db_dsn_enc" required placeholder="mysql://user:pass@host:3306/db" autocomplete="off">
+          </label>
+          <label>
+            初始预存金额（RMB）
+            <input name="initial_balance_yuan" inputmode="decimal" placeholder="例如：500.00">
+          </label>
+          <div class="dsn-warning full">
+            DSN 会作为租户库连接配置写入主库；页面列表只显示脱敏后的 host:port/database。租户库本身仍需要先在服务器或宝塔中创建好，再把连接地址录入这里。
+          </div>
+
+          <div class="tenant-form-actions">
+            <button class="btn btn-p" type="submit">创建租户</button>
+            <a class="btn" href="/admin/tenants">返回列表</a>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <aside class="tenant-help">
+      <div>
+        <div class="tenant-help-title">套餐由什么决定</div>
+        <p><strong>basic / pro / ent</strong> 由超管选择，是运营、权限和服务等级标签，不会根据数据库名自动推导。</p>
+      </div>
+      <div>
+        <div class="tenant-help-title">如何判断可使用</div>
+        <ul class="tenant-help-list">
+          <li>租户状态必须是正常。</li>
+          <li>已预存余额需要覆盖当前月预估费用。</li>
+          <li>预估费用 = 账号数 × 已开通平台数 × 单价。</li>
+        </ul>
+      </div>
+      <div>
+        <div class="tenant-help-title">创建后的下一步</div>
+        <p>创建完成后，进入平台授权开通店铺平台；再到套餐 / 计费查看余额与本月预估费用。</p>
+      </div>
+    </aside>
+  </div>
+</div>
+{% endblock admin_content %}

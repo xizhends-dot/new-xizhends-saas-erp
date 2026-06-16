@@ -1,0 +1,145 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}超管后台 · 数据库管理{% endblock title %}
+{% block nav_databases %}active{% endblock nav_databases %}
+
+{% block admin_content %}
+<header class="page-head">
+  <h1>数据库管理 <span class="sub">查看主库、租户库与连接池状态</span></h1>
+  <div class="head-actions">
+    <a class="btn" href="/admin/health">服务健康</a>
+    <a class="btn btn-p" href="/admin/databases">刷新状态</a>
+  </div>
+</header>
+
+<section class="stats">
+  <div class="stat">
+    <div class="stat-label">主库连接</div>
+    <div class="stat-value st {{ stats.master_status_class }}"><span class="d"></span>{{ stats.master_status_label }}</div>
+    <div class="stat-sub">连接 {{ stats.master_pool_size }} · 空闲 {{ stats.master_pool_idle }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">租户库总数</div>
+    <div class="stat-value">{{ stats.tenant_db_count }}</div>
+    <div class="stat-sub">来源于主库 tenants</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">在线连接池</div>
+    <div class="stat-value">{{ stats.cached_pool_count }}</div>
+    <div class="stat-sub">单租户上限 {{ stats.max_conns_per_tenant }}，空闲 {{ stats.idle_ttl_secs }} 秒回收</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">异常配置</div>
+    <div class="stat-value">{{ stats.invalid_config_count }}</div>
+    <div class="stat-sub">无法解析为脱敏数据库标签</div>
+  </div>
+</section>
+
+<form class="filter" method="get" action="/admin/databases">
+  <label class="fg">
+    <span>状态</span>
+    <select name="status">
+      <option value="" {% if filters.status == "" %}selected{% endif %}>全部</option>
+      <option value="active" {% if filters.status == "active" %}selected{% endif %}>配置可用</option>
+      <option value="suspended" {% if filters.status == "suspended" %}selected{% endif %}>租户停用</option>
+      <option value="invalid" {% if filters.status == "invalid" %}selected{% endif %}>配置异常</option>
+    </select>
+  </label>
+  <label class="fg">
+    <span>套餐</span>
+    <select name="plan">
+      <option value="" {% if filters.plan == "" %}selected{% endif %}>全部</option>
+      <option value="basic" {% if filters.plan == "basic" %}selected{% endif %}>basic</option>
+      <option value="pro" {% if filters.plan == "pro" %}selected{% endif %}>pro</option>
+      <option value="ent" {% if filters.plan == "ent" %}selected{% endif %}>ent</option>
+    </select>
+  </label>
+  <label class="fg">
+    <input type="text" name="q" value="{{ filters.q }}" placeholder="搜索公司 / 数据库 / 子域名">
+  </label>
+  <button class="btn btn-p" type="submit">筛选</button>
+  <a class="btn" href="/admin/databases">清空</a>
+  <div class="fsp"></div>
+  <div class="fsum">显示 <strong>{{ rows | length }}</strong> / {{ total_rows }} 个租户库</div>
+</form>
+
+<section class="panel">
+  <div class="panel-head">
+    <span>租户库列表</span>
+    <span class="sub">只显示 host:port/database，账号密码不在页面输出</span>
+  </div>
+  <table class="grid">
+    <thead>
+      <tr>
+        <th style="width:36px">#</th>
+        <th>租户</th>
+        <th>数据库</th>
+        <th>连接状态</th>
+        <th>连接池策略</th>
+        <th>套餐</th>
+        <th>平台</th>
+        <th>员工</th>
+        <th style="width:160px">操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>
+          <span class="co-name">{{ row.company_name }}</span>
+          <div class="co-sub mono">{{ row.subdomain }}.xizhends.com · ID {{ row.tenant_id }}</div>
+        </td>
+        <td><span class="mono">{{ row.db_label }}</span></td>
+        <td><span class="st {{ row.connection_class }}"><span class="d"></span>{{ row.connection_label }}</span></td>
+        <td><span class="tag {% if row.status == "active" %}on{% else %}off{% endif %}">{{ row.pool_policy }}</span></td>
+        <td><span class="plan {{ row.plan }}">{{ row.plan }}</span></td>
+        <td>{{ row.platform_count }}</td>
+        <td>{{ row.staff_count }}</td>
+        <td>
+          <div class="row-act">
+            <a class="btn-xs" href="/admin/tenants?q={{ row.subdomain }}">查看租户</a>
+            {% if row.action_enabled %}
+            <form class="inline-form" method="post" action="/admin/databases/{{ row.tenant_id }}/invalidate">
+              <button class="btn-xs" type="submit">重置连接池</button>
+            </form>
+            {% else %}
+            <button class="btn-xs" type="button" disabled>等待修正</button>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9">暂无符合筛选条件的租户库</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><span>运维说明</span></div>
+  <div class="panel-body db-note">
+    <div>
+      <div class="co-name">按需建池</div>
+      <div class="co-sub">租户库连接池在租户访问时懒创建，空闲超过阈值后由后台任务回收。</div>
+    </div>
+    <div>
+      <div class="co-name">安全展示</div>
+      <div class="co-sub">本页不会输出完整 DSN、数据库账号、密码、会话密钥或外部 API 凭证。</div>
+    </div>
+    <div>
+      <div class="co-name">配置异常</div>
+      <div class="co-sub">如果数据库标签显示为破折号，需要回到租户管理页修正该租户的 DSN 配置。</div>
+    </div>
+  </div>
+</section>
+{% endblock admin_content %}
+
+{% block admin_head_extra %}
+<style>
+  .db-note { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 900px) {
+    .db-note { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock admin_head_extra %}

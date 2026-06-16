@@ -1,0 +1,94 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}超管后台 · 平台授权{% endblock title %}
+{% block nav_auth %}active{% endblock nav_auth %}
+
+{% block admin_head_extra %}
+<style>
+  body.admin-identity { --admin-accent: {{ admin_accent }}; }
+  .auth-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .auth-card { background: #fff; }
+  .auth-card.state-disabled { opacity: .76; }
+  .auth-card.state-locked { border-color: #f59e0b; box-shadow: inset 0 0 0 1px #f59e0b; }
+  .auth-card.state-normal { border-color: #10b981; }
+  .state-pill { display: inline-flex; min-width: 58px; min-height: 22px; align-items: center; justify-content: center; padding: 1px 8px; font-size: 10px; font-weight: 800; }
+  .state-pill.disabled { background: #f3f4f6; color: #6b7280; }
+  .state-pill.normal { background: #dcfce7; color: #166534; }
+  .state-pill.locked { background: #ffedd5; color: #9a3412; }
+  .platform-code { color: var(--text-muted); font-size: 10px; font-weight: 700; }
+  .auth-action { margin-top: 8px; display: grid; gap: 6px; }
+  .switch-field { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 30px; border-top: 1px solid #f3f4f6; color: #374151; font-size: 11px; font-weight: 700; }
+  .switch-field input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; pointer-events: none; }
+  .switch { position: relative; width: 36px; height: 18px; background: #d1d5db; cursor: pointer; }
+  .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: #fff; transition: left .15s ease; }
+  .switch-field input:checked + .switch { background: #07C160; }
+  .switch-field.lock input:checked + .switch { background: #f59e0b; }
+  .switch-field input:checked + .switch::after { left: 20px; }
+  .auth-save { justify-self: end; min-width: 60px; }
+  .empty-state { padding: 42px 16px; border: 1px dashed var(--border); background: #fff; color: #6b7280; text-align: center; font-size: 13px; }
+  @media (max-width: 900px) {
+    .auth-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock admin_head_extra %}
+
+{% block admin_content %}
+<header class="page-head">
+  <h1>平台授权 <span class="sub">控制每家公司可访问的电商平台</span></h1>
+</header>
+
+{% if has_tenants %}
+<form class="filter" method="get" action="/admin/platform-auth">
+  <label class="fg" for="tenant_id"><span>选择租户</span></label>
+  <select id="tenant_id" name="tenant_id" onchange="this.form.submit()">
+    {% for tenant in tenants %}
+    <option value="{{ tenant.id }}" {% if tenant.selected %}selected{% endif %}>{{ tenant.company_name }}（{{ tenant.subdomain }}）</option>
+    {% endfor %}
+  </select>
+  <noscript><button class="btn btn-p" type="submit">查看</button></noscript>
+  <div class="fsp"></div>
+  <div class="fsum">绿色=已开通 · 橙色=锁定 · 灰色=未开通</div>
+</form>
+{% endif %}
+
+{% if has_tenants and selected_tenant_id %}
+<section class="panel">
+  <div class="panel-head">
+    <span>平台开通 / 锁定</span>
+    <span class="sub">{{ selected_tenant_name }} · ID {{ selected_tenant_id }} · {{ selected_tenant_status }}</span>
+  </div>
+  <div class="panel-body">
+    <div class="auth-grid">
+      {% for platform in platforms %}
+      <form class="auth-card state-{{ platform.state_class }}" method="post" action="/admin/platform-auth">
+        <input type="hidden" name="tenant_id" value="{{ selected_tenant_id }}">
+        <input type="hidden" name="platform_code" value="{{ platform.code }}">
+        <div class="pf-name">
+          <span>{{ platform.name }}</span>
+          <span class="state-pill {{ platform.state_class }}">{{ platform.state_label }}</span>
+        </div>
+        <div class="platform-code">{{ platform.code | upper }} · sort {{ platform.sort_order }}</div>
+        <div class="auth-action">
+          <label class="switch-field">
+            <span>开通访问</span>
+            <input type="checkbox" name="enabled" value="true" {% if platform.enabled %}checked{% endif %} onchange="this.form.submit()">
+            <span class="switch"></span>
+          </label>
+          <label class="switch-field lock">
+            <span>锁定</span>
+            <input type="checkbox" name="locked" value="true" {% if platform.locked %}checked{% endif %} onchange="this.form.submit()">
+            <span class="switch"></span>
+          </label>
+          <button class="btn-xs auth-save" type="submit">保存</button>
+        </div>
+      </form>
+      {% else %}
+      <div class="empty-state">暂无平台目录</div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% else %}
+<div class="empty-state">暂无租户，请先创建租户。</div>
+{% endif %}
+{% endblock admin_content %}

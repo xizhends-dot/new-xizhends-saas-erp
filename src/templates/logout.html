@@ -1,0 +1,144 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ page_title }}{% endblock title %}
+{% block body_class %}{{ body_class }}{% endblock body_class %}
+
+{% block head_extra %}
+<style>
+  body {
+    background: #f9fafb;
+    color: #111827;
+  }
+  .app-header {
+    width: min(440px, calc(100vw - 32px));
+    margin: 40px auto 0;
+    padding: 0;
+  }
+  .app-header .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #111827;
+    font-size: 13px;
+    letter-spacing: .04em;
+  }
+  .app-header .brand::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    background: var(--tenant-accent);
+    display: inline-block;
+  }
+  .logout-shell {
+    width: min(440px, calc(100vw - 32px));
+    margin: 18px auto 0;
+    border: 1px solid #9CA3AF;
+    background: #fff;
+    box-shadow: 0 12px 28px rgba(17, 24, 39, .08);
+  }
+  .logout-head {
+    padding: 22px 24px 18px;
+    border-bottom: 1px solid #9CA3AF;
+  }
+  .logout-body {
+    padding: 20px 24px 24px;
+  }
+  .logout-title {
+    margin: 0;
+    color: #111827;
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: 0;
+  }
+  .logout-subtitle {
+    margin: 6px 0 0;
+    color: #6B7280;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .logout-actions {
+    display: grid;
+    gap: 10px;
+  }
+  .logout-actions form {
+    margin: 0;
+  }
+  .logout-submit,
+  .logout-link {
+    width: 100%;
+    min-height: 38px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .logout-submit {
+    border: 1px solid var(--tenant-accent);
+    background: var(--tenant-accent);
+    color: #fff;
+    cursor: pointer;
+  }
+  .logout-submit:hover {
+    filter: brightness(.96);
+  }
+  .logout-link {
+    border: 1px solid #9CA3AF;
+    background: #fff;
+    color: #6B7280;
+  }
+  .logout-link:hover {
+    border-color: var(--tenant-accent);
+    color: var(--tenant-accent);
+  }
+  .logout-scope {
+    display: inline-flex;
+    align-items: center;
+    min-height: 20px;
+    margin-bottom: 10px;
+    padding: 2px 8px;
+    background: #ecfdf5;
+    color: var(--tenant-accent);
+    font-size: 10px;
+    font-weight: 800;
+  }
+  body.admin-identity .logout-scope { background: #ecfdf5; }
+  .logout-note {
+    margin-top: 14px;
+    color: #9CA3AF;
+    font-size: 10px;
+    line-height: 1.6;
+  }
+  @media (max-width: 520px) {
+    .app-header { margin-top: 24px; }
+    .logout-head, .logout-body { padding-left: 18px; padding-right: 18px; }
+  }
+</style>
+{% endblock head_extra %}
+
+{% block content %}
+<section class="logout-shell" data-logout-scope="{{ scope }}" data-logout-mode="{{ mode }}">
+  <div class="logout-head">
+    <div class="logout-scope">{% if scope == "admin" %}SAAS ADMIN{% else %}TENANT ERP{% endif %}</div>
+    <h1 class="logout-title">{{ page_title }}</h1>
+    <p class="logout-subtitle">{{ subtitle }}</p>
+  </div>
+
+  <div class="logout-body">
+    <div class="logout-actions">
+      {% if is_completed %}
+      <a class="logout-submit" href="{{ primary_href }}">{{ primary_action }}</a>
+      {% else %}
+      <form method="post" action="/logout">
+        <button class="logout-submit" type="submit">{{ primary_action }}</button>
+      </form>
+      <a class="logout-link" href="{{ cancel_href }}">取消</a>
+      {% endif %}
+    </div>
+    <div class="logout-note">退出操作会清除浏览器会话，并让服务端会话立即失效。</div>
+  </div>
+</section>
+{% endblock content %}

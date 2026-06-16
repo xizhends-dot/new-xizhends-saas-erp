@@ -1,0 +1,218 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}超管后台 · 套餐 / 计费{% endblock title %}
+{% block nav_billing %}active{% endblock nav_billing %}
+
+{% block admin_head_extra %}
+<style>
+  body.admin-identity { --admin-accent: {{ admin_accent }}; }
+  .billing-money-stat { font-size: 24px; white-space: nowrap; }
+  .billing-settings { display: grid; grid-template-columns: minmax(220px, .9fr) minmax(0, 1.6fr); gap: 12px; align-items: stretch; }
+  .billing-rule { border: 1px solid var(--border); padding: 12px 14px; background: #f8fafc; }
+  .billing-rule-value { margin-top: 6px; color: #111827; font-size: 24px; font-weight: 800; line-height: 1; }
+  .billing-rule-list { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+  .billing-rule-list li { border-left: 3px solid var(--admin-accent); background: #fff; padding: 6px 8px; color: #374151; font-size: 11px; }
+  .billing-setting-form { border: 1px solid var(--border); padding: 12px 14px; display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+  .billing-setting-form label, .recharge-form label { display: grid; gap: 4px; color: var(--text-secondary); font-size: 10px; font-weight: 800; }
+  .billing-setting-form input, .recharge-form input { min-height: 30px; padding: 5px 8px; border: 1px solid var(--border); color: #111827; font: inherit; background: #fff; outline: none; }
+  .billing-setting-form input:focus, .recharge-form input:focus { border-color: var(--admin-accent); box-shadow: inset 3px 0 0 var(--admin-accent); }
+  .billing-table-wrap { overflow-x: auto; }
+  .money-ok { color: #047857; font-weight: 800; white-space: nowrap; }
+  .money-bad { color: #b91c1c; font-weight: 800; white-space: nowrap; }
+  .money-plain { color: #111827; font-weight: 800; white-space: nowrap; }
+  .billing-state { min-width: 66px; text-align: center; }
+  .billing-muted { color: var(--text-muted); }
+  .recharge-form { display: flex; align-items: end; gap: 6px; flex-wrap: wrap; min-width: 250px; }
+  .recharge-amount { width: 76px; }
+  .recharge-note { width: 118px; }
+  .ledger-note { max-width: 260px; white-space: normal; color: var(--text-secondary); }
+  @media (max-width: 900px) {
+    .billing-settings { grid-template-columns: 1fr; }
+    .billing-money-stat { font-size: 22px; }
+  }
+</style>
+{% endblock admin_head_extra %}
+
+{% block admin_content %}
+<header class="page-head">
+  <h1>套餐 / 计费 <span class="sub">预存余额与租户使用状态</span></h1>
+  <div class="head-actions">
+    <a class="btn" href="/admin/tenants">租户管理</a>
+    <a class="btn" href="/admin/platform-auth">平台授权</a>
+  </div>
+</header>
+
+<section class="stats">
+  <div class="stat">
+    <div class="stat-label">预存总余额</div>
+    <div class="stat-value billing-money-stat">{{ stats.total_balance }}</div>
+    <div class="stat-sub">全部租户余额合计</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">本月预估</div>
+    <div class="stat-value billing-money-stat">{{ stats.monthly_estimate }}</div>
+    <div class="stat-sub">账号数 × 平台数 × 单价</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">可使用租户</div>
+    <div class="stat-value">{{ stats.available_tenants }}</div>
+    <div class="stat-sub">余额覆盖当前月预估</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">余额不足租户</div>
+    <div class="stat-value">{{ stats.insufficient_tenants }}</div>
+    <div class="stat-sub">需要先充值</div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <span>计费设置</span>
+    <span class="sub">每个平台账号 / 月</span>
+  </div>
+  <div class="panel-body">
+    <div class="billing-settings">
+      <div class="billing-rule">
+        <div class="co-sub">当前单价</div>
+        <div class="billing-rule-value">{{ settings.platform_account_unit_label }}</div>
+        <div class="co-sub" style="margin-top:8px;">周期 {{ settings.billing_cycle }} · 币种 {{ settings.currency }}</div>
+        <ul class="billing-rule-list">
+          <li>账号数按 max(租户员工数, 1) 计算，新租户至少按 1 个账号估算。</li>
+          <li>平台数取 tenant_platform.enabled=1；锁定但仍开通的平台仍计入预估。</li>
+          <li>租户状态为正常，且预存余额覆盖本月预估费用时才允许使用。</li>
+        </ul>
+      </div>
+      <form class="billing-setting-form" method="post" action="/admin/billing/settings">
+        <label>
+          单价（RMB）
+          <input name="platform_account_unit_yuan" value="{{ settings.platform_account_unit_yuan }}" inputmode="decimal" required>
+        </label>
+        <button class="btn btn-p" type="submit">保存单价</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<form class="filter" method="get" action="/admin/billing">
+  <label class="fg">
+    <span>套餐</span>
+    <select name="plan">
+      <option value="" {% if filters.plan == "" %}selected{% endif %}>全部</option>
+      <option value="basic" {% if filters.plan == "basic" %}selected{% endif %}>basic</option>
+      <option value="pro" {% if filters.plan == "pro" %}selected{% endif %}>pro</option>
+      <option value="ent" {% if filters.plan == "ent" %}selected{% endif %}>ent</option>
+    </select>
+  </label>
+  <label class="fg">
+    <span>计费状态</span>
+    <select name="status">
+      <option value="" {% if filters.status == "" %}selected{% endif %}>全部</option>
+      <option value="available" {% if filters.status == "available" %}selected{% endif %}>可使用</option>
+      <option value="insufficient" {% if filters.status == "insufficient" %}selected{% endif %}>余额不足</option>
+      <option value="tenant_suspended" {% if filters.status == "tenant_suspended" %}selected{% endif %}>租户停用</option>
+    </select>
+  </label>
+  <label class="fg">
+    <input type="text" name="q" value="{{ filters.q }}" placeholder="搜索公司 / 子域名 / 套餐 / 状态">
+  </label>
+  <button class="btn btn-p" type="submit">筛选</button>
+  <a class="btn" href="/admin/billing">清空</a>
+  <div class="fsp"></div>
+  <div class="fsum">显示 <strong>{{ tenants | length }}</strong> / {{ total_tenants }} 家租户</div>
+</form>
+
+<section class="panel">
+  <div class="panel-head">
+    <span>租户计费清单</span>
+    <span class="sub">按当前平台授权实时预估</span>
+  </div>
+  <div class="billing-table-wrap">
+    <table class="grid">
+      <thead>
+        <tr>
+          <th style="width:36px">#</th>
+          <th>公司</th>
+          <th>套餐</th>
+          <th>账号数</th>
+          <th>平台数</th>
+          <th>单价</th>
+          <th>本月预估</th>
+          <th>预存余额</th>
+          <th>预计剩余</th>
+          <th>使用状态</th>
+          <th style="width:280px">充值</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tenants %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>
+            <span class="co-name">{{ t.company_name }}</span>
+            <div class="co-sub mono">{{ t.subdomain }}.xizhends.com · ID {{ t.tenant_id }}</div>
+          </td>
+          <td><span class="plan {{ t.plan_class }}">{{ t.plan }}</span><div class="co-sub">{{ t.plan_label }}</div></td>
+          <td><span class="money-plain">{{ t.billable_accounts }}</span><div class="co-sub">员工 {{ t.staff_count }}</div></td>
+          <td><span class="money-plain">{{ t.enabled_platforms }}</span></td>
+          <td class="money-plain">{{ t.unit_price }}</td>
+          <td class="money-plain">{{ t.estimated_monthly }}</td>
+          <td class="money-plain">{{ t.balance }}</td>
+          <td class="{{ t.remaining_class }}">{{ t.remaining_after_estimate }}</td>
+          <td><span class="tag {{ t.billing_status_class }} billing-state">{{ t.billing_status_label }}</span></td>
+          <td>
+            <form class="recharge-form" method="post" action="/admin/billing/{{ t.tenant_id }}/recharge">
+              <label>
+                金额
+                <input class="recharge-amount" name="amount_yuan" inputmode="decimal" placeholder="50.00" required>
+              </label>
+              <label>
+                备注
+                <input class="recharge-note" name="note" placeholder="预存">
+              </label>
+              <button class="btn-xs btn-p" type="submit">充值</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="11" class="billing-muted">暂无符合筛选条件的租户</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <span>最近流水</span>
+    <span class="sub">预存、调整与扣费记录</span>
+  </div>
+  <div class="billing-table-wrap">
+    <table class="grid">
+      <thead>
+        <tr>
+          <th style="width:150px">时间</th>
+          <th>租户</th>
+          <th>类型</th>
+          <th>金额</th>
+          <th>余额</th>
+          <th>备注</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in ledger %}
+        <tr>
+          <td class="co-sub">{{ item.created_at }}</td>
+          <td><span class="co-name">{{ item.company_name }}</span><div class="co-sub">ID {{ item.tenant_id }}</div></td>
+          <td><span class="tag {{ item.entry_type_class }}">{{ item.entry_type_label }}</span></td>
+          <td class="{{ item.amount_class }}">{{ item.amount }}</td>
+          <td class="money-plain">{{ item.balance_after }}</td>
+          <td class="ledger-note">{{ item.note }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="billing-muted">暂无计费流水</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock admin_content %}

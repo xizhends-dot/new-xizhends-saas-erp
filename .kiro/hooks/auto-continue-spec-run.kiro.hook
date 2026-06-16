@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Auto-continue spec execution",
+  "description": "当代理停止时，自动检查 order-system-rewrite 的 tasks.md 是否仍有未完成任务，若有则继续按依赖派发执行直至全部完成并通过二次检查。",
+  "version": "1",
+  "when": {
+    "type": "agentStop"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "监控触发：检查 e:\\西阵订单系统\\新订单系统\\.kiro\\specs\\order-system-rewrite\\tasks.md 的任务状态（taskList summary）。如果 remaining > 0 或仍有 in_progress/ready/未跑的可选测试任务，请立即继续作为编排者派发子代理推进剩余任务（数据迁移 17.x 顺序链、wiring 18.x、检查点 12/16/19、可选测试），每完成一个就用 taskUpdate 标记 completed 并简报进度；全部完成后执行用户要求的二次检查（cargo build + cargo test 全量 + 跨任务一致性复核），并输出最终报告。如果确实 100% 完成且二次检查通过，则回复一句“全部完成”并不再继续。不要在中途无故停止。"
+  }
+}

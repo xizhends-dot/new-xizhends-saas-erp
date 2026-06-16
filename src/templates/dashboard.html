@@ -1,0 +1,113 @@
+{% extends "tenant/layout.html" %}
+
+{% block title %}首页仪表盘 · {{ tenant_name }}{% endblock title %}
+
+{% block tenant_content %}
+<header class="page-head">
+  <div>
+    <h1>首页仪表盘 <span class="plat-tag">工作台</span></h1>
+    <div class="head-sub">订单 {{ stats.total_orders }} · 国内采购 {{ stats.cn_purchase_items }} · 日本仓 {{ stats.jp_stock_items }}</div>
+  </div>
+  <div class="head-actions">
+    <button class="btn" type="button" disabled title="导入接口尚未接入">快捷导入</button>
+    <button class="btn" type="button" disabled title="手动录入接口尚未接入">手动录入</button>
+    <a class="btn" href="/orders">平台订单</a>
+    <a class="btn btn-p" href="/search">全局搜索</a>
+  </div>
+</header>
+
+<section class="stats">
+  <div class="stat">
+    <div class="stat-label">订单总数</div>
+    <div class="stat-value">{{ stats.total_orders }}</div>
+    <div class="stat-sub">租户库 orders</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">国内采购</div>
+    <div class="stat-value">{{ stats.cn_purchase_items }}</div>
+    <div class="stat-sub">cn_purchase 子商品</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">日本仓</div>
+    <div class="stat-value">{{ stats.jp_stock_items }}</div>
+    <div class="stat-sub">jp_stock 子商品</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">待定货源</div>
+    <div class="stat-value">{{ stats.pending_items }}</div>
+    <div class="stat-sub">需要客服改判</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">国际物流</div>
+    <div class="stat-value">{{ stats.intl_shipments }}</div>
+    <div class="stat-sub">intl_shipments</div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <span>平台入口</span>
+    <span class="sub">由超管平台授权控制</span>
+  </div>
+  <div class="panel-body">
+    <div class="platform-grid">
+      {% for p in platform_menu %}
+        {% if p.state == "Normal" %}
+        <a class="platform-card" href="/orders?platform={{ p.code }}">
+          <div class="pf-name">{{ p.name }}</div>
+          <div class="pf-code">{{ p.code | upper }} · 已开通</div>
+        </a>
+        {% elif p.state == "Locked" %}
+        <div class="platform-card locked">
+          <div class="pf-name">{{ p.name }}</div>
+          <div class="pf-code">{{ p.code | upper }} · 已锁定</div>
+        </div>
+        {% endif %}
+      {% else %}
+      <div class="empty-state"><strong>暂无平台授权</strong><span>请在超管后台为该租户开通平台。</span></div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<div class="dash-grid">
+  <section class="panel">
+    <div class="panel-head"><span>最近订单</span><a class="btn-xs" href="/orders">查看全部</a></div>
+    <table class="grid">
+      <thead><tr><th>平台</th><th>订单号</th><th>客户</th><th>状态</th><th>导入时间</th></tr></thead>
+      <tbody>
+        {% for o in recent_orders %}
+        <tr>
+          <td>{{ o.platform | upper }}</td>
+          <td><a class="oid-link" href="/orders?keyword={{ o.platform_order_id }}">{{ o.platform_order_id }}</a></td>
+          <td>{{ o.customer_name }}</td>
+          <td>{{ o.order_status }}</td>
+          <td class="mono">{{ o.imported_at }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">暂无订单</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><span>最近操作</span></div>
+    <table class="grid">
+      <thead><tr><th>时间</th><th>操作人</th><th>动作</th><th>字段</th></tr></thead>
+      <tbody>
+        {% for log in recent_logs %}
+        <tr>
+          <td class="mono">{{ log.created_at }}</td>
+          <td>{{ log.operator }}</td>
+          <td>{{ log.action_type }}</td>
+          <td>{{ log.field_name }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">暂无操作日志</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+{% endblock tenant_content %}

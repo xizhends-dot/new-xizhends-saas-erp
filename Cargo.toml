@@ -1,0 +1,43 @@
+[package]
+name = "order-system-rewrite"
+version = "0.1.0"
+edition = "2021"
+description = "西阵多租户订单系统重写（Rust + Axum + Tera + SQLx + tokio）"
+
+[dependencies]
+# Web 框架与运行时
+axum = "0.7"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+
+# 模板引擎
+tera = "1"
+
+# 数据库访问（仅 MySQL；关闭默认特性以避免引入 sqlite/postgres 等需要 C 编译器的驱动）
+sqlx = { version = "0.7", default-features = false, features = ["mysql", "runtime-tokio", "macros", "migrate", "chrono", "json"] }
+
+# 序列化
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# 日期时间（与 sqlx 的 chrono 0.4 特性统一；启用 serde 以便订单模型序列化到 JSON/Tera）
+chrono = { version = "0.4", default-features = false, features = ["serde"] }
+
+# 多租户连接池缓存
+dashmap = "5"
+
+# 密码哈希
+argon2 = "0.5"
+
+# 日志
+tracing = "0.1"
+
+# 错误处理
+anyhow = "1"
+thiserror = "1"
+
+# 异步 trait（integration traits）
+async-trait = "0.1"
+
+[dev-dependencies]
+# 属性测试
+proptest = "1"

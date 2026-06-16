@@ -1,0 +1,6 @@
+Host xizhends-prod
+    HostName example.com
+    Port 22
+    User root
+    IdentityFile C:/Users/your-name/.ssh/xizhends_prod
+    IdentitiesOnly yes

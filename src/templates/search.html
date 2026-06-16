@@ -1,0 +1,54 @@
+{% extends "tenant/layout.html" %}
+
+{% block title %}全局搜索 · {{ tenant_name }}{% endblock title %}
+
+{% block tenant_content %}
+<header class="page-head">
+  <div>
+    <h1>全局搜索 <span class="plat-tag">订单 / 商品 / 物流</span></h1>
+    <div class="head-sub">跨订单号、客户、ItemId、1688 单号、运单号检索</div>
+  </div>
+  <div class="head-actions">
+    <a class="btn" href="/orders">返回订单</a>
+  </div>
+</header>
+
+<section class="panel">
+  <div class="panel-body">
+    <form class="search-row" method="get" action="/search">
+      <input class="search-input" name="q" value="{{ query }}" placeholder="输入订单号、商品编码、客户、运单号或 1688 单号">
+      <button class="btn btn-p" type="submit">搜索</button>
+    </form>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <span>搜索结果</span>
+    <span class="sub">{% if results.query %}关键词：{{ results.query }} · {% endif %}{{ results.hits | length }} 条命中</span>
+  </div>
+  <table class="grid">
+    <thead>
+      <tr><th>平台</th><th>订单号</th><th>子商品</th><th>命中字段</th><th>命中内容</th><th>操作</th></tr>
+    </thead>
+    <tbody>
+      {% for hit in results.hits %}
+      <tr>
+        <td>{{ hit.platform | upper }}</td>
+        <td><span class="mono">{{ hit.platform_order_id }}</span></td>
+        <td>{% if hit.order_item_id %}#{{ hit.order_item_id }}{% else %}-{% endif %}</td>
+        <td>{{ hit.matched_field }}</td>
+        <td>{{ hit.snippet }}</td>
+        <td><a class="btn-xs" href="/orders?keyword={{ hit.platform_order_id }}">查看订单</a></td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="6">
+          {% if results.query %}没有找到匹配结果{% else %}请输入关键词开始搜索{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock tenant_content %}
