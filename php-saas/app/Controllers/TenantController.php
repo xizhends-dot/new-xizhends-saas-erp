@@ -12,6 +12,7 @@ use Xizhen\Services\AuthService;
 use Xizhen\Services\CsvImportService;
 use Xizhen\Services\LegacySettingsService;
 use Xizhen\Services\MailService;
+use Xizhen\Services\OrderItemSaveRuleService;
 use Xizhen\Services\RakutenOrderService;
 
 final class TenantController
@@ -285,14 +286,26 @@ final class TenantController
         $orderId = (int) ($_POST['order_id'] ?? 0);
         $return = (string) ($_POST['return'] ?? "/orders/detail?tenant={$tenantKey}&id={$orderId}");
         $this->ensureItemAccess($tenantKey, $itemId);
+        $currentUser = $this->auth->currentTenantUser($tenantKey);
+        $order = $this->accessibleOrderForItem($tenantKey, $itemId, $currentUser);
+        $rules = new OrderItemSaveRuleService();
+        $currentItem = $order ? $rules->findItem($order, $itemId) : null;
+        if (!$order || !$currentItem) {
+            $this->forbid('当前账号没有该子商品的操作权限。');
+        }
 
         $data = $this->allowedOrderItemPostData($tenantKey);
         $data = array_filter($data, fn (mixed $value): bool => trim((string) $value) !== '');
+        $data = $rules->withAutoBuyer($data, $currentItem, $currentUser);
         if (!$data) {
             $this->forbid('当前租户未开通可保存的订单字段，请联系 SaaS 超级管理员。');
         }
+        $syncPlan = $rules->sameItemSyncPlan($order, $itemId, $data);
 
         $this->store->updateOrderItem($tenantKey, $itemId, $data);
+        if ($syncPlan['item_ids'] && $syncPlan['changes']) {
+            $this->store->batchUpdateItems($tenantKey, $syncPlan['item_ids'], [], $syncPlan['changes']);
+        }
         redirect_to($return);
     }
 
@@ -1269,6 +1282,24 @@ final class TenantController
         }
 
         $this->forbid('当前账号没有该子商品的操作权限。');
+    }
+
+    /** @param array<string, mixed>|null $user @return array<string, mixed>|null */
+    private function accessibleOrderForItem(string $tenantKey, int $itemId, ?array $user): ?array
+    {
+        if ($itemId <= 0) {
+            return null;
+        }
+
+        foreach ($this->service->ordersForUser($tenantKey, $user) as $order) {
+            foreach ($order['items'] ?? [] as $item) {
+                if ((int) ($item['id'] ?? 0) === $itemId) {
+                    return $order;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
