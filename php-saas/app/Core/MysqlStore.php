@@ -1043,8 +1043,14 @@ SQL)->fetchAll();
      * @param array<int, int> $orderIds
      * @param array<string, mixed> $changes
      */
-    public function batchUpdateItems(string $tenantKey, array $itemIds, array $orderIds, array $changes): void
-    {
+    public function batchUpdateItems(
+        string $tenantKey,
+        array $itemIds,
+        array $orderIds,
+        array $changes,
+        string $operator = '系统管理员',
+        string $action = '批量更新'
+    ): void {
         $tenantPdo = $this->tenantPdo($tenantKey);
         if (!$tenantPdo) {
             return;
@@ -1052,7 +1058,7 @@ SQL)->fetchAll();
 
         $ids = $this->resolveItemIds($tenantPdo, $itemIds, $orderIds);
         foreach ($ids as $id) {
-            $this->updateOrderItemData($tenantPdo, $id, $changes, '批量更新');
+            $this->updateOrderItemData($tenantPdo, $id, $changes, $action, $operator);
         }
     }
 
@@ -1209,14 +1215,19 @@ SQL)->fetchAll();
     }
 
     /** @param array<string, mixed> $data */
-    public function updateOrderItem(string $tenantKey, int $itemId, array $data): void
-    {
+    public function updateOrderItem(
+        string $tenantKey,
+        int $itemId,
+        array $data,
+        string $operator = '系统管理员',
+        string $action = '保存明细'
+    ): void {
         $tenantPdo = $this->tenantPdo($tenantKey);
         if (!$tenantPdo || $itemId <= 0) {
             return;
         }
 
-        $this->updateOrderItemData($tenantPdo, $itemId, $data, '保存明细');
+        $this->updateOrderItemData($tenantPdo, $itemId, $data, $action, $operator);
     }
 
     /**

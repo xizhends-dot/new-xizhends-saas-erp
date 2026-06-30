@@ -236,7 +236,14 @@ final class TenantController
 
         $changes = array_filter($changes, fn (mixed $value): bool => trim((string) $value) !== '');
         if ($changes) {
-            $this->store->batchUpdateItems($tenantKey, $itemIds, $orderIds, $changes);
+            $this->store->batchUpdateItems(
+                $tenantKey,
+                $itemIds,
+                $orderIds,
+                $changes,
+                $this->currentUserName($tenantKey),
+                $this->batchActionLogName($action)
+            );
         }
 
         redirect_to($return);
@@ -302,9 +309,16 @@ final class TenantController
         }
         $syncPlan = $rules->sameItemSyncPlan($order, $itemId, $data);
 
-        $this->store->updateOrderItem($tenantKey, $itemId, $data);
+        $this->store->updateOrderItem($tenantKey, $itemId, $data, $this->currentUserName($tenantKey), '保存明细');
         if ($syncPlan['item_ids'] && $syncPlan['changes']) {
-            $this->store->batchUpdateItems($tenantKey, $syncPlan['item_ids'], [], $syncPlan['changes']);
+            $this->store->batchUpdateItems(
+                $tenantKey,
+                $syncPlan['item_ids'],
+                [],
+                $syncPlan['changes'],
+                $this->currentUserName($tenantKey),
+                '同品项同步修改'
+            );
         }
         redirect_to($return);
     }
@@ -1250,6 +1264,17 @@ final class TenantController
     {
         $user = $this->auth->currentTenantUser($tenantKey);
         return (string) (($user['name'] ?? '') ?: ($user['username'] ?? '系统'));
+    }
+
+    private function batchActionLogName(string $action): string
+    {
+        return match ($action) {
+            'set_purchase_status' => '批量修改采购状态',
+            'assign_buyer' => '批量分配采购人',
+            'assign_jp' => '批量分配日本仓',
+            'mark_out' => '批量标记出库',
+            default => '批量更新',
+        };
     }
 
     private function ensureOrderAccess(string $tenantKey, int $orderId): void

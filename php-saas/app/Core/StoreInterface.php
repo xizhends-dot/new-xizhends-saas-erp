@@ -115,7 +115,14 @@ interface StoreInterface
      * @param array<int, int> $orderIds
      * @param array<string, mixed> $changes
      */
-    public function batchUpdateItems(string $tenantKey, array $itemIds, array $orderIds, array $changes): void;
+    public function batchUpdateItems(
+        string $tenantKey,
+        array $itemIds,
+        array $orderIds,
+        array $changes,
+        string $operator = '系统管理员',
+        string $action = '批量更新'
+    ): void;
 
     /**
      * @param array<int, int> $itemIds
@@ -141,7 +148,13 @@ interface StoreInterface
      * comment, tranship_comment, assignee, out_status, jp_warehouse_id,
      * intl_number, intl_fee, intl_qty, intl_weight, intl_comment.
      */
-    public function updateOrderItem(string $tenantKey, int $itemId, array $data): void;
+    public function updateOrderItem(
+        string $tenantKey,
+        int $itemId,
+        array $data,
+        string $operator = '系统管理员',
+        string $action = '保存明细'
+    ): void;
 
     /**
      * @param array<int, array<string, mixed>> $records

@@ -15,7 +15,7 @@
 
 ### 订单核心
 - ✅ **订单详情字段补全** — old `inc_order_detail_default.php` 字段远多于 php-saas。缺失字段：material(材质)、tranship_comment(跨境备注)、tabaono(1688单号)、caigoulink(采购链接)、caigoutime(采购时间)、caigou_ordernums、cnamount/comamount、weight 等。**这是其他功能的数据基础，先做。**（commit: feat: 补全订单详情字段）
-- ☐ **订单状态变更日志** — old 改 beizhu 状态时自动写状态变更历史（set_beizhustatus_log）。php-saas 操作日志有，但状态流转历史粒度需补。
+- ✅ **订单状态变更日志** — old 改 beizhu 状态时自动写状态变更历史（set_beizhustatus_log）。php-saas 操作日志有，但状态流转历史粒度需补。（commit: feat: 补齐订单状态流转日志）
 - ✅ **采购人自动记录** — old 采购员首次填 1688 单号(tabaono)时自动记 caigou_user。php-saas 有 buyer 字段但无自动赋值逻辑。（commit: feat: 迁移订单保存规则）
 - ✅ **同品项同步修改** — old 改 material/tranship_comment 时自动同步同 ItemId 的其他行。php-saas 缺。（commit: feat: 迁移订单保存规则）
 - ☐ **发货流程 sendjp / sendxizhends** — old 批量"已发日本"状态 + 西阵发货(调1688物流API)。php-saas 有批量框架但无发货端点。

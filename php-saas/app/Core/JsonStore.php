@@ -817,8 +817,14 @@ final class JsonStore implements StoreInterface
      * @param array<int, int> $orderIds
      * @param array<string, mixed> $changes
      */
-    public function batchUpdateItems(string $tenantKey, array $itemIds, array $orderIds, array $changes): void
-    {
+    public function batchUpdateItems(
+        string $tenantKey,
+        array $itemIds,
+        array $orderIds,
+        array $changes,
+        string $operator = '系统管理员',
+        string $action = '批量更新'
+    ): void {
         $itemIds = array_values(array_unique(array_map('intval', $itemIds)));
         $orderIds = array_values(array_unique(array_map('intval', $orderIds)));
         if (!$itemIds && !$orderIds) {
@@ -837,7 +843,7 @@ final class JsonStore implements StoreInterface
                     continue;
                 }
 
-                $this->applyItemChanges($item, $changes, (int) ($order['id'] ?? 0));
+                $this->applyItemChanges($item, $changes, (int) ($order['id'] ?? 0), $action, $operator);
             }
             unset($item);
         }
@@ -1001,8 +1007,13 @@ final class JsonStore implements StoreInterface
     }
 
     /** @param array<string, mixed> $data */
-    public function updateOrderItem(string $tenantKey, int $itemId, array $data): void
-    {
+    public function updateOrderItem(
+        string $tenantKey,
+        int $itemId,
+        array $data,
+        string $operator = '系统管理员',
+        string $action = '保存明细'
+    ): void {
         if ($itemId <= 0) {
             return;
         }
@@ -1018,7 +1029,7 @@ final class JsonStore implements StoreInterface
                     continue;
                 }
 
-                $this->applyItemChanges($item, $data, (int) ($order['id'] ?? 0), '保存明细');
+                $this->applyItemChanges($item, $data, (int) ($order['id'] ?? 0), $action, $operator);
             }
             unset($item);
         }

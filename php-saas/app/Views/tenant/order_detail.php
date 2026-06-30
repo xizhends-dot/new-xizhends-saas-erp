@@ -247,6 +247,29 @@ $canEditAnyItemField = $canEditOrders || $canEditPurchase || $canEditJp || $canC
                 </div>
             <?php endif; ?>
 
+            <?php $statusLogs = array_values(array_filter($item['logs'] ?? [], fn (array $log): bool => ($log['field'] ?? '') === 'purchase_status')); ?>
+            <div class="detail-log">
+                <div class="detail-log-title">状态流转历史</div>
+                <table class="log-table">
+                    <thead><tr><th>时间</th><th>操作人</th><th>来源</th><th>旧状态</th><th>新状态</th><th>IP</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($statusLogs as $log): ?>
+                        <tr>
+                            <td><?= e($log['time'] ?? '') ?></td>
+                            <td><?= e($log['user'] ?? '') ?></td>
+                            <td><?= e($log['action'] ?? '') ?></td>
+                            <td><span class="log-old"><?= e($log['old'] ?? '') ?></span></td>
+                            <td><span class="log-new"><?= e($log['new'] ?? '') ?></span></td>
+                            <td><?= e($log['ip'] ?? '') ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php if (!$statusLogs): ?>
+                        <tr><td colspan="6" class="sub">暂无状态流转记录。</td></tr>
+                    <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+
             <div class="detail-log">
                 <div class="detail-log-title">最近日志</div>
                 <table class="log-table">
