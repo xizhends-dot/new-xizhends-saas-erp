@@ -1065,6 +1065,52 @@ SQL)->fetchAll();
     /**
      * @param array<int, int> $itemIds
      */
+    public function transitionItemPurchaseStatus(
+        string $tenantKey,
+        array $itemIds,
+        string $fromStatus,
+        string $toStatus,
+        string $operator = '系统管理员',
+        string $action = '状态流转'
+    ): int {
+        $tenantPdo = $this->tenantPdo($tenantKey);
+        $itemIds = array_values(array_unique(array_filter(array_map('intval', $itemIds))));
+        $fromStatus = trim($fromStatus);
+        $toStatus = trim($toStatus);
+        if (!$tenantPdo || !$itemIds || $fromStatus === '' || $toStatus === '' || $fromStatus === $toStatus) {
+            return 0;
+        }
+
+        $updated = 0;
+        $tenantPdo->beginTransaction();
+        try {
+            $update = $tenantPdo->prepare('UPDATE order_items SET purchase_status = ? WHERE id = ? AND purchase_status = ?');
+            foreach ($itemIds as $itemId) {
+                $snapshot = $this->itemSnapshot($tenantPdo, $itemId);
+                if (!$snapshot || (string) ($snapshot['purchase_status'] ?? '') !== $fromStatus) {
+                    continue;
+                }
+
+                $update->execute([$toStatus, $itemId, $fromStatus]);
+                if ($update->rowCount() <= 0) {
+                    continue;
+                }
+
+                $this->insertItemLog($tenantPdo, (int) $snapshot['order_id'], $itemId, $action, 'purchase_status', $fromStatus, $toStatus, $operator);
+                $updated++;
+            }
+            $tenantPdo->commit();
+        } catch (\Throwable $error) {
+            $tenantPdo->rollBack();
+            throw $error;
+        }
+
+        return $updated;
+    }
+
+    /**
+     * @param array<int, int> $itemIds
+     */
     public function updateItemsLogistics(string $tenantKey, array $itemIds, string $status, string $action, string $operator): int
     {
         $tenantPdo = $this->tenantPdo($tenantKey);

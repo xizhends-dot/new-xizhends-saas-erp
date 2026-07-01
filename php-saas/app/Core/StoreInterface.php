@@ -127,6 +127,18 @@ interface StoreInterface
     /**
      * @param array<int, int> $itemIds
      */
+    public function transitionItemPurchaseStatus(
+        string $tenantKey,
+        array $itemIds,
+        string $fromStatus,
+        string $toStatus,
+        string $operator = '系统管理员',
+        string $action = '状态流转'
+    ): int;
+
+    /**
+     * @param array<int, int> $itemIds
+     */
     public function updateItemsLogistics(string $tenantKey, array $itemIds, string $status, string $action, string $operator): int;
 
     /** @param array<int, int> $orderIds */

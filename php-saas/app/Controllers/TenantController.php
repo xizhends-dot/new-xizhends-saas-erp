@@ -14,6 +14,7 @@ use Xizhen\Services\LegacySettingsService;
 use Xizhen\Services\MailService;
 use Xizhen\Services\OrderItemSaveRuleService;
 use Xizhen\Services\RakutenOrderService;
+use Xizhen\Services\ShippingWorkflowService;
 
 final class TenantController
 {
@@ -22,6 +23,7 @@ final class TenantController
     private LegacySettingsService $legacySettings;
     private MailService $mailService;
     private RakutenOrderService $rakutenOrderService;
+    private ShippingWorkflowService $shippingWorkflowService;
 
     public function __construct(private readonly StoreInterface $store, private readonly View $view, private readonly AuthService $auth)
     {
@@ -30,6 +32,7 @@ final class TenantController
         $this->legacySettings = new LegacySettingsService(BASE_PATH . '/../old/setting.ini');
         $this->mailService = new MailService($store);
         $this->rakutenOrderService = new RakutenOrderService($store);
+        $this->shippingWorkflowService = new ShippingWorkflowService();
     }
 
     public function loginForm(): void
@@ -952,6 +955,80 @@ final class TenantController
 
         $returnUrl = $this->safeReturn((string) ($_POST['return'] ?? tenant_url('/orders?view=platform', $tenantKey)), tenant_url('/orders?view=platform', $tenantKey));
         redirect_to($returnUrl . (str_contains($returnUrl, '?') ? '&' : '?') . 'message=' . rawurlencode($message));
+    }
+
+    public function sendJapan(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'orders.edit');
+        $this->requireTenantFeature($tenantKey, 'orders.purchase');
+        $this->auth->requireAnyTenantPermission($tenantKey, ['批量操作', '采购状态', '订单编辑']);
+
+        $itemIds = $this->intList($_POST['item_ids'] ?? []);
+        $orderIds = $this->auth->tenantCan($tenantKey, '批量操作') ? $this->intList($_POST['order_ids'] ?? []) : [];
+        $this->ensureBatchAccess($tenantKey, $itemIds, $orderIds);
+
+        $plan = $this->shippingWorkflowService->planSendJapan(
+            $tenantKey,
+            $this->service->ordersForUser($tenantKey, $this->auth->currentTenantUser($tenantKey)),
+            $itemIds,
+            $orderIds
+        );
+        $updated = 0;
+        if ($plan['item_ids']) {
+            $updated = $this->store->transitionItemPurchaseStatus(
+                $tenantKey,
+                $plan['item_ids'],
+                ShippingWorkflowService::STATUS_READY_FOR_JP,
+                ShippingWorkflowService::STATUS_SENT_TO_JP,
+                $this->currentUserName($tenantKey),
+                ShippingWorkflowService::ACTION_SEND_JP
+            );
+        }
+
+        $message = "已发日本更新 {$updated}/" . (int) $plan['selected'] . ' 件。';
+        if ((int) $plan['skipped'] > 0) {
+            $message .= ' 跳过 ' . (int) $plan['skipped'] . ' 件非已到货明细。';
+        }
+        $statusChanged = count($plan['item_ids']) - $updated;
+        if ($statusChanged > 0) {
+            $message .= ' 另有 ' . $statusChanged . ' 件在写入前状态已变化。';
+        }
+        $this->store->addImportExportLog($tenantKey, [
+            'type' => 'workflow',
+            'name' => '批量已发日本',
+            'status' => $updated > 0 ? '已更新' : '无可更新记录',
+            'file_name' => '',
+            'rows' => $updated,
+            'message' => $message,
+            'created_by' => $this->currentUserName($tenantKey),
+        ]);
+
+        $returnUrl = $this->safeReturn((string) ($_POST['return'] ?? tenant_url('/orders?view=purchase', $tenantKey)), tenant_url('/orders?view=purchase', $tenantKey));
+        redirect_to($returnUrl . (str_contains($returnUrl, '?') ? '&' : '?') . 'message=' . rawurlencode($message));
+    }
+
+    public function exportXizhenDelivery(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'import_export.center');
+        $this->requireTenantFeature($tenantKey, 'import_export.platform');
+        $this->auth->requireTenantPermission($tenantKey, '导入导出');
+        $this->ensurePlatformFeatureAccess($tenantKey, (string) ($_POST['platform'] ?? ''));
+
+        $criteria = $this->exportCriteriaFrom($_POST);
+        $orders = $this->service->ordersForExport($tenantKey, $this->auth->currentTenantUser($tenantKey), $criteria);
+        $platform = (string) ($_POST['platform'] ?? '');
+        $platformNames = $this->service->tenantPlatformNames($tenantKey);
+        $dataset = $this->shippingWorkflowService->xizhenDeliveryDataset(
+            $tenantKey,
+            $orders,
+            $platform,
+            $platformNames[$platform] ?? '',
+            $this->intList($_POST['item_ids'] ?? []),
+            $this->intList($_POST['order_ids'] ?? [])
+        );
+        $this->sendCsvDataset($tenantKey, $dataset);
     }
 
     public function syncRakutenOrders(): void

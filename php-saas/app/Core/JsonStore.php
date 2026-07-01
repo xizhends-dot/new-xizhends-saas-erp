@@ -856,6 +856,58 @@ final class JsonStore implements StoreInterface
     /**
      * @param array<int, int> $itemIds
      */
+    public function transitionItemPurchaseStatus(
+        string $tenantKey,
+        array $itemIds,
+        string $fromStatus,
+        string $toStatus,
+        string $operator = '系统管理员',
+        string $action = '状态流转'
+    ): int {
+        $itemIds = array_values(array_unique(array_filter(array_map('intval', $itemIds))));
+        $fromStatus = trim($fromStatus);
+        $toStatus = trim($toStatus);
+        if (!$itemIds || $fromStatus === '' || $toStatus === '' || $fromStatus === $toStatus) {
+            return 0;
+        }
+
+        $data = $this->all();
+        if (!isset($data['orders'][$tenantKey]) || !is_array($data['orders'][$tenantKey])) {
+            return 0;
+        }
+
+        $itemSet = array_flip($itemIds);
+        $updated = 0;
+        foreach ($data['orders'][$tenantKey] as &$order) {
+            foreach ($order['items'] as &$item) {
+                $itemId = (int) ($item['id'] ?? 0);
+                if ($itemId <= 0 || !isset($itemSet[$itemId])) {
+                    continue;
+                }
+                if ((string) ($item['purchase_status'] ?? '') !== $fromStatus) {
+                    continue;
+                }
+
+                $this->applyItemChanges($item, ['purchase_status' => $toStatus], (int) ($order['id'] ?? 0), $action, $operator);
+                if ((string) ($item['purchase_status'] ?? '') === $toStatus) {
+                    $updated++;
+                }
+            }
+            unset($item);
+        }
+        unset($order);
+
+        if ($updated > 0) {
+            $this->data = $data;
+            $this->save();
+        }
+
+        return $updated;
+    }
+
+    /**
+     * @param array<int, int> $itemIds
+     */
     public function updateItemsLogistics(string $tenantKey, array $itemIds, string $status, string $action, string $operator): int
     {
         $itemIds = array_values(array_unique(array_filter(array_map('intval', $itemIds))));
