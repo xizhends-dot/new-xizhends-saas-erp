@@ -939,15 +939,23 @@ final class TenantController
             $itemIds,
             $orderIds
         );
-        if ($type === '1688') {
+        if (!$targetItemIds) {
+            $updated = 0;
+            $message = match ($type) {
+                '1688' => '当前筛选范围没有符合条件的 1688 物流记录。',
+                'jp' => '当前筛选范围没有符合条件的日本物流记录。',
+                default => '当前筛选范围没有符合条件的物流记录。',
+            };
+            $logStatus = '无可更新记录';
+        } elseif ($type === '1688') {
             $syncResult = $this->alibaba1688LogisticsService->syncItems($tenantKey, $targetItemIds, [], $this->currentUserName($tenantKey));
             $updated = (int) $syncResult['updated'];
-            $message = $targetItemIds ? (string) $syncResult['message'] : '当前筛选范围没有符合条件的 1688 物流记录。';
+            $message = (string) $syncResult['message'];
             $logStatus = $syncResult['ok'] ? '同步完成' : '同步异常';
         } elseif ($type === 'jp') {
             $syncResult = $this->japanLogisticsService->syncItems($tenantKey, $targetItemIds, [], $this->currentUserName($tenantKey));
             $updated = (int) $syncResult['updated'];
-            $message = $targetItemIds ? (string) $syncResult['message'] : '当前筛选范围没有符合条件的日本物流记录。';
+            $message = (string) $syncResult['message'];
             $logStatus = $syncResult['ok'] ? '同步完成' : '同步异常';
         } else {
             $status = $this->service->logisticsUpdateStatus($type);
