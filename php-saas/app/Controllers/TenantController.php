@@ -7,6 +7,7 @@ namespace Xizhen\Controllers;
 use Xizhen\Core\Permission;
 use Xizhen\Core\StoreInterface;
 use Xizhen\Core\View;
+use Xizhen\Services\Alibaba1688LogisticsService;
 use Xizhen\Services\AppService;
 use Xizhen\Services\AuthService;
 use Xizhen\Services\CsvImportService;
@@ -24,6 +25,7 @@ final class TenantController
     private MailService $mailService;
     private PlatformOrderSyncRegistry $platformOrderSyncRegistry;
     private ShippingWorkflowService $shippingWorkflowService;
+    private Alibaba1688LogisticsService $alibaba1688LogisticsService;
 
     public function __construct(private readonly StoreInterface $store, private readonly View $view, private readonly AuthService $auth)
     {
@@ -33,6 +35,7 @@ final class TenantController
         $this->mailService = new MailService($store);
         $this->platformOrderSyncRegistry = new PlatformOrderSyncRegistry($store);
         $this->shippingWorkflowService = new ShippingWorkflowService();
+        $this->alibaba1688LogisticsService = new Alibaba1688LogisticsService($store);
     }
 
     public function loginForm(): void
@@ -933,21 +936,29 @@ final class TenantController
             $itemIds,
             $orderIds
         );
-        $status = $this->service->logisticsUpdateStatus($type);
-        $updated = $this->store->updateItemsLogistics(
-            $tenantKey,
-            $targetItemIds,
-            $status,
-            $this->service->logisticsUpdateName($type),
-            $this->currentUserName($tenantKey)
-        );
-        $message = $targetItemIds
-            ? "已触发 {$updated}/" . count($targetItemIds) . ' 条物流同步，真实轨迹等待接口接入后回写。'
-            : '当前筛选范围没有符合条件的物流记录。';
+        if ($type === '1688') {
+            $syncResult = $this->alibaba1688LogisticsService->syncItems($tenantKey, $targetItemIds, [], $this->currentUserName($tenantKey));
+            $updated = (int) $syncResult['updated'];
+            $message = $targetItemIds ? (string) $syncResult['message'] : '当前筛选范围没有符合条件的 1688 物流记录。';
+            $logStatus = $syncResult['ok'] ? '同步完成' : '同步异常';
+        } else {
+            $status = $this->service->logisticsUpdateStatus($type);
+            $updated = $this->store->updateItemsLogistics(
+                $tenantKey,
+                $targetItemIds,
+                $status,
+                $this->service->logisticsUpdateName($type),
+                $this->currentUserName($tenantKey)
+            );
+            $message = $targetItemIds
+                ? "已触发 {$updated}/" . count($targetItemIds) . ' 条物流同步，真实轨迹等待接口接入后回写。'
+                : '当前筛选范围没有符合条件的物流记录。';
+            $logStatus = $updated > 0 ? '已触发' : '无可更新记录';
+        }
         $this->store->addImportExportLog($tenantKey, [
             'type' => 'logistics',
             'name' => $this->service->logisticsUpdateName($type),
-            'status' => $updated > 0 ? '已触发' : '无可更新记录',
+            'status' => $logStatus,
             'file_name' => '',
             'rows' => $updated,
             'message' => $message,

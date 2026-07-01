@@ -30,7 +30,7 @@
   > 建议：抽象一个 `PlatformOrderSyncInterface`，RakutenOrderService 作为范本，各平台实现。
 
 ### 物流（php-saas 当前只有 UI 壳，无真实 API 对接）
-- ☐ **1688 采购物流：真实 API 对接 + 自动同步** — old `plugins/1688api/func.php`(1716行) + `cron/update_1688_logistics.php`(每2h)。php-saas `logistics1688` 只读现有库数据，updateLogistics 返回"等待接口回写"。
+- ✅ **1688 采购物流：真实 API 对接 + 自动同步** — old `plugins/1688api/func.php`(1716行) + `cron/update_1688_logistics.php`(每2h)。php-saas `logistics1688` 只读现有库数据，updateLogistics 返回"等待接口回写"。（commit: feat: 迁移 1688 采购物流同步）
 - ☐ **日本国际物流：佐川/日本邮政/雅玛多查询 + 自动同步** — old `plugins/jpshipinfo/`、`sagawa-shipinfo/` + `cron/update_jpship_logistics.php`(每天3次)。php-saas 完全无对接。
 - ✅ **定时任务(cron)框架** — old 靠 cron 脚本跑物流/订单同步。php-saas 只有 jobs.php 只读展示，无实际调度。建议用 Laravel Schedule/系统 cron。（commit: feat: 增加定时任务 CLI 框架）
 
