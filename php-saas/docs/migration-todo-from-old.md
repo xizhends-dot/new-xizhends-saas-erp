@@ -23,7 +23,7 @@
 
 ### 平台订单同步（最大缺口）
 - ✅ **Wowma 订单同步服务** — old `plugins/wmshopapi/`。php-saas 只有 RakutenOrderService。（commit: feat: 迁移 Wowma 订单同步服务）
-- ☐ **Yahoo Shop 订单同步服务** — old `plugins/yahooshop-api/`。
+- ✅ **Yahoo Shop 订单同步服务** — old `plugins/yahooshop-api/`。（commit: feat: 迁移 Yahoo Shop 订单同步服务）
 - ☐ **Mercari 订单同步服务** — old 支持平台 m。
 - ☐ **Qoo10 订单同步服务** — old 支持平台 q。
 - ☐ **雅虎拍卖订单同步服务** — old 支持平台 yp。
