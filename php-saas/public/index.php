@@ -64,6 +64,7 @@ $router->post('/orders/export', [$tenant, 'exportOrders']);
 $router->post('/orders/send-jp', [$tenant, 'sendJapan']);
 $router->post('/orders/xizhen-delivery/export', [$tenant, 'exportXizhenDelivery']);
 $router->post('/orders/logistics/update', [$tenant, 'updateLogistics']);
+$router->post('/orders/platform/sync', [$tenant, 'syncPlatformOrders']);
 $router->post('/orders/rakuten/sync', [$tenant, 'syncRakutenOrders']);
 $router->post('/orders/item/save', [$tenant, 'saveOrderItem']);
 $router->post('/orders/attachments/add', [$tenant, 'addOrderAttachment']);

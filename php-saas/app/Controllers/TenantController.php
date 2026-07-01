@@ -13,7 +13,7 @@ use Xizhen\Services\CsvImportService;
 use Xizhen\Services\LegacySettingsService;
 use Xizhen\Services\MailService;
 use Xizhen\Services\OrderItemSaveRuleService;
-use Xizhen\Services\RakutenOrderService;
+use Xizhen\Services\PlatformOrderSyncRegistry;
 use Xizhen\Services\ShippingWorkflowService;
 
 final class TenantController
@@ -22,7 +22,7 @@ final class TenantController
     private CsvImportService $csvImportService;
     private LegacySettingsService $legacySettings;
     private MailService $mailService;
-    private RakutenOrderService $rakutenOrderService;
+    private PlatformOrderSyncRegistry $platformOrderSyncRegistry;
     private ShippingWorkflowService $shippingWorkflowService;
 
     public function __construct(private readonly StoreInterface $store, private readonly View $view, private readonly AuthService $auth)
@@ -31,7 +31,7 @@ final class TenantController
         $this->csvImportService = new CsvImportService();
         $this->legacySettings = new LegacySettingsService(BASE_PATH . '/../old/setting.ini');
         $this->mailService = new MailService($store);
-        $this->rakutenOrderService = new RakutenOrderService($store);
+        $this->platformOrderSyncRegistry = new PlatformOrderSyncRegistry($store);
         $this->shippingWorkflowService = new ShippingWorkflowService();
     }
 
@@ -160,6 +160,7 @@ final class TenantController
             'keyword' => $keyword,
             'filters' => $filters,
             'platformNames' => $this->service->tenantPlatformNames($tenantKey),
+            'platformSyncServices' => $this->platformOrderSyncRegistry->names(),
             'stores' => $this->service->storesForTenant($tenantKey),
             'canEditOrders' => $canEditFeature && $this->auth->tenantCan($tenantKey, '订单编辑'),
             'canEditSource' => $canEditFeature && $this->service->tenantFeatureEnabled($tenantKey, 'orders.platform') && Permission::hasAny($currentUser, ['订单编辑', '货源改判']),
@@ -1033,17 +1034,29 @@ final class TenantController
 
     public function syncRakutenOrders(): void
     {
+        $_POST['platform'] = 'r';
+        $this->syncPlatformOrders();
+    }
+
+    public function syncPlatformOrders(): void
+    {
         $tenantKey = current_tenant_key();
         $this->requireTenantFeature($tenantKey, 'orders.platform');
         $this->requireTenantFeature($tenantKey, 'import_export.center');
         $this->requireTenantFeature($tenantKey, 'import_export.platform');
         $this->auth->requireAnyTenantPermission($tenantKey, ['导入导出', '订单编辑']);
-        $this->ensurePlatformFeatureAccess($tenantKey, 'r');
+
+        $platform = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($_POST['platform'] ?? '')) ?: '';
+        $service = $this->platformOrderSyncRegistry->get($platform);
+        if (!$service) {
+            $this->forbid('该平台暂未接入订单同步服务。');
+        }
+        $this->ensurePlatformFeatureAccess($tenantKey, $platform);
 
         $storeId = (int) ($_POST['store_id'] ?? 0);
         $store = $this->store->store($tenantKey, $storeId);
-        if (!$store || ($store['platform'] ?? '') !== 'r') {
-            $this->forbid('请选择乐天店铺后再同步。');
+        if (!$store || ($store['platform'] ?? '') !== $platform) {
+            $this->forbid('请选择' . $service->platformName() . '店铺后再同步。');
         }
         if (!Permission::canAccessStore($this->auth->currentTenantUser($tenantKey), (string) ($store['name'] ?? ''))) {
             $this->forbid('当前账号没有该店铺的订单同步权限。');
@@ -1051,13 +1064,13 @@ final class TenantController
 
         $days = $this->boundedInt($_POST['days'] ?? 7, 1, 30);
         $operator = $this->currentUserName($tenantKey);
-        $result = $this->rakutenOrderService->sync($tenantKey, $storeId, $days, $operator);
+        $result = $service->sync($tenantKey, $storeId, $days, $operator);
 
         $this->store->addImportExportLog($tenantKey, [
             'type' => 'import',
-            'name' => '乐天 RMS API 同步',
+            'name' => $service->platformName() . ' API 同步',
             'status' => $result['ok'] ? '同步完成' : '同步异常',
-            'file_name' => 'Rakuten RMS Order API',
+            'file_name' => $service->platformName() . ' Order API',
             'rows' => (int) ($result['inserted'] ?? 0) + (int) ($result['updated'] ?? 0),
             'message' => $result['message'],
             'preview' => [[
@@ -1071,7 +1084,8 @@ final class TenantController
             'created_by' => $operator,
         ]);
 
-        $returnUrl = $this->safeReturn((string) ($_POST['return'] ?? tenant_url('/orders?view=platform&platform=r', $tenantKey)), tenant_url('/orders?view=platform&platform=r', $tenantKey));
+        $defaultReturn = tenant_url('/orders?view=platform&platform=' . rawurlencode($platform), $tenantKey);
+        $returnUrl = $this->safeReturn((string) ($_POST['return'] ?? $defaultReturn), $defaultReturn);
         redirect_to($returnUrl . (str_contains($returnUrl, '?') ? '&' : '?') . 'message=' . rawurlencode($result['message']));
     }
 

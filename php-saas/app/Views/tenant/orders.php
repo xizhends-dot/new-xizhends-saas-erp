@@ -33,7 +33,10 @@ $can1688Logistics = (bool) ($can1688Logistics ?? false);
 $canExpressLogistics = (bool) ($canExpressLogistics ?? false);
 $canJpLogistics = (bool) ($canJpLogistics ?? false);
 $stores = is_array($stores ?? null) ? $stores : [];
-$rakutenStores = array_values(array_filter($stores, static fn (array $store): bool => ($store['platform'] ?? '') === 'r'));
+$platformSyncServices = is_array($platformSyncServices ?? null) ? $platformSyncServices : [];
+$currentPlatform = (string) ($platform ?? '');
+$platformSyncName = $currentPlatform !== '' ? (string) ($platformSyncServices[$currentPlatform] ?? '') : '';
+$platformSyncStores = $platformSyncName !== '' ? array_values(array_filter($stores, static fn (array $store): bool => ($store['platform'] ?? '') === $currentPlatform)) : [];
 $quickExportType = match ($orderView) {
     'platform' => 'platform',
     'jp' => 'shipment',
@@ -77,17 +80,18 @@ $statusOptions = [
     <div class="page-head compact-head">
         <h1><?= e($activeTitle) ?> <span class="plat-tag"><?= e($orderView === 'jp' ? 'JP 仓库现货' : $platformLabel) ?></span></h1>
         <div class="head-actions">
-            <?php if ($orderView === 'platform' && $platform === 'r' && $canPlatformImportExport && $rakutenStores): ?>
-                <form class="inline-form" method="post" action="/orders/rakuten/sync">
+            <?php if ($orderView === 'platform' && $platformSyncName !== '' && $canPlatformImportExport && $platformSyncStores): ?>
+                <form class="inline-form" method="post" action="/orders/platform/sync">
                     <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                     <input type="hidden" name="return" value="<?= e($returnUrl) ?>">
+                    <input type="hidden" name="platform" value="<?= e($currentPlatform) ?>">
                     <input type="hidden" name="days" value="7">
-                    <select name="store_id" aria-label="乐天店铺">
-                        <?php foreach ($rakutenStores as $store): ?>
+                    <select name="store_id" aria-label="<?= e($platformSyncName . '店铺') ?>">
+                        <?php foreach ($platformSyncStores as $store): ?>
                             <option value="<?= e($store['id'] ?? '') ?>"><?= e($store['name'] ?? $store['short'] ?? '') ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <button class="btn" type="submit">同步乐天API</button>
+                    <button class="btn" type="submit"><?= e('同步' . $platformSyncName . ' API') ?></button>
                 </form>
             <?php endif; ?>
             <?php if ($canQuickExport): ?>
@@ -96,7 +100,7 @@ $statusOptions = [
                     <a class="btn" href="/import-export?tenant=<?= e($tenantKey) ?>" aria-label="导入订单">导入订单</a>
                 <?php endif; ?>
             <?php endif; ?>
-            <?php if ($canEditOrders): ?><button class="btn btn-p" type="button"><?= $orderView === 'jp' ? '+ 手动出库' : '+ 手动录入' ?></button><?php endif; ?>
+            <?php if ($canEditOrders): ?><button class="btn btn-p" type="button"><?= e($orderView === 'jp' ? '+ 手动出库' : '+ 手动录入') ?></button><?php endif; ?>
         </div>
     </div>
 
