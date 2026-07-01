@@ -114,6 +114,13 @@ $statusOptions = [
     <?php if ($message !== ''): ?>
         <div class="notice slim"><?= e($message) ?></div>
     <?php endif; ?>
+    <?php foreach (($tenantNotices ?? []) as $notice): ?>
+        <div class="notice slim">
+            <strong><?= e($notice['title'] ?? '') ?></strong>
+            <span class="sub"><?= e($notice['published_at'] ?? '') ?></span>
+            <div><?= e($notice['body'] ?? '') ?></div>
+        </div>
+    <?php endforeach; ?>
 
     <form class="order-filter" method="get" action="/orders">
         <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">

@@ -210,8 +210,6 @@ final class JapanLogisticsService
             CURLOPT_ENCODING => 'deflate, gzip',
             CURLOPT_TIMEOUT => 30,
             CURLOPT_CONNECTTIMEOUT => 15,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false,
             CURLOPT_HTTPHEADER => [
                 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                 'Accept-Language: ja,en-US;q=0.7,en;q=0.3',
@@ -372,7 +370,20 @@ final class JapanLogisticsService
             return '';
         }
 
-        return trim((string) ($proxy['rotation_proxy'] ?? ''));
+        return $this->env(['JAPAN_LOGISTICS_PROXY', 'XIZHEN_ROTATION_PROXY']);
+    }
+
+    /** @param array<int, string> $names */
+    private function env(array $names): string
+    {
+        foreach ($names as $name) {
+            $value = getenv($name);
+            if (is_string($value) && trim($value) !== '') {
+                return trim($value);
+            }
+        }
+
+        return '';
     }
 
     private function positiveInt(mixed $value): int

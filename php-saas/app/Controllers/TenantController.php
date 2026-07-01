@@ -11,14 +11,29 @@ use Xizhen\Services\Alibaba1688LogisticsService;
 use Xizhen\Services\AppService;
 use Xizhen\Services\AuthService;
 use Xizhen\Services\CsvImportService;
+use Xizhen\Services\CustomerExportService;
+use Xizhen\Services\CustomerServiceDeductionService;
 use Xizhen\Services\ExpressLogisticsService;
+use Xizhen\Services\FinanceExportRequirementService;
+use Xizhen\Services\FinanceImportMatcherService;
+use Xizhen\Services\JapanWarehouseImportService;
 use Xizhen\Services\JapanLogisticsService;
 use Xizhen\Services\LegacySettingsService;
+use Xizhen\Services\LegacyEdgeToolService;
 use Xizhen\Services\MailService;
+use Xizhen\Services\OrderAjaxService;
 use Xizhen\Services\OrderItemSaveRuleService;
+use Xizhen\Services\PerformanceStatsService;
+use Xizhen\Services\PlatformExportService;
 use Xizhen\Services\PlatformOrderSyncRegistry;
+use Xizhen\Services\PriceCalculatorService;
+use Xizhen\Services\PurchaseStatsService;
 use Xizhen\Services\ShippingAnomalyService;
+use Xizhen\Services\ShippingImportModeService;
 use Xizhen\Services\ShippingWorkflowService;
+use Xizhen\Services\TenantNoticeService;
+use Xizhen\Services\TenantUserSecurityService;
+use Xizhen\Services\UserPermissionOverrideService;
 use Xizhen\Services\WaybillCheckService;
 
 final class TenantController
@@ -34,6 +49,21 @@ final class TenantController
     private JapanLogisticsService $japanLogisticsService;
     private ShippingAnomalyService $shippingAnomalyService;
     private WaybillCheckService $waybillCheckService;
+    private PerformanceStatsService $performanceStatsService;
+    private PurchaseStatsService $purchaseStatsService;
+    private PriceCalculatorService $priceCalculatorService;
+    private PlatformExportService $platformExportService;
+    private FinanceImportMatcherService $financeImportMatcherService;
+    private ShippingImportModeService $shippingImportModeService;
+    private JapanWarehouseImportService $japanWarehouseImportService;
+    private CustomerExportService $customerExportService;
+    private FinanceExportRequirementService $financeExportRequirementService;
+    private TenantUserSecurityService $tenantUserSecurityService;
+    private TenantNoticeService $tenantNoticeService;
+    private UserPermissionOverrideService $userPermissionOverrideService;
+    private CustomerServiceDeductionService $customerServiceDeductionService;
+    private OrderAjaxService $orderAjaxService;
+    private LegacyEdgeToolService $legacyEdgeToolService;
 
     public function __construct(private readonly StoreInterface $store, private readonly View $view, private readonly AuthService $auth)
     {
@@ -48,6 +78,21 @@ final class TenantController
         $this->japanLogisticsService = new JapanLogisticsService($store);
         $this->shippingAnomalyService = new ShippingAnomalyService($store);
         $this->waybillCheckService = new WaybillCheckService($store);
+        $this->performanceStatsService = new PerformanceStatsService($store);
+        $this->purchaseStatsService = new PurchaseStatsService($store);
+        $this->priceCalculatorService = new PriceCalculatorService($store);
+        $this->platformExportService = new PlatformExportService();
+        $this->financeImportMatcherService = new FinanceImportMatcherService();
+        $this->shippingImportModeService = new ShippingImportModeService();
+        $this->japanWarehouseImportService = new JapanWarehouseImportService();
+        $this->customerExportService = new CustomerExportService();
+        $this->financeExportRequirementService = new FinanceExportRequirementService();
+        $this->tenantUserSecurityService = new TenantUserSecurityService($store);
+        $this->tenantNoticeService = new TenantNoticeService($store);
+        $this->userPermissionOverrideService = new UserPermissionOverrideService($store);
+        $this->customerServiceDeductionService = new CustomerServiceDeductionService($store);
+        $this->orderAjaxService = new OrderAjaxService($store, $this->service, $view);
+        $this->legacyEdgeToolService = new LegacyEdgeToolService($store);
     }
 
     public function loginForm(): void
@@ -111,6 +156,7 @@ final class TenantController
             'tenantFeatures' => $this->service->tenantFeatureMap($tenantKey),
             'stats' => $this->service->dashboard($tenantKey, $currentUser),
             'announcements' => $this->store->announcements(),
+            'tenantNotices' => $this->tenantNoticeService->dashboardNotices($tenantKey, $currentUser),
             'groups' => $this->service->featureGroups($tenantKey),
             'active' => 'dashboard',
             'currentUser' => $currentUser,
@@ -195,6 +241,7 @@ final class TenantController
             'can1688Logistics' => $this->service->tenantFeatureEnabled($tenantKey, 'logistics.1688') && Permission::has($currentUser, '1688物流'),
             'canExpressLogistics' => $this->service->tenantFeatureEnabled($tenantKey, 'logistics.express') && Permission::hasAny($currentUser, ['1688物流', '物流查看']),
             'canJpLogistics' => $this->service->tenantFeatureEnabled($tenantKey, 'logistics.jp') && Permission::hasAny($currentUser, ['日本物流日志', '物流查看']),
+            'tenantNotices' => $this->tenantNoticeService->orderPageNotices($tenantKey, $currentUser),
             'currentUser' => $currentUser,
         ]);
     }
@@ -373,7 +420,7 @@ final class TenantController
         $this->auth->requireTenantPermission($tenantKey, '图片删除');
         $orderId = (int) ($_POST['order_id'] ?? 0);
         $this->ensureOrderAccess($tenantKey, $orderId);
-        $this->store->deleteOrderAttachment($tenantKey, (int) ($_POST['attachment_id'] ?? 0));
+        $this->store->deleteOrderAttachment($tenantKey, $orderId, (int) ($_POST['attachment_id'] ?? 0));
         redirect_to('/orders/detail?tenant=' . rawurlencode($tenantKey) . '&id=' . $orderId);
     }
 
@@ -554,7 +601,6 @@ final class TenantController
             'role' => $_POST['role'] ?? '客服',
             'password_reset' => $_POST['password_reset'] ?? '',
             'preference_module' => $_POST['preference_module'] ?? '',
-            'api_1688_config' => $_POST['api_1688_config'] ?? '',
             'permissions' => $_POST['permissions'] ?? [],
             'stores' => $_POST['stores'] ?? [],
             'status' => $_POST['status'] ?? 'active',
@@ -598,13 +644,161 @@ final class TenantController
             'role' => $_POST['role'] ?? '客服',
             'password_reset' => $_POST['password_reset'] ?? '',
             'preference_module' => $_POST['preference_module'] ?? '',
-            'api_1688_config' => $_POST['api_1688_config'] ?? '',
             'permissions' => $_POST['permissions'] ?? [],
             'stores' => $_POST['stores'] ?? [],
             'status' => $_POST['status'] ?? 'active',
         ]);
 
         redirect_to('/users?tenant=' . rawurlencode($tenantKey));
+    }
+
+    public function passwordEdit(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'account.password_edit');
+        $this->auth->requireTenant($tenantKey);
+        $this->renderTenant('tenant/password_edit', $tenantKey, [
+            'title' => '修改密码',
+            'active' => 'password_edit',
+            'policy' => $this->tenantUserSecurityService->passwordPolicy(),
+            'message' => (string) ($_GET['message'] ?? ''),
+            'errors' => ($_GET['error'] ?? '') !== '' ? ['form' => (string) $_GET['error']] : [],
+        ]);
+    }
+
+    public function passwordUpdate(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'account.password_edit');
+        $this->auth->requireTenant($tenantKey);
+        $currentUser = $this->auth->currentTenantUser($tenantKey);
+        $result = $this->tenantUserSecurityService->changePassword(
+            $tenantKey,
+            (int) ($currentUser['id'] ?? 0),
+            (string) ($_POST['old_password'] ?? ''),
+            (string) ($_POST['new_password'] ?? ''),
+            (string) ($_POST['confirm_password'] ?? '')
+        );
+        $key = $result['ok'] ? 'message' : 'error';
+        redirect_to('/password/edit?tenant=' . rawurlencode($tenantKey) . '&' . $key . '=' . rawurlencode($result['message']));
+    }
+
+    public function tenantNotices(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'management.notices');
+        $this->auth->requireAnyTenantPermission($tenantKey, ['公告管理', '通知查看']);
+        $currentUser = $this->auth->currentTenantUser($tenantKey);
+        $canManageNotices = Permission::has($currentUser, '公告管理');
+        $draft = $canManageNotices ? ($this->store->tenantNotice($tenantKey, (int) ($_GET['id'] ?? 0)) ?? []) : [];
+        foreach (['published_at', 'expired_at'] as $field) {
+            $time = strtotime((string) ($draft[$field] ?? ''));
+            $draft[$field . '_input'] = $time === false ? '' : date('Y-m-d\TH:i', $time);
+        }
+        $this->renderTenant('tenant/tenant_notices', $tenantKey, [
+            'title' => '通知公告',
+            'active' => 'tenant_notices',
+            'notices' => $canManageNotices
+                ? $this->store->tenantNotices($tenantKey)
+                : $this->tenantNoticeService->tenantNotices($tenantKey, $currentUser, 50),
+            'draft' => $draft,
+            'canManageNotices' => $canManageNotices,
+            'targetRoles' => $canManageNotices ? $this->tenantNoticeService->targetRoles() : [],
+            'users' => $canManageNotices ? $this->store->users($tenantKey) : [],
+            'message' => (string) ($_GET['message'] ?? ''),
+            'errors' => ($_GET['error'] ?? '') !== '' ? ['form' => (string) $_GET['error']] : [],
+            'requirements' => $canManageNotices ? $this->tenantNoticeService->persistenceRequirements() : [],
+        ]);
+    }
+
+    public function saveTenantNotice(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'management.notices');
+        $this->auth->requireTenantPermission($tenantKey, '公告管理');
+        $noticeId = (int) ($_POST['id'] ?? 0);
+        $payload = $this->tenantNoticeService->payloadFromInput($tenantKey, $_POST, $this->auth->currentTenantUser($tenantKey) ?? [], $noticeId > 0 ? $noticeId : null);
+        if ((string) ($payload['title'] ?? '') === '' || (string) ($payload['body'] ?? '') === '') {
+            redirect_to('/notices?tenant=' . rawurlencode($tenantKey) . '&error=' . rawurlencode('公告标题和内容不能为空。'));
+        }
+        $this->store->saveTenantNotice($tenantKey, $payload);
+        redirect_to('/notices?tenant=' . rawurlencode($tenantKey) . '&message=' . rawurlencode('公告已保存。'));
+    }
+
+    public function deleteTenantNotice(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'management.notices');
+        $this->auth->requireTenantPermission($tenantKey, '公告管理');
+        $this->store->deleteTenantNotice($tenantKey, (int) ($_POST['id'] ?? 0));
+        redirect_to('/notices?tenant=' . rawurlencode($tenantKey) . '&message=' . rawurlencode('公告已删除。'));
+    }
+
+    public function pinTenantNotice(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'management.notices');
+        $this->auth->requireTenantPermission($tenantKey, '公告管理');
+        $this->store->toggleTenantNoticePinned($tenantKey, (int) ($_POST['id'] ?? 0), !empty($_POST['is_pinned']));
+        redirect_to('/notices?tenant=' . rawurlencode($tenantKey) . '&message=' . rawurlencode('公告置顶状态已更新。'));
+    }
+
+    public function userPermissions(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'management.user_permission_overrides');
+        $this->auth->requireTenantPermission($tenantKey, '权限覆盖');
+        $userId = (int) ($_GET['id'] ?? 0);
+        $matrix = $userId > 0 ? $this->userPermissionOverrideService->matrixForUser($tenantKey, $userId) : ['ok' => false, 'message' => '请选择员工。'];
+        $this->renderTenant('tenant/user_permissions', $tenantKey, [
+            'title' => '细粒度权限',
+            'active' => 'users',
+            'users' => $this->store->users($tenantKey),
+            'selectedUserId' => $userId,
+            'user' => $matrix['user'] ?? [],
+            'groups' => $matrix['groups'] ?? [],
+            'message' => (string) ($_GET['message'] ?? ($matrix['message'] ?? '')),
+            'requirements' => $this->userPermissionOverrideService->persistenceRequirements(),
+        ]);
+    }
+
+    public function saveUserPermissions(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'management.user_permission_overrides');
+        $this->auth->requireTenantPermission($tenantKey, '权限覆盖');
+        $userId = (int) ($_POST['user_id'] ?? 0);
+        $states = is_array($_POST['states'] ?? null) ? $_POST['states'] : [];
+        $overrides = $this->userPermissionOverrideService->normalizeSubmittedStates($states);
+        $this->store->updateUserPermissionOverrides($tenantKey, $userId, $overrides, $this->currentUserName($tenantKey));
+        redirect_to('/users/permissions?tenant=' . rawurlencode($tenantKey) . '&id=' . $userId . '&message=' . rawurlencode('权限覆盖已保存。'));
+    }
+
+    public function customerServiceDeductions(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'management.customer_service_deductions');
+        $this->auth->requireTenantPermission($tenantKey, '客服扣点');
+        $this->renderTenant('tenant/customer_service_deductions', $tenantKey, [
+            'title' => '客服扣点',
+            'active' => 'users',
+            'rows' => $this->customerServiceDeductionService->rows($tenantKey),
+            'summary' => $this->customerServiceDeductionService->summary($tenantKey),
+            'message' => (string) ($_GET['message'] ?? ''),
+            'errors' => ($_GET['error'] ?? '') !== '' ? ['form' => (string) $_GET['error']] : [],
+            'requirements' => $this->customerServiceDeductionService->persistenceRequirements(),
+        ]);
+    }
+
+    public function saveCustomerServiceDeductions(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'management.customer_service_deductions');
+        $this->auth->requireTenantPermission($tenantKey, '客服扣点');
+        $deductions = is_array($_POST['deductions'] ?? null) ? $_POST['deductions'] : [];
+        $result = $this->customerServiceDeductionService->saveToTenantSettings($tenantKey, $deductions, $this->auth->currentTenantUser($tenantKey) ?? []);
+        $key = $result['ok'] ? 'message' : 'error';
+        redirect_to('/users/customer-service-deductions?tenant=' . rawurlencode($tenantKey) . '&' . $key . '=' . rawurlencode($result['message']));
     }
 
     public function assignments(): void
@@ -691,11 +885,100 @@ final class TenantController
         $tenantKey = current_tenant_key();
         $this->requireTenantFeature($tenantKey, 'stats.purchase');
         $this->auth->requireTenantPermission($tenantKey, '采购统计');
-        $this->renderTenant('tenant/purchase_stats', $tenantKey, [
+        $this->renderTenant('tenant/purchase_stats_extended', $tenantKey, [
             'title' => '采购统计',
             'active' => 'purchase_stats',
-            'stats' => $this->service->purchaseStats($tenantKey, $this->auth->currentTenantUser($tenantKey)),
+            'stats' => $this->purchaseStatsService->purchaseStats($tenantKey, $this->auth->currentTenantUser($tenantKey), $_GET),
         ]);
+    }
+
+    public function purchaseStatusDaily(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'stats.purchase');
+        $this->auth->requireTenantPermission($tenantKey, '采购统计');
+        $this->renderTenant('tenant/purchase_status_daily', $tenantKey, [
+            'title' => '采购状态每日统计',
+            'active' => 'purchase_stats',
+            'stats' => $this->purchaseStatsService->dailyStatus($tenantKey, $this->auth->currentTenantUser($tenantKey), $_GET),
+        ]);
+    }
+
+    public function performanceDashboard(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'stats.performance');
+        $this->auth->requireTenantPermission($tenantKey, '业绩统计');
+        $this->renderTenant('tenant/performance_dashboard', $tenantKey, [
+            'title' => '业绩面板',
+            'active' => 'performance',
+            'dashboard' => $this->performanceStatsService->dashboard($tenantKey, $this->auth->currentTenantUser($tenantKey), $_GET),
+        ]);
+    }
+
+    public function performanceDailyData(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'stats.performance');
+        $this->auth->requireTenantPermission($tenantKey, '业绩统计');
+        $this->json($this->performanceStatsService->dailyBreakdown($tenantKey, $this->auth->currentTenantUser($tenantKey), $_GET));
+    }
+
+    public function performanceSummary(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'stats.performance');
+        $this->auth->requireTenantPermission($tenantKey, '业绩统计');
+        $this->renderTenant('tenant/performance_summary', $tenantKey, [
+            'title' => '业绩汇总',
+            'active' => 'performance',
+            'summary' => $this->performanceStatsService->summary($tenantKey, $this->auth->currentTenantUser($tenantKey), $_GET),
+        ]);
+    }
+
+    public function productAnalysis(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'stats.products');
+        $this->auth->requireTenantPermission($tenantKey, '出单商品统计');
+        $this->renderTenant('tenant/product_analysis', $tenantKey, [
+            'title' => '出单商品分析',
+            'active' => 'product_analysis',
+            'analysis' => $this->performanceStatsService->productAnalysis($tenantKey, $this->auth->currentTenantUser($tenantKey), $_GET),
+        ]);
+    }
+
+    public function productAnalysisData(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'stats.products');
+        $this->auth->requireTenantPermission($tenantKey, '出单商品统计');
+        $this->json($this->performanceStatsService->productAnalysis($tenantKey, $this->auth->currentTenantUser($tenantKey), $_GET));
+    }
+
+    public function priceCalculator(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'tools.price_calculator');
+        $this->auth->requireTenantPermission($tenantKey, '核价计算器');
+        $this->renderTenant('tenant/price_calculator', $tenantKey, [
+            'title' => '核价计算器',
+            'active' => 'price_calculator',
+            'calculator' => [
+                'defaults' => $this->priceCalculatorService->defaults($tenantKey),
+                'rows' => [],
+                'summary' => [],
+            ],
+        ]);
+    }
+
+    public function calculatePrice(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'tools.price_calculator');
+        $this->auth->requireTenantPermission($tenantKey, '核价计算器');
+        $rows = is_array($_POST['rows'] ?? null) ? $_POST['rows'] : [];
+        $this->json($this->priceCalculatorService->calculateRows($tenantKey, $rows));
     }
 
     public function logistics1688(): void
@@ -982,6 +1265,257 @@ final class TenantController
         $this->sendCsvDataset($tenantKey, $dataset);
     }
 
+    public function importExportNonExcel(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'import_export.center');
+        $this->auth->requireAnyTenantPermission($tenantKey, ['导入导出', '采购导入导出']);
+        $orders = $this->service->ordersForExport($tenantKey, $this->auth->currentTenantUser($tenantKey), $this->exportCriteriaFrom($_GET));
+        $previewDatasets = [];
+        foreach (array_slice(array_keys($this->platformExportService->variants()), 0, 3) as $variant) {
+            $dataset = $this->platformExportService->exportDataset($tenantKey, $variant, $orders, ['strict_platform' => false]);
+            $dataset['rows'] = array_slice($dataset['rows'], 0, 3);
+            $previewDatasets[] = $dataset;
+        }
+
+        $this->renderTenant('tenant/import_export_non_excel', $tenantKey, [
+            'title' => '非 Excel 导入导出',
+            'active' => 'import_export',
+            'platformVariants' => $this->platformExportService->variants(),
+            'previewDatasets' => $previewDatasets,
+            'importPreviews' => [],
+            'stores' => $this->accessibleStoresForCurrentUser($tenantKey),
+            'excelRequirements' => array_merge(
+                $this->financeExportRequirementService->excelRequirements(),
+                array_map(
+                    static fn (string $item): array => ['item' => $item, 'reason' => '客户资料样式导出需要电子表格库。', 'old_source' => 'old/*/custinfo_export.php'],
+                    $this->customerExportService->excelRequirements()
+                )
+            ),
+        ]);
+    }
+
+    public function exportPlatformSpecial(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'import_export.center');
+        $this->requireTenantFeature($tenantKey, 'import_export.platform_special');
+        $this->auth->requireTenantPermission($tenantKey, '导入导出');
+        $variant = preg_replace('/[^a-z0-9_]/', '', (string) ($_GET['variant'] ?? 'riya')) ?: 'riya';
+        $orders = $this->service->ordersForExport($tenantKey, $this->auth->currentTenantUser($tenantKey), $this->exportCriteriaFrom($_GET));
+        $dataset = $this->platformExportService->exportDataset($tenantKey, $variant, $orders, ['strict_platform' => !empty($_GET['strict_platform'])]);
+        $this->sendCsvDataset($tenantKey, $dataset);
+    }
+
+    public function exportCustomers(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'customers.data');
+        $this->auth->requireTenantPermission($tenantKey, '客户资料');
+        $orders = $this->service->ordersForExport($tenantKey, $this->auth->currentTenantUser($tenantKey), $this->exportCriteriaFrom($_GET));
+        $this->sendCsvDataset($tenantKey, $this->customerExportService->exportDataset($tenantKey, $orders, $_GET));
+    }
+
+    public function exportFinancePlaceholder(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'import_export.finance');
+        $this->auth->requireAnyTenantPermission($tenantKey, ['导入导出', '财务导出']);
+        $orders = $this->service->ordersForExport($tenantKey, $this->auth->currentTenantUser($tenantKey), $this->exportCriteriaFrom($_GET));
+        $this->sendCsvDataset($tenantKey, $this->financeExportRequirementService->csvPlaceholderDataset($tenantKey, $orders));
+    }
+
+    public function exportBrushOrders(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'import_export.platform');
+        $this->auth->requireTenantPermission($tenantKey, '导入导出');
+        $orders = $this->service->ordersForExport($tenantKey, $this->auth->currentTenantUser($tenantKey), $this->exportCriteriaFrom($_GET));
+        $this->sendCsvDataset($tenantKey, $this->legacyEdgeToolService->brushOrderDataset($tenantKey, $orders));
+    }
+
+    public function previewFinanceImport(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'import_export.finance_import');
+        $this->auth->requireAnyTenantPermission($tenantKey, ['导入导出', '财务导入']);
+        $preview = $this->financeImportMatcherService->planForOrders(
+            $this->service->ordersForUser($tenantKey, $this->auth->currentTenantUser($tenantKey)),
+            $this->csvRowsFromUpload('csv_file')
+        );
+        $this->logImportPreview($tenantKey, '财务数据导入预览', $preview['summary']['rows'] ?? 0, $preview);
+        $this->json(['ok' => true] + $preview);
+    }
+
+    public function importFinanceData(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'import_export.finance_import');
+        $this->auth->requireAnyTenantPermission($tenantKey, ['导入导出', '财务导入']);
+        $preview = $this->financeImportMatcherService->planForOrders(
+            $this->service->ordersForUser($tenantKey, $this->auth->currentTenantUser($tenantKey)),
+            $this->csvRowsFromUpload('csv_file')
+        );
+
+        $updated = 0;
+        foreach ($preview['updates'] as $update) {
+            $changes = is_array($update['changes'] ?? null) ? $update['changes'] : [];
+            $itemId = (int) ($update['item_id'] ?? 0);
+            if ($itemId <= 0 || $changes === []) {
+                continue;
+            }
+            $this->store->updateOrderItem($tenantKey, $itemId, $changes, $this->currentUserName($tenantKey), '财务数据导入');
+            $updated++;
+        }
+
+        $this->store->addImportExportLog($tenantKey, [
+            'type' => 'import',
+            'name' => '财务数据导入',
+            'status' => $updated > 0 ? '已导入' : '无可导入记录',
+            'file_name' => (string) ($_FILES['csv_file']['name'] ?? ''),
+            'rows' => $updated,
+            'message' => "已更新 {$updated} 条财务匹配记录，未匹配/错误 " . count((array) ($preview['errors'] ?? [])) . ' 条。',
+            'preview' => array_slice((array) ($preview['updates'] ?? []), 0, 5),
+            'created_by' => $this->currentUserName($tenantKey),
+        ]);
+        $this->json(['ok' => true, 'updated' => $updated, 'errors' => $preview['errors'] ?? []]);
+    }
+
+    public function previewShippingImportModes(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'import_export.shipping_modes');
+        $this->auth->requireAnyTenantPermission($tenantKey, ['导入导出', '采购导入导出']);
+        $preview = $this->shippingImportModeService->parseRows($this->csvRowsFromUpload('csv_file'));
+        $this->logImportPreview($tenantKey, '国际运单导入模式预览', (int) ($preview['row_count'] ?? 0), $preview);
+        $this->json(['ok' => true] + $preview);
+    }
+
+    public function importShippingModes(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'import_export.shipping_modes');
+        $this->auth->requireAnyTenantPermission($tenantKey, ['导入导出', '采购导入导出']);
+        $preview = $this->shippingImportModeService->parseRows($this->csvRowsFromUpload('csv_file'));
+        $records = $this->shippingRecordsForAccessibleOrders(
+            $this->service->ordersForUser($tenantKey, $this->auth->currentTenantUser($tenantKey)),
+            (array) ($preview['records'] ?? [])
+        );
+        $report = $records
+            ? $this->store->importShippingRows($tenantKey, $records, $this->currentUserName($tenantKey))
+            : ['inserted' => 0, 'updated' => 0, 'skipped' => 0, 'failed' => 0, 'messages' => []];
+
+        $this->store->addImportExportLog($tenantKey, [
+            'type' => 'import',
+            'name' => '国际运单导入(追加/覆盖)',
+            'status' => (int) ($report['failed'] ?? 0) > 0 ? '部分导入' : ((int) ($report['updated'] ?? 0) > 0 ? '已导入' : '无可导入记录'),
+            'file_name' => (string) ($_FILES['csv_file']['name'] ?? ''),
+            'rows' => (int) ($preview['row_count'] ?? 0),
+            'message' => $this->importLogMessage(
+                '国际运单导入：更新 ' . (int) ($report['updated'] ?? 0) . '，失败 ' . (int) ($report['failed'] ?? 0) . '。',
+                (array) ($preview['errors'] ?? []),
+                (array) ($report['messages'] ?? [])
+            ),
+            'preview' => array_slice($records, 0, 5),
+            'created_by' => $this->currentUserName($tenantKey),
+        ]);
+        $this->json(['ok' => true, 'report' => $report, 'errors' => $preview['errors'] ?? []]);
+    }
+
+    public function previewJapanWarehouseImport(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'import_export.jp_warehouse_import');
+        $this->auth->requireAnyTenantPermission($tenantKey, ['导入导出', '采购导入导出']);
+        $preview = $this->japanWarehouseImportService->planForOrders(
+            $this->service->ordersForUser($tenantKey, $this->auth->currentTenantUser($tenantKey)),
+            $this->csvRowsFromUpload('csv_file')
+        );
+        $this->logImportPreview($tenantKey, '日本仓 YD 导入预览', (int) ($preview['parsed']['row_count'] ?? 0), $preview);
+        $this->json(['ok' => true] + $preview);
+    }
+
+    public function importJapanWarehouse(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'import_export.jp_warehouse_import');
+        $this->auth->requireAnyTenantPermission($tenantKey, ['导入导出', '采购导入导出']);
+        $preview = $this->japanWarehouseImportService->planForOrders(
+            $this->service->ordersForUser($tenantKey, $this->auth->currentTenantUser($tenantKey)),
+            $this->csvRowsFromUpload('csv_file')
+        );
+
+        $updated = 0;
+        foreach ($preview['updates'] as $update) {
+            $changes = is_array($update['changes'] ?? null) ? $update['changes'] : [];
+            $itemId = (int) ($update['item_id'] ?? 0);
+            if ($itemId <= 0 || $changes === []) {
+                continue;
+            }
+            $this->store->updateOrderItem($tenantKey, $itemId, $changes, $this->currentUserName($tenantKey), '日本仓YD导入');
+            $updated++;
+        }
+
+        $this->store->addImportExportLog($tenantKey, [
+            'type' => 'import',
+            'name' => '日本仓 YD 导入',
+            'status' => $updated > 0 ? '已导入' : '无可导入记录',
+            'file_name' => (string) ($_FILES['csv_file']['name'] ?? ''),
+            'rows' => (int) ($preview['parsed']['row_count'] ?? 0),
+            'message' => "已更新 {$updated} 条日本仓 YD 记录，未匹配 " . count((array) ($preview['unmatched'] ?? [])) . ' 条。',
+            'preview' => array_slice((array) ($preview['updates'] ?? []), 0, 5),
+            'created_by' => $this->currentUserName($tenantKey),
+        ]);
+        $this->json(['ok' => true, 'updated' => $updated, 'unmatched' => $preview['unmatched'] ?? [], 'errors' => $preview['parsed']['errors'] ?? []]);
+    }
+
+    public function externalInsertPreview(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'import_export.platform');
+        $this->auth->requireTenantPermission($tenantKey, '导入导出');
+        $store = $this->accessibleStoreFromInput($tenantKey, $_POST['store_id'] ?? null);
+        $preview = $this->legacyEdgeToolService->parseExternalInsertRows($this->csvRowsFromUpload('csv_file'));
+        if ($store === null) {
+            $preview['errors'][] = '请选择当前账号可访问的目标店铺。';
+            $preview['records'] = [];
+            $preview['preview'] = [];
+        }
+        $this->logImportPreview($tenantKey, '外部运单/订单插入预览', (int) ($preview['row_count'] ?? 0), $preview);
+        $this->json(['ok' => true] + $preview);
+    }
+
+    public function externalInsertImport(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'import_export.platform');
+        $this->auth->requireTenantPermission($tenantKey, '导入导出');
+        $store = $this->accessibleStoreFromInput($tenantKey, $_POST['store_id'] ?? null);
+        if ($store === null) {
+            $this->json(['ok' => false, 'status' => 403, 'message' => '请选择当前账号可访问的目标店铺。', 'inserted' => 0, 'errors' => ['目标店铺无权访问。']], 403);
+        }
+        $preview = $this->legacyEdgeToolService->parseExternalInsertRows($this->csvRowsFromUpload('csv_file'));
+        $inserted = 0;
+        foreach ($preview['records'] as $record) {
+            $record['store_id'] = (int) ($store['id'] ?? 0);
+            $record['store'] = (string) (($store['name'] ?? '') ?: ($store['short'] ?? ''));
+            if ($this->store->insertExternalOrder($tenantKey, $record, $this->currentUserName($tenantKey)) > 0) {
+                $inserted++;
+            }
+        }
+        $this->store->addImportExportLog($tenantKey, [
+            'type' => 'import',
+            'name' => '外部运单/订单插入',
+            'status' => $inserted > 0 ? '已导入' : '无可导入记录',
+            'file_name' => (string) ($_FILES['csv_file']['name'] ?? ''),
+            'rows' => $inserted,
+            'message' => "已导入 {$inserted} 条外部记录。",
+            'preview' => $preview['preview'],
+            'created_by' => $this->currentUserName($tenantKey),
+        ]);
+        $this->json(['ok' => true, 'inserted' => $inserted, 'errors' => $preview['errors']]);
+    }
+
     public function exportOrders(): void
     {
         $tenantKey = current_tenant_key();
@@ -1202,6 +1736,60 @@ final class TenantController
         redirect_to($returnUrl . (str_contains($returnUrl, '?') ? '&' : '?') . 'message=' . rawurlencode($result['message']));
     }
 
+    public function ajaxOrderRow(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'orders.platform');
+        $this->auth->requireTenantPermission($tenantKey, '订单查看');
+        $currentUser = $this->auth->currentTenantUser($tenantKey);
+        $canEditFeature = $this->service->tenantFeatureEnabled($tenantKey, 'orders.edit');
+        $result = $this->orderAjaxService->orderRow($tenantKey, (int) ($_GET['id'] ?? 0), $currentUser, [
+            'orderView' => in_array(($_GET['view'] ?? 'platform'), ['platform', 'purchase', 'jp'], true) ? (string) $_GET['view'] : 'platform',
+            'seq' => (int) ($_GET['seq'] ?? 1),
+            'batchFormId' => (string) ($_GET['batch_form_id'] ?? 'batch-platform'),
+            'returnUrl' => (string) ($_GET['return'] ?? tenant_url('/orders', $tenantKey)),
+            'canEditOrders' => $canEditFeature && $this->auth->tenantCan($tenantKey, '订单编辑'),
+            'canEditPurchase' => $canEditFeature && $this->service->tenantFeatureEnabled($tenantKey, 'orders.purchase') && Permission::hasAny($currentUser, ['订单编辑', '采购状态']),
+            'canEditJp' => $canEditFeature && $this->service->tenantFeatureEnabled($tenantKey, 'orders.jp') && Permission::hasAny($currentUser, ['订单编辑', '日本仓发货']),
+            'canChangeSource' => $canEditFeature && $this->auth->tenantCan($tenantKey, '货源改判'),
+            'canBatchOperate' => $this->auth->tenantCan($tenantKey, '批量操作'),
+            'canBatchPurchase' => Permission::hasAny($currentUser, ['批量操作', '采购状态', '订单编辑']),
+            'canBatchJp' => Permission::hasAny($currentUser, ['批量操作', '日本仓发货', '订单编辑']),
+        ]);
+        $this->json($result, (int) $result['status']);
+    }
+
+    public function ajaxOrderDetail(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->auth->requireTenantPermission($tenantKey, '订单查看');
+        $result = $this->orderAjaxService->orderDetail($tenantKey, (int) ($_GET['id'] ?? 0), $this->auth->currentTenantUser($tenantKey));
+        $this->json($result, (int) $result['status']);
+    }
+
+    public function ajaxLogisticsReload(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->auth->requireAnyTenantPermission($tenantKey, ['物流查看', '1688物流', '日本物流日志']);
+        $result = $this->orderAjaxService->logisticsReload($tenantKey, (int) ($_GET['id'] ?? 0), $this->auth->currentTenantUser($tenantKey));
+        $this->json($result, (int) $result['status']);
+    }
+
+    public function ajaxToggleReview(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'orders.edit');
+        $this->auth->requireAnyTenantPermission($tenantKey, ['订单编辑', '货源改判']);
+        $result = $this->orderAjaxService->toggleReview(
+            $tenantKey,
+            (int) ($_POST['order_id'] ?? 0),
+            (string) ($_POST['field'] ?? 'review_invited'),
+            $this->auth->currentTenantUser($tenantKey),
+            $this->currentUserName($tenantKey)
+        );
+        $this->json($result, (int) $result['status']);
+    }
+
     /** @param array{name: string, filename: string, headers: array<int, string>, rows: array<int, array<int, mixed>>} $dataset */
     private function sendCsvDataset(string $tenantKey, array $dataset): never
     {
@@ -1220,13 +1808,28 @@ final class TenantController
         echo "\xEF\xBB\xBF";
         $out = fopen('php://output', 'w');
         if ($out !== false) {
-            fputcsv($out, $dataset['headers'], ',', '"', '\\');
+            fputcsv($out, $this->csvSafeRow($dataset['headers']), ',', '"', '\\');
             foreach ($dataset['rows'] as $row) {
-                fputcsv($out, $row, ',', '"', '\\');
+                fputcsv($out, $this->csvSafeRow($row), ',', '"', '\\');
             }
             fclose($out);
         }
         exit;
+    }
+
+    /** @param array<int, mixed> $row @return array<int, mixed> */
+    private function csvSafeRow(array $row): array
+    {
+        return array_map($this->csvSafeCell(...), $row);
+    }
+
+    private function csvSafeCell(mixed $value): mixed
+    {
+        if (!is_string($value)) {
+            return $value;
+        }
+
+        return preg_match('/^\s*[=+\-@]/', $value) === 1 ? "'" . $value : $value;
     }
 
     public function importCsv(): void
@@ -1260,13 +1863,14 @@ final class TenantController
                     'platform' => $platform,
                     'store_id' => $storeId,
                     'platform_names' => $this->service->platformNames(),
-                    'stores' => $this->service->storesForTenant($tenantKey),
+                    'stores' => $this->accessibleStoresForCurrentUser($tenantKey),
                     'user' => $this->auth->currentTenantUser($tenantKey),
                 ]);
                 $rowCount = (int) $parsed['row_count'];
                 $preview = $parsed['preview'];
                 $parseErrors = $parsed['errors'];
                 $records = $this->filterImportRecordsByPlatform($tenantKey, $parsed['records'], $parseErrors);
+                $records = $this->filterImportRecordsByCurrentUserAccess($tenantKey, $job, $records, $parseErrors);
 
                 if ($rowCount <= 0) {
                     $status = '空文件';
@@ -1354,11 +1958,11 @@ final class TenantController
         $this->auth->requireAnyTenantPermission($tenantKey, ['公司设置', '系统设置']);
         $settings = $this->store->tenantSettings($tenantKey);
         $tenantApi1688Path = $this->tenant1688ConfigRelativePath($tenantKey);
-        $tenantApi1688Content = $this->readTenant1688Config($tenantKey);
         $api1688 = is_array($settings['api_1688'] ?? null) ? $settings['api_1688'] : [];
         $settings['api_1688'] = array_replace($api1688, [
-            'config_content' => $tenantApi1688Content,
+            'config_content' => '',
             'config_file' => $tenantApi1688Path,
+            'has_config' => is_file($this->tenant1688ConfigAbsolutePath($tenantKey)),
         ]);
 
         $this->renderTenant('tenant/settings', $tenantKey, [
@@ -1376,7 +1980,10 @@ final class TenantController
         $this->requireTenantFeature($tenantKey, 'management.settings');
         $this->auth->requireAnyTenantPermission($tenantKey, ['公司设置', '系统设置']);
         $api1688Content = trim((string) ($_POST['api_1688_config_content'] ?? ''));
-        $api1688ConfigFile = $this->writeTenant1688Config($tenantKey, $api1688Content);
+        $api1688ConfigFile = $this->tenant1688ConfigRelativePath($tenantKey);
+        if ($api1688Content !== '') {
+            $api1688ConfigFile = $this->writeTenant1688Config($tenantKey, $api1688Content);
+        }
         $this->store->saveTenantSettings($tenantKey, [
             'company' => [
                 'company_name' => trim((string) ($_POST['company_name'] ?? '')),
@@ -1832,6 +2439,157 @@ final class TenantController
     }
 
     /**
+     * @param array<int, array<string, mixed>> $records
+     * @param array<int, string> $errors
+     * @return array<int, array<string, mixed>>
+     */
+    private function filterImportRecordsByCurrentUserAccess(string $tenantKey, string $job, array $records, array &$errors): array
+    {
+        if ($records === []) {
+            return [];
+        }
+
+        if ($job === 'platform_orders_import') {
+            return $this->filterPlatformImportRecordsByAccessibleStores($tenantKey, $records, $errors);
+        }
+
+        if (in_array($job, ['purchase_import', 'shipping_import'], true)) {
+            return $this->filterImportRecordsByAccessibleOrders($tenantKey, $records, $errors);
+        }
+
+        return $records;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $records
+     * @param array<int, string> $errors
+     * @return array<int, array<string, mixed>>
+     */
+    private function filterPlatformImportRecordsByAccessibleStores(string $tenantKey, array $records, array &$errors): array
+    {
+        $storesById = [];
+        foreach ($this->accessibleStoresForCurrentUser($tenantKey) as $store) {
+            $storeId = (int) ($store['id'] ?? 0);
+            if ($storeId > 0) {
+                $storesById[$storeId] = $store;
+            }
+        }
+
+        $filtered = [];
+        foreach ($records as $record) {
+            $order = is_array($record['order'] ?? null) ? $record['order'] : [];
+            $storeId = (int) ($order['store_id'] ?? 0);
+            if ($storeId <= 0 || !isset($storesById[$storeId])) {
+                $errors[] = '第 ' . (int) ($record['row'] ?? 0) . ' 行：目标店铺不在当前账号可访问范围内，已跳过。';
+                continue;
+            }
+
+            $store = $storesById[$storeId];
+            $record['order']['store_id'] = $storeId;
+            $record['order']['store'] = (string) (($store['name'] ?? '') ?: ($store['short'] ?? ''));
+            $filtered[] = $record;
+        }
+
+        return $filtered;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $records
+     * @param array<int, string> $errors
+     * @return array<int, array<string, mixed>>
+     */
+    private function filterImportRecordsByAccessibleOrders(string $tenantKey, array $records, array &$errors): array
+    {
+        $orders = $this->service->ordersForUser($tenantKey, $this->auth->currentTenantUser($tenantKey));
+        $keys = [];
+        foreach ($orders as $order) {
+            $platform = trim((string) ($order['platform'] ?? ''));
+            $orderNo = trim((string) ($order['platform_order_id'] ?? ''));
+            if ($orderNo === '') {
+                continue;
+            }
+            $keys[$platform . "\n" . $orderNo] = true;
+            $keys["\n" . $orderNo] = true;
+        }
+
+        $filtered = [];
+        foreach ($records as $record) {
+            $identity = is_array($record['identity'] ?? null) ? $record['identity'] : [];
+            $platform = trim((string) ($identity['platform'] ?? ''));
+            $orderNo = trim((string) ($identity['platform_order_id'] ?? ''));
+            if ($orderNo === '' || (!isset($keys[$platform . "\n" . $orderNo]) && !isset($keys["\n" . $orderNo]))) {
+                $errors[] = '第 ' . (int) ($record['row'] ?? 0) . ' 行：订单不在当前账号可访问范围内，已跳过。';
+                continue;
+            }
+            $filtered[] = $record;
+        }
+
+        return $filtered;
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function accessibleStoresForCurrentUser(string $tenantKey): array
+    {
+        $user = $this->auth->currentTenantUser($tenantKey);
+
+        return array_values(array_filter(
+            $this->service->storesForTenant($tenantKey),
+            static fn (array $store): bool => Permission::canAccessStore($user, (string) (($store['name'] ?? '') ?: ($store['short'] ?? '')))
+        ));
+    }
+
+    /** @return array<string, mixed>|null */
+    private function accessibleStoreFromInput(string $tenantKey, mixed $storeId): ?array
+    {
+        $storeId = (int) $storeId;
+        if ($storeId <= 0) {
+            return null;
+        }
+
+        foreach ($this->accessibleStoresForCurrentUser($tenantKey) as $store) {
+            if ((int) ($store['id'] ?? 0) === $storeId) {
+                return $store;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $orders
+     * @param array<int, array<string, mixed>> $records
+     * @return array<int, array<string, mixed>>
+     */
+    private function shippingRecordsForAccessibleOrders(array $orders, array $records): array
+    {
+        $orderMap = [];
+        foreach ($orders as $order) {
+            $orderNo = trim((string) ($order['platform_order_id'] ?? ''));
+            if ($orderNo === '') {
+                continue;
+            }
+            $orderMap[$orderNo] = $order;
+        }
+
+        $filtered = [];
+        foreach ($records as $record) {
+            $identity = is_array($record['identity'] ?? null) ? $record['identity'] : [];
+            $orderNo = trim((string) ($identity['platform_order_id'] ?? ''));
+            if ($orderNo === '' || !isset($orderMap[$orderNo])) {
+                continue;
+            }
+
+            $record['identity'] = [
+                'platform' => (string) ($orderMap[$orderNo]['platform'] ?? ''),
+                'platform_order_id' => $orderNo,
+            ];
+            $filtered[] = $record;
+        }
+
+        return $filtered;
+    }
+
+    /**
      * @param array<string, mixed> $source
      * @return array<string, mixed>
      */
@@ -1857,6 +2615,58 @@ final class TenantController
         }
 
         return $url . (str_contains($url, '?') ? '&' : '?') . $key . '=' . rawurlencode($message) . $fragment;
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function json(array $payload, int $status = 200): never
+    {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    /**
+     * @return array<int, array<int, string>>
+     */
+    private function csvRowsFromUpload(string $field): array
+    {
+        if (!isset($_FILES[$field]) || !is_array($_FILES[$field]) || (int) ($_FILES[$field]['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            return [];
+        }
+
+        $tmpName = (string) ($_FILES[$field]['tmp_name'] ?? '');
+        if ($tmpName === '' || !is_uploaded_file($tmpName) || (int) ($_FILES[$field]['size'] ?? 0) > 3 * 1024 * 1024) {
+            return [];
+        }
+
+        $handle = fopen($tmpName, 'r');
+        if ($handle === false) {
+            return [];
+        }
+
+        $rows = [];
+        while (($row = fgetcsv($handle)) !== false) {
+            $rows[] = array_map(static fn (mixed $value): string => trim((string) $value), $row);
+        }
+        fclose($handle);
+
+        return $rows;
+    }
+
+    /** @param array<string, mixed> $preview */
+    private function logImportPreview(string $tenantKey, string $name, int $rows, array $preview): void
+    {
+        $this->store->addImportExportLog($tenantKey, [
+            'type' => 'import',
+            'name' => $name,
+            'status' => '预览',
+            'file_name' => (string) ($_FILES['csv_file']['name'] ?? ''),
+            'rows' => $rows,
+            'message' => '已生成预览，未写入数据。',
+            'preview' => array_slice((array) ($preview['preview'] ?? $preview['updates'] ?? $preview['records'] ?? []), 0, 5),
+            'created_by' => $this->currentUserName($tenantKey),
+        ]);
     }
 
     /** @param array<string, mixed> $source */

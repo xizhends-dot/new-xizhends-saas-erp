@@ -596,9 +596,10 @@ final class JsonStore implements StoreInterface
             'password_reset_at' => trim((string) ($data['password_reset'] ?? '')) !== '' ? date('Y-m-d H:i:s') : '',
             'last_login_at' => '',
             'preference_module' => trim((string) ($data['preference_module'] ?? '')),
-            'api_1688_config' => trim((string) ($data['api_1688_config'] ?? '')),
+            'api_1688_config' => array_key_exists('api_1688_config', $data) ? trim((string) $data['api_1688_config']) : '',
             'is_company_admin' => $role === '公司管理员',
             'permissions' => $this->permissionsForRole($role, $data['permissions'] ?? []),
+            'permission_overrides' => ['allow' => [], 'deny' => []],
             'stores' => array_values(array_filter(array_map('trim', (array) ($data['stores'] ?? [])))),
             'status' => in_array(($data['status'] ?? 'active'), ['active', 'disabled'], true) ? $data['status'] : 'active',
             'created_at' => date('Y-m-d H:i'),
@@ -652,11 +653,48 @@ final class JsonStore implements StoreInterface
                 $user['password_reset_at'] = date('Y-m-d H:i:s');
             }
             $user['preference_module'] = trim((string) ($data['preference_module'] ?? $user['preference_module'] ?? ''));
-            $user['api_1688_config'] = trim((string) ($data['api_1688_config'] ?? $user['api_1688_config'] ?? ''));
+            if (array_key_exists('api_1688_config', $data)) {
+                $user['api_1688_config'] = trim((string) $data['api_1688_config']);
+            }
             $user['is_company_admin'] = $role === '公司管理员';
             $user['permissions'] = $this->permissionsForRole($role, $data['permissions'] ?? []);
             $user['stores'] = array_values(array_filter(array_map('trim', (array) ($data['stores'] ?? []))));
             $user['status'] = in_array(($data['status'] ?? 'active'), ['active', 'disabled'], true) ? $data['status'] : 'active';
+            $user['updated_at'] = date('Y-m-d H:i');
+            break;
+        }
+        unset($user);
+
+        $this->data = $all;
+        $this->save();
+    }
+
+    /** @param array{allow?: array<int, string>, deny?: array<int, string>} $overrides */
+    public function updateUserPermissionOverrides(string $tenantKey, int $userId, array $overrides, string $operator): void
+    {
+        if ($userId <= 0) {
+            return;
+        }
+
+        $normalized = $this->normalizePermissionOverrides($overrides);
+        $all = $this->all();
+        if (!isset($all['users'][$tenantKey]) || !is_array($all['users'][$tenantKey])) {
+            return;
+        }
+
+        foreach ($all['users'][$tenantKey] as &$user) {
+            if ((int) ($user['id'] ?? 0) !== $userId) {
+                continue;
+            }
+
+            $role = (string) ($user['role'] ?? '客服');
+            $flat = array_values(array_unique(array_merge(
+                Permission::roleDefaults()[$role] ?? Permission::roleDefaults()['客服'],
+                $normalized['allow']
+            )));
+            $user['permission_overrides'] = $normalized;
+            $user['permissions'] = array_values(array_diff($flat, $normalized['deny']));
+            $user['updated_by'] = $operator;
             $user['updated_at'] = date('Y-m-d H:i');
             break;
         }
@@ -974,6 +1012,134 @@ final class JsonStore implements StoreInterface
 
         $this->data = $data;
         $this->save();
+    }
+
+    /** @param array<string, bool> $flags */
+    public function updateOrderFlags(string $tenantKey, int $orderId, array $flags, string $operator): void
+    {
+        if ($orderId <= 0) {
+            return;
+        }
+
+        $allowed = ['review_invited', 'reviewed'];
+        $data = $this->all();
+        foreach ($data['orders'][$tenantKey] ?? [] as &$order) {
+            if ((int) ($order['id'] ?? 0) !== $orderId) {
+                continue;
+            }
+            foreach ($allowed as $field) {
+                if (!array_key_exists($field, $flags)) {
+                    continue;
+                }
+                $old = !empty($order[$field]);
+                $new = (bool) $flags[$field];
+                if ($old === $new) {
+                    continue;
+                }
+                $order[$field] = $new;
+                foreach ($order['items'] ?? [] as &$item) {
+                    if (!is_array($item)) {
+                        continue;
+                    }
+                    $item['logs'][] = [
+                        'time' => date('m-d H:i'),
+                        'user' => $operator,
+                        'action' => '评价状态切换',
+                        'field' => $field,
+                        'old' => $old ? '1' : '0',
+                        'new' => $new ? '1' : '0',
+                        'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
+                        'order_id' => $orderId,
+                    ];
+                }
+                unset($item);
+            }
+            break;
+        }
+        unset($order);
+
+        $this->data = $data;
+        $this->save();
+    }
+
+    /** @param array<string, mixed> $data */
+    public function insertExternalOrder(string $tenantKey, array $data, string $operator): int
+    {
+        $platform = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($data['platform'] ?? 'external')) ?: 'external';
+        $platformOrderId = trim((string) ($data['platform_order_id'] ?? ''));
+        $tracking = trim((string) ($data['tracking'] ?? ''));
+        $storeId = max(0, (int) ($data['store_id'] ?? 0));
+        $storeName = trim((string) ($data['store'] ?? ''));
+        if ($platformOrderId === '' || $tracking === '' || $storeId <= 0 || $storeName === '') {
+            return 0;
+        }
+
+        $all = $this->all();
+        $orders = is_array($all['orders'][$tenantKey] ?? null) ? $all['orders'][$tenantKey] : [];
+        foreach ($orders as $order) {
+            if ((string) ($order['platform'] ?? '') === $platform && (int) ($order['store_id'] ?? 0) === $storeId && (string) ($order['platform_order_id'] ?? '') === $platformOrderId) {
+                return (int) ($order['id'] ?? 0);
+            }
+        }
+
+        $orderId = $this->nextId($orders);
+        $itemId = $this->nextJsonItemId($orders);
+        $orders[] = [
+            'id' => $orderId,
+            'platform' => $platform,
+            'platform_order_id' => $platformOrderId,
+            'order_date' => date('Y-m-d H:i:s'),
+            'imported_at' => date('Y-m-d H:i:s'),
+            'status' => '外部插入',
+            'store_id' => $storeId,
+            'store' => $storeName,
+            'customer' => [
+                'name' => trim((string) ($data['customer_name'] ?? '')),
+                'phone' => trim((string) ($data['phone'] ?? '')),
+                'zip' => '',
+                'address' => trim((string) ($data['address'] ?? '')),
+                'mail' => '',
+                'kana' => '',
+            ],
+            'total' => 0,
+            'review_invited' => false,
+            'reviewed' => false,
+            'items' => [[
+                'id' => $itemId,
+                'item_code' => trim((string) ($data['item_code'] ?? '')),
+                'jp_warehouse_id' => '',
+                'title' => '外部插入订单',
+                'option' => '',
+                'quantity' => max(1, (int) ($data['quantity'] ?? 1)),
+                'source_type' => 'pending',
+                'purchase_status' => '外部插入',
+                'buyer' => '',
+                'purchase_time' => '',
+                'purchase_link' => '',
+                'amount' => 0,
+                'ship_company' => '',
+                'ship_number' => $tracking,
+                'intl_number' => $tracking,
+                'intl_status' => '',
+                'image' => '/assets/no-image.svg',
+                'logs' => [[
+                    'time' => date('m-d H:i'),
+                    'user' => $operator,
+                    'action' => '外部插入订单',
+                    'field' => 'platform_order_id',
+                    'old' => '-',
+                    'new' => $platformOrderId,
+                    'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
+                    'order_id' => $orderId,
+                ]],
+            ]],
+        ];
+
+        $all['orders'][$tenantKey] = $orders;
+        $this->data = $all;
+        $this->save();
+
+        return $orderId;
     }
 
     /**
@@ -1340,19 +1506,21 @@ final class JsonStore implements StoreInterface
         $this->save();
     }
 
-    public function deleteOrderAttachment(string $tenantKey, int $attachmentId): void
+    public function deleteOrderAttachment(string $tenantKey, int $orderId, int $attachmentId): void
     {
-        if ($attachmentId <= 0) {
+        if ($orderId <= 0 || $attachmentId <= 0) {
             return;
         }
 
         $all = $this->all();
-        foreach (($all['attachments'][$tenantKey] ?? []) as $orderId => $rows) {
-            $all['attachments'][$tenantKey][$orderId] = array_values(array_filter(
-                is_array($rows) ? $rows : [],
-                fn (array $row): bool => (int) ($row['id'] ?? 0) !== $attachmentId
-            ));
+        $rows = $all['attachments'][$tenantKey][$orderId] ?? [];
+        if (!is_array($rows)) {
+            return;
         }
+        $all['attachments'][$tenantKey][$orderId] = array_values(array_filter(
+            $rows,
+            fn (array $row): bool => (int) ($row['id'] ?? 0) !== $attachmentId
+        ));
 
         $this->data = $all;
         $this->save();
@@ -1418,6 +1586,104 @@ final class JsonStore implements StoreInterface
 
         $this->data = $all;
         $this->save();
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function tenantNotices(string $tenantKey): array
+    {
+        $settings = $this->tenantSettings($tenantKey);
+        $rows = is_array($settings['notices']['items'] ?? null) ? $settings['notices']['items'] : [];
+        usort($rows, static function (array $left, array $right): int {
+            if (!empty($left['is_pinned']) !== !empty($right['is_pinned'])) {
+                return !empty($left['is_pinned']) ? -1 : 1;
+            }
+
+            return strcmp((string) ($right['published_at'] ?? ''), (string) ($left['published_at'] ?? ''));
+        });
+
+        return $rows;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function tenantNotice(string $tenantKey, int $noticeId): ?array
+    {
+        foreach ($this->tenantNotices($tenantKey) as $notice) {
+            if ((int) ($notice['id'] ?? 0) === $noticeId) {
+                return $notice;
+            }
+        }
+
+        return null;
+    }
+
+    /** @param array<string, mixed> $data */
+    public function saveTenantNotice(string $tenantKey, array $data): int
+    {
+        $settings = $this->tenantSettings($tenantKey);
+        $notices = is_array($settings['notices']['items'] ?? null) ? $settings['notices']['items'] : [];
+        $noticeId = (int) ($data['id'] ?? 0);
+        if ($noticeId <= 0) {
+            $noticeId = $this->nextId($notices);
+            $data['id'] = $noticeId;
+            $data['created_at'] = date('Y-m-d H:i:s');
+        }
+        $data['tenant_key'] = $tenantKey;
+        $data['updated_at'] = date('Y-m-d H:i:s');
+
+        $updated = false;
+        foreach ($notices as &$notice) {
+            if ((int) ($notice['id'] ?? 0) !== $noticeId) {
+                continue;
+            }
+            $notice = array_replace($notice, $data);
+            $updated = true;
+            break;
+        }
+        unset($notice);
+
+        if (!$updated) {
+            $notices[] = $data;
+        }
+
+        $this->saveTenantSettings($tenantKey, ['notices' => ['items' => $notices]]);
+
+        return $noticeId;
+    }
+
+    public function deleteTenantNotice(string $tenantKey, int $noticeId): void
+    {
+        if ($noticeId <= 0) {
+            return;
+        }
+
+        $settings = $this->tenantSettings($tenantKey);
+        $notices = is_array($settings['notices']['items'] ?? null) ? $settings['notices']['items'] : [];
+        $notices = array_values(array_filter(
+            $notices,
+            static fn (array $notice): bool => (int) ($notice['id'] ?? 0) !== $noticeId
+        ));
+        $this->saveTenantSettings($tenantKey, ['notices' => ['items' => $notices]]);
+    }
+
+    public function toggleTenantNoticePinned(string $tenantKey, int $noticeId, bool $pinned): void
+    {
+        if ($noticeId <= 0) {
+            return;
+        }
+
+        $settings = $this->tenantSettings($tenantKey);
+        $notices = is_array($settings['notices']['items'] ?? null) ? $settings['notices']['items'] : [];
+        foreach ($notices as &$notice) {
+            if ((int) ($notice['id'] ?? 0) !== $noticeId) {
+                continue;
+            }
+            $notice['is_pinned'] = $pinned;
+            $notice['updated_at'] = date('Y-m-d H:i:s');
+            break;
+        }
+        unset($notice);
+
+        $this->saveTenantSettings($tenantKey, ['notices' => ['items' => $notices]]);
     }
 
     /** @return array<int, array<string, mixed>> */
@@ -2978,7 +3244,15 @@ final class JsonStore implements StoreInterface
             'showapi' => [
                 'app_id' => '',
                 'sign' => '',
+                'baidu_enabled' => false,
                 'enabled' => false,
+            ],
+            'obapi' => [
+                'cache_ttl' => 3600,
+                'enabled' => false,
+            ],
+            'security' => [
+                'two_factor_password_hash' => '',
             ],
             'proxy' => [
                 'rotation_proxy' => '',
@@ -3053,6 +3327,9 @@ final class JsonStore implements StoreInterface
                 'carrier_mapping' => '',
                 'tracking_prefix_mapping' => '',
             ],
+            'notices' => [
+                'items' => [],
+            ],
             'api_1688' => [
                 'enabled' => false,
                 'config_file' => 'storage/tenants/' . $this->tenantStorageKey((string) ($tenant['key'] ?? '')) . '/config/1688/apikeys.conf',
@@ -3095,6 +3372,18 @@ final class JsonStore implements StoreInterface
         $permissions = $defaults[$role] ?? $defaults['客服'];
         $extra = array_values(array_filter(array_map('trim', (array) $overrides)));
         return array_values(array_unique(array_merge($permissions, $extra)));
+    }
+
+    /**
+     * @param array{allow?: array<int, string>, deny?: array<int, string>} $overrides
+     * @return array{allow: array<int, string>, deny: array<int, string>}
+     */
+    private function normalizePermissionOverrides(array $overrides): array
+    {
+        return [
+            'allow' => array_values(array_unique(array_filter(array_map('trim', (array) ($overrides['allow'] ?? []))))),
+            'deny' => array_values(array_unique(array_filter(array_map('trim', (array) ($overrides['deny'] ?? []))))),
+        ];
     }
 
     /**

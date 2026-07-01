@@ -675,7 +675,7 @@ SQL);
         }
 
         $select = ['id', 'username', 'password_hash', 'legacy_password', 'is_company_admin', 'role', 'permissions', 'dpquancheng', 'is_active', 'created_at'];
-        foreach (['display_name', 'preference_module', 'api_1688_config', 'password_reset_at', 'last_login_at'] as $column) {
+        foreach (['display_name', 'preference_module', 'api_1688_config', 'password_reset_at', 'last_login_at', 'permission_overrides', 'profit_deduction'] as $column) {
             if ($this->columnExists($tenantPdo, 'users', $column)) {
                 $select[] = $column;
             }
@@ -696,6 +696,8 @@ SQL);
             'api_1688_config' => is_string($row['api_1688_config'] ?? null) ? (string) $row['api_1688_config'] : json_encode($row['api_1688_config'] ?? [], JSON_UNESCAPED_UNICODE),
             'is_company_admin' => (bool) $row['is_company_admin'],
             'permissions' => json_decode((string) ($row['permissions'] ?? '[]'), true) ?: [],
+            'permission_overrides' => $this->jsonArray($row['permission_overrides'] ?? null),
+            'profit_deduction' => isset($row['profit_deduction']) ? (float) $row['profit_deduction'] : null,
             'stores' => array_filter(array_map('trim', explode(',', (string) ($row['dpquancheng'] ?? '')))),
             'status' => (bool) $row['is_active'] ? 'active' : 'disabled',
             'created_at' => (string) $row['created_at'],
@@ -752,6 +754,42 @@ SQL);
         $stmt->execute($params);
     }
 
+    /** @param array{allow?: array<int, string>, deny?: array<int, string>} $overrides */
+    public function updateUserPermissionOverrides(string $tenantKey, int $userId, array $overrides, string $operator): void
+    {
+        $tenantPdo = $this->tenantPdo($tenantKey);
+        if (!$tenantPdo || $userId <= 0) {
+            return;
+        }
+
+        $user = $this->user($tenantKey, $userId);
+        if (!$user) {
+            return;
+        }
+
+        $normalized = $this->normalizePermissionOverrides($overrides);
+        $role = (string) ($user['role'] ?? '客服');
+        $flat = array_values(array_unique(array_merge(
+            Permission::roleDefaults()[$role] ?? Permission::roleDefaults()['客服'],
+            $normalized['allow']
+        )));
+        $flat = array_values(array_diff($flat, $normalized['deny']));
+
+        $assignments = ['permissions = ?'];
+        $params = [json_encode($flat, JSON_UNESCAPED_UNICODE)];
+        if ($this->columnExists($tenantPdo, 'users', 'permission_overrides')) {
+            $assignments[] = 'permission_overrides = ?';
+            $params[] = json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+        if ($this->columnExists($tenantPdo, 'users', 'updated_at')) {
+            $assignments[] = 'updated_at = NOW()';
+        }
+        $params[] = $userId;
+
+        $stmt = $tenantPdo->prepare('UPDATE users SET ' . implode(', ', $assignments) . ' WHERE id = ?');
+        $stmt->execute($params);
+    }
+
     public function touchTenantUserLogin(string $tenantKey, int $userId): void
     {
         $tenantPdo = $this->tenantPdo($tenantKey);
@@ -800,10 +838,10 @@ SQL);
             $values[] = '?';
             $params[] = trim((string) ($data['preference_module'] ?? ''));
         }
-        if ($this->columnExists($tenantPdo, 'users', 'api_1688_config')) {
+        if (array_key_exists('api_1688_config', $data) && $this->columnExists($tenantPdo, 'users', 'api_1688_config')) {
             $columns[] = 'api_1688_config';
             $values[] = '?';
-            $params[] = trim((string) ($data['api_1688_config'] ?? '')) ?: null;
+            $params[] = trim((string) $data['api_1688_config']) ?: null;
         }
         if ($this->columnExists($tenantPdo, 'users', 'password_reset_at')) {
             $columns[] = 'password_reset_at';
@@ -859,9 +897,9 @@ SQL);
             $assignments[] = 'preference_module = ?';
             $params[] = trim((string) ($data['preference_module'] ?? ''));
         }
-        if ($this->columnExists($tenantPdo, 'users', 'api_1688_config')) {
+        if (array_key_exists('api_1688_config', $data) && $this->columnExists($tenantPdo, 'users', 'api_1688_config')) {
             $assignments[] = 'api_1688_config = ?';
-            $params[] = trim((string) ($data['api_1688_config'] ?? '')) ?: null;
+            $params[] = trim((string) $data['api_1688_config']) ?: null;
         }
         if (trim((string) ($data['password_reset'] ?? '')) !== '') {
             $assignments[] = 'password_hash = ?';
@@ -1168,6 +1206,105 @@ SQL)->fetchAll();
         $stmt->execute($orderIds);
     }
 
+    /** @param array<string, bool> $flags */
+    public function updateOrderFlags(string $tenantKey, int $orderId, array $flags, string $operator): void
+    {
+        $tenantPdo = $this->tenantPdo($tenantKey);
+        if (!$tenantPdo || $orderId <= 0) {
+            return;
+        }
+
+        $sets = [];
+        $params = [];
+        foreach (['review_invited', 'reviewed'] as $field) {
+            if (!array_key_exists($field, $flags) || !$this->columnExists($tenantPdo, 'orders', $field)) {
+                continue;
+            }
+            $sets[] = "{$field} = ?";
+            $params[] = !empty($flags[$field]) ? 1 : 0;
+        }
+        if (!$sets) {
+            return;
+        }
+
+        $params[] = $orderId;
+        $stmt = $tenantPdo->prepare('UPDATE orders SET ' . implode(', ', $sets) . ' WHERE id = ?');
+        $stmt->execute($params);
+        $this->insertItemLog($tenantPdo, $orderId, null, '评价状态切换', 'review', '', json_encode($flags, JSON_UNESCAPED_UNICODE), $operator);
+    }
+
+    /** @param array<string, mixed> $data */
+    public function insertExternalOrder(string $tenantKey, array $data, string $operator): int
+    {
+        $tenantPdo = $this->tenantPdo($tenantKey);
+        if (!$tenantPdo || !$this->tableExists($tenantPdo, 'orders') || !$this->tableExists($tenantPdo, 'order_items')) {
+            return 0;
+        }
+
+        $platform = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($data['platform'] ?? 'external')) ?: 'external';
+        $platformOrderId = trim((string) ($data['platform_order_id'] ?? ''));
+        $tracking = trim((string) ($data['tracking'] ?? ''));
+        $storeId = max(0, (int) ($data['store_id'] ?? 0));
+        if ($platformOrderId === '' || $tracking === '' || $storeId <= 0) {
+            return 0;
+        }
+
+        $stmt = $tenantPdo->prepare('SELECT id FROM orders WHERE platform = ? AND store_id = ? AND platform_order_id = ? LIMIT 1');
+        $stmt->execute([$platform, $storeId, $platformOrderId]);
+        $existing = (int) ($stmt->fetchColumn() ?: 0);
+        if ($existing > 0) {
+            return $existing;
+        }
+
+        $orderColumns = [];
+        $orderValues = [];
+        $orderParams = [];
+        foreach ([
+            'platform' => $platform,
+            'store_id' => $storeId,
+            'platform_order_id' => $platformOrderId,
+            'order_date' => date('Y-m-d H:i:s'),
+            'imported_at' => date('Y-m-d H:i:s'),
+            'status' => '外部插入',
+        ] as $column => $value) {
+            if ($this->columnExists($tenantPdo, 'orders', $column)) {
+                $orderColumns[] = $column;
+                $orderValues[] = '?';
+                $orderParams[] = $value;
+            }
+        }
+        if (!$orderColumns) {
+            return 0;
+        }
+
+        $tenantPdo->prepare('INSERT INTO orders (' . implode(', ', $orderColumns) . ') VALUES (' . implode(', ', $orderValues) . ')')->execute($orderParams);
+        $orderId = (int) $tenantPdo->lastInsertId();
+
+        $itemColumns = ['order_id'];
+        $itemValues = ['?'];
+        $itemParams = [$orderId];
+        foreach ([
+            'item_code' => trim((string) ($data['item_code'] ?? '')),
+            'product_title' => '外部插入订单',
+            'quantity' => max(1, (int) ($data['quantity'] ?? 1)),
+            'source_type' => 'pending',
+            'purchase_status' => '外部插入',
+        ] as $column => $value) {
+            if ($this->columnExists($tenantPdo, 'order_items', $column)) {
+                $itemColumns[] = $column;
+                $itemValues[] = '?';
+                $itemParams[] = $value;
+            }
+        }
+        $tenantPdo->prepare('INSERT INTO order_items (' . implode(', ', $itemColumns) . ') VALUES (' . implode(', ', $itemValues) . ')')->execute($itemParams);
+        $itemId = (int) $tenantPdo->lastInsertId();
+        $this->writeItemField($tenantPdo, $itemId, 'ship_number', $tracking);
+        $this->writeItemField($tenantPdo, $itemId, 'intl_number', $tracking);
+        $this->insertItemLog($tenantPdo, $orderId, $itemId, '外部插入订单', 'platform_order_id', '-', $platformOrderId, $operator);
+
+        return $orderId;
+    }
+
     /**
      * @param array<int, array<string, mixed>> $orders
      * @return array{inserted: int, updated: int, skipped: int, items_inserted: int, items_updated: int}
@@ -1382,9 +1519,6 @@ SQL)->fetchAll();
             $identity = is_array($record['identity'] ?? null) ? $record['identity'] : [];
             $changes = is_array($record['changes'] ?? null) ? $record['changes'] : [];
             $itemIds = $this->findImportItemIds($tenantPdo, $identity);
-            if (!$itemIds && trim((string) ($changes['intl_number'] ?? '')) !== '') {
-                $itemIds = $this->findImportItemIdsByIntlNumber($tenantPdo, (string) $changes['intl_number']);
-            }
             if (!$itemIds) {
                 $report['failed']++;
                 $this->importReportMessage($report, (int) ($record['row'] ?? 0), '未找到匹配的订单商品，国际运单导入未更新。');
@@ -1490,14 +1624,14 @@ SQL)->fetchAll();
         ]);
     }
 
-    public function deleteOrderAttachment(string $tenantKey, int $attachmentId): void
+    public function deleteOrderAttachment(string $tenantKey, int $orderId, int $attachmentId): void
     {
         $tenantPdo = $this->tenantPdo($tenantKey);
-        if (!$tenantPdo || $attachmentId <= 0 || !$this->tableExists($tenantPdo, 'order_attachments')) {
+        if (!$tenantPdo || $orderId <= 0 || $attachmentId <= 0 || !$this->tableExists($tenantPdo, 'order_attachments')) {
             return;
         }
 
-        $tenantPdo->prepare('UPDATE order_attachments SET deleted_at = NOW() WHERE id = ?')->execute([$attachmentId]);
+        $tenantPdo->prepare('UPDATE order_attachments SET deleted_at = NOW() WHERE id = ? AND order_id = ?')->execute([$attachmentId, $orderId]);
     }
 
     /** @return array<string, mixed> */
@@ -1577,7 +1711,7 @@ SQL)->fetchAll();
             $stmt = $tenantPdo->prepare(
                 'INSERT INTO tenant_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()'
             );
-            foreach (['company', 'orders', 'profit', 'logistics', 'api_1688'] as $section) {
+            foreach (['company', 'orders', 'profit', 'logistics', 'api_1688', 'notices'] as $section) {
                 $stmt->execute([
                     $section,
                     json_encode($settings[$section] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
@@ -1586,6 +1720,100 @@ SQL)->fetchAll();
         }
 
         $this->updateTenantProfile($tenantKey, is_array($settings['company'] ?? null) ? $settings['company'] : []);
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function tenantNotices(string $tenantKey): array
+    {
+        $settings = $this->tenantSettings($tenantKey);
+        $rows = is_array($settings['notices']['items'] ?? null) ? $settings['notices']['items'] : [];
+        usort($rows, static function (array $left, array $right): int {
+            if (!empty($left['is_pinned']) !== !empty($right['is_pinned'])) {
+                return !empty($left['is_pinned']) ? -1 : 1;
+            }
+
+            return strcmp((string) ($right['published_at'] ?? ''), (string) ($left['published_at'] ?? ''));
+        });
+
+        return $rows;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function tenantNotice(string $tenantKey, int $noticeId): ?array
+    {
+        foreach ($this->tenantNotices($tenantKey) as $notice) {
+            if ((int) ($notice['id'] ?? 0) === $noticeId) {
+                return $notice;
+            }
+        }
+
+        return null;
+    }
+
+    /** @param array<string, mixed> $data */
+    public function saveTenantNotice(string $tenantKey, array $data): int
+    {
+        $settings = $this->tenantSettings($tenantKey);
+        $notices = is_array($settings['notices']['items'] ?? null) ? $settings['notices']['items'] : [];
+        $noticeId = (int) ($data['id'] ?? 0);
+        if ($noticeId <= 0) {
+            $noticeId = $this->nextId($notices);
+            $data['id'] = $noticeId;
+            $data['created_at'] = date('Y-m-d H:i:s');
+        }
+        $data['tenant_key'] = $tenantKey;
+        $data['updated_at'] = date('Y-m-d H:i:s');
+
+        $updated = false;
+        foreach ($notices as &$notice) {
+            if ((int) ($notice['id'] ?? 0) !== $noticeId) {
+                continue;
+            }
+            $notice = array_replace($notice, $data);
+            $updated = true;
+            break;
+        }
+        unset($notice);
+        if (!$updated) {
+            $notices[] = $data;
+        }
+
+        $this->saveTenantSettings($tenantKey, ['notices' => ['items' => $notices]]);
+
+        return $noticeId;
+    }
+
+    public function deleteTenantNotice(string $tenantKey, int $noticeId): void
+    {
+        if ($noticeId <= 0) {
+            return;
+        }
+        $settings = $this->tenantSettings($tenantKey);
+        $notices = is_array($settings['notices']['items'] ?? null) ? $settings['notices']['items'] : [];
+        $notices = array_values(array_filter(
+            $notices,
+            static fn (array $notice): bool => (int) ($notice['id'] ?? 0) !== $noticeId
+        ));
+        $this->saveTenantSettings($tenantKey, ['notices' => ['items' => $notices]]);
+    }
+
+    public function toggleTenantNoticePinned(string $tenantKey, int $noticeId, bool $pinned): void
+    {
+        if ($noticeId <= 0) {
+            return;
+        }
+        $settings = $this->tenantSettings($tenantKey);
+        $notices = is_array($settings['notices']['items'] ?? null) ? $settings['notices']['items'] : [];
+        foreach ($notices as &$notice) {
+            if ((int) ($notice['id'] ?? 0) !== $noticeId) {
+                continue;
+            }
+            $notice['is_pinned'] = $pinned;
+            $notice['updated_at'] = date('Y-m-d H:i:s');
+            break;
+        }
+        unset($notice);
+        $this->saveTenantSettings($tenantKey, ['notices' => ['items' => $notices]]);
     }
 
     /** @return array<int, array<string, mixed>> */
@@ -3360,7 +3588,7 @@ SQL);
         $stmt->execute([$value, $itemId]);
     }
 
-    private function insertItemLog(\PDO $pdo, int $orderId, int $itemId, string $action, string $field, string $oldValue, string $newValue, string $operator = '系统管理员'): void
+    private function insertItemLog(\PDO $pdo, int $orderId, ?int $itemId, string $action, string $field, string $oldValue, string $newValue, string $operator = '系统管理员'): void
     {
         $stmt = $pdo->prepare(
             'INSERT INTO order_logs (order_id, order_item_id, operator, action_type, field_name, old_value, new_value, ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
@@ -3478,6 +3706,9 @@ SQL);
                 'carrier_mapping' => '',
                 'tracking_prefix_mapping' => '',
             ],
+            'notices' => [
+                'items' => [],
+            ],
             'api_1688' => [
                 'enabled' => false,
                 'config_file' => 'storage/tenants/' . $this->tenantStorageKey((string) ($tenant['key'] ?? '')) . '/config/1688/apikeys.conf',
@@ -3504,5 +3735,17 @@ SQL);
         $permissions = $defaults[$role] ?? $defaults['客服'];
         $extra = array_values(array_filter(array_map('trim', (array) $overrides)));
         return array_values(array_unique(array_merge($permissions, $extra)));
+    }
+
+    /**
+     * @param array{allow?: array<int, string>, deny?: array<int, string>} $overrides
+     * @return array{allow: array<int, string>, deny: array<int, string>}
+     */
+    private function normalizePermissionOverrides(array $overrides): array
+    {
+        return [
+            'allow' => array_values(array_unique(array_filter(array_map('trim', (array) ($overrides['allow'] ?? []))))),
+            'deny' => array_values(array_unique(array_filter(array_map('trim', (array) ($overrides['deny'] ?? []))))),
+        ];
     }
 }

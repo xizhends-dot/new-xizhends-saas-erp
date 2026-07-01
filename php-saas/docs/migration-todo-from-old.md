@@ -48,38 +48,38 @@
 - ✅ **运单核对 checkyd / 日本快递跳转 jpyd-check**（commit: ce22d22） — old 提供运单核对与快递官网跳转。
 
 ### 统计分析
-- ☐ **采购状态每日统计** — old `caigou_status/`(状态分布+日环比+平台分别+图表)。php-saas 缺。
-- ☐ **业绩汇总(按店铺/平台)** — old `performance/summary.php`。php-saas stats.performance=false 空壳。
-- ☐ **出单商品分析(热卖排名)** — old `performance/product_analysis.php`(1322行,按商品code销量/金额、子码分布)。php-saas stats.products=false 空壳。
-- ☐ **业绩面板/日统计(AJAX)** — old `performance/index.php`(按日聚合订单/采购/完成)。
-- ☐ **核价计算器** — old `price_calculator.php`(多行成本核算工具)。php-saas 完全无。
-- ☐ **采购统计补全** — php-saas 已有采购人/状态，缺日视图、用户追溯维度。
+- ✅ **采购状态每日统计**（commit: feat: 统一迁移 P1/P2 功能与审计修复） — old `caigou_status/`(状态分布+日环比+平台分别+图表)。已补每日状态、平台分布和环比统计。
+- ✅ **业绩汇总(按店铺/平台)**（commit: feat: 统一迁移 P1/P2 功能与审计修复） — old `performance/summary.php`。已补按店铺/平台聚合。
+- ✅ **出单商品分析(热卖排名)**（commit: feat: 统一迁移 P1/P2 功能与审计修复） — old `performance/product_analysis.php`(1322行,按商品code销量/金额、子码分布)。已补商品编码销量/金额/子码分布。
+- ✅ **业绩面板/日统计(AJAX)**（commit: feat: 统一迁移 P1/P2 功能与审计修复） — old `performance/index.php`(按日聚合订单/采购/完成)。已补页面和 JSON 数据接口。
+- ✅ **核价计算器**（commit: feat: 统一迁移 P1/P2 功能与审计修复） — old `price_calculator.php`(多行成本核算工具)。已补多行核价与目标利润反推。
+- ✅ **采购统计补全**（commit: feat: 统一迁移 P1/P2 功能与审计修复） — php-saas 已有采购人/状态，已补日视图、用户追溯维度。
 
 ### 导入导出（old 用 Excel/PHPExcel，php-saas 目前全 CSV）
-- ☐ **多平台特定导出** — old outexcel-riya/sx/wd/weier、outexcel_qoo10、outexcel_wowma 等平台专用发货单格式。php-saas 无平台变体。
-- ☐ **财务导出嵌图片 + Excel 样式** — old outcwexcel.php 用 PHPExcel 内嵌订单图片。php-saas 仅 CSV。
-- ☐ **客户资料 Excel 样式导出** — old custinfo_export.php(冻结行/列宽/保护)。
-- ☐ **财务数据导入(运单号模糊匹配)** — old caiwu_new_import.php(精确/前缀/后缀/中间匹配)。
-- ☐ **国际运单导入：追加 vs 覆盖模式** — old shipping_import.php 第三列控制。php-saas 导入无该选项。
-- ☐ **日本仓订单导入(YD表)** — old ydinsert.php(日本仓订单+发货员分配)。
+- ✅ **多平台特定导出**（commit: feat: 统一迁移 P1/P2 功能与审计修复，CSV 版本） — old outexcel-riya/sx/wd/weier、outexcel_qoo10、outexcel_wowma 等平台专用发货单格式。已补平台变体 CSV 导出。
+- ◐ **财务导出嵌图片 + Excel 样式**（commit: feat: 统一迁移 P1/P2 功能与审计修复，CSV 占位） — old outcwexcel.php 用 PHPExcel 内嵌订单图片。真实 Excel 样式/嵌图需要引入电子表格库，需先确认。
+- ◐ **客户资料 Excel 样式导出**（commit: feat: 统一迁移 P1/P2 功能与审计修复，CSV 版本） — old custinfo_export.php(冻结行/列宽/保护)。已补客户资料 CSV 导出，Excel 样式需引库。
+- ✅ **财务数据导入(运单号模糊匹配)**（commit: feat: 统一迁移 P1/P2 功能与审计修复） — old caiwu_new_import.php(精确/前缀/后缀/中间匹配)。已补预览与确认写入。
+- ✅ **国际运单导入：追加 vs 覆盖模式**（commit: feat: 统一迁移 P1/P2 功能与审计修复） — old shipping_import.php 第三列控制。已补追加/覆盖解析与确认写入。
+- ✅ **日本仓订单导入(YD表)**（commit: feat: 统一迁移 P1/P2 功能与审计修复） — old ydinsert.php(日本仓订单+发货员分配)。已补预览与确认写入。
 
 ### 用户/通知
-- ☐ **员工自助改密码** — old `pwdedit.php`。php-saas 无员工改密入口（只有管理员重置）。
-- ☐ **租户内通知公告系统** — old `notice/`(租户管理员发公告给员工 + 订单页内展示)。php-saas 只有超管全局公告。
-- ☐ **细粒度权限编辑 UI** — old `user_permissions.php` 逐用户勾权限。php-saas 是 role-based，缺单用户 override 编辑页。
-- ☐ **客服扣点快捷编辑** — old 用户列表内快编各客服 profit_deduction。php-saas 扣点挂在店铺上。
+- ✅ **员工自助改密码**（commit: feat: 统一迁移 P1/P2 功能与审计修复） — old `pwdedit.php`。已补员工旧密码校验和 `password_hash` 更新入口。
+- ✅ **租户内通知公告系统**（commit: feat: 统一迁移 P1/P2 功能与审计修复） — old `notice/`(租户管理员发公告给员工 + 订单页内展示)。已补租户公告管理、首页和订单页展示。
+- ✅ **细粒度权限编辑 UI**（commit: feat: 统一迁移 P1/P2 功能与审计修复） — old `user_permissions.php` 逐用户勾权限。已补单用户 allow/deny 覆盖编辑页。
+- ✅ **客服扣点快捷编辑**（commit: feat: 统一迁移 P1/P2 功能与审计修复） — old 用户列表内快编各客服 profit_deduction。已补快捷编辑，当前保存到租户利润设置。
 
 ---
 
 ## P2 — 边缘缺失（低频，可延后）
 
-- ☐ **AJAX 体验类**：order_row 异步刷新行、order_detail 异步详情、logistics_reload 异步刷物流、toggle_review 邀评/已评切换。
-- ☐ **刷单导出 outshuadan.php**。
-- ☐ **运单/订单外部插入 ydorderinsert.php**。
-- ☐ **物流查询百度备用方案**（ShowAPI 失败降级）。
-- ☐ **物流编号对照表 / ShowAPI / OBAPI缓存 / 两步验证密码 等 setting 项** — 部分由 SaaS 超管维护，确认是否需暴露给租户。
-- ☐ **行内编辑 / 编辑侧栏**（UI 优化，详情页可替代）。
-- ☐ **动态组件配置 component-ini**（确认是否还需要）。
+- ✅ **AJAX 体验类**（commit: feat: 统一迁移 P1/P2 功能与审计修复）：order_row 异步刷新行、order_detail 异步详情、logistics_reload 异步刷物流、toggle_review 邀评/已评切换。
+- ✅ **刷单导出 outshuadan.php**（commit: feat: 统一迁移 P1/P2 功能与审计修复）。
+- ✅ **运单/订单外部插入 ydorderinsert.php**（commit: feat: 统一迁移 P1/P2 功能与审计修复）。
+- ◐ **物流查询百度备用方案**（commit: feat: 统一迁移 P1/P2 功能与审计修复，占位） — ShowAPI 失败降级入口已保留，真实百度接口需配置确认。
+- ◐ **物流编号对照表 / ShowAPI / OBAPI缓存 / 两步验证密码 等 setting 项**（commit: feat: 统一迁移 P1/P2 功能与审计修复，部分配置项） — 已补配置占位，是否暴露给租户仍需确认。
+- ◐ **行内编辑 / 编辑侧栏**（commit: feat: 统一迁移 P1/P2 功能与审计修复，详情页替代） — 现有详情页和 AJAX 刷新已覆盖主路径，专门侧栏 UI 暂未迁移。
+- ◐ **动态组件配置 component-ini**（commit: feat: 统一迁移 P1/P2 功能与审计修复，决策报告） — 已补只读决策报告，是否需要完整配置 UI 待确认。
 
 ---
 

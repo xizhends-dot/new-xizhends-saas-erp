@@ -1,0 +1,5 @@
+.codegraph/
+storage/
+docs/project_id_*
+*.log
+.tmp-server-*.log

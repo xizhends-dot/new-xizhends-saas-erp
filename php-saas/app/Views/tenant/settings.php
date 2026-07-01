@@ -1,0 +1,124 @@
+<?php
+$company = is_array($settings['company'] ?? null) ? $settings['company'] : [];
+$orders = is_array($settings['orders'] ?? null) ? $settings['orders'] : [];
+$profit = is_array($settings['profit'] ?? null) ? $settings['profit'] : [];
+$logistics = is_array($settings['logistics'] ?? null) ? $settings['logistics'] : [];
+$api1688 = is_array($settings['api_1688'] ?? null) ? $settings['api_1688'] : [];
+$platformDeductions = is_array($profit['platform_deductions'] ?? null) ? $profit['platform_deductions'] : [];
+$settingsTabs = [
+    ['key' => 'company', 'title' => '公司资料', 'desc' => '登录页、侧栏与租户资料'],
+    ['key' => 'orders', 'title' => '订单参数', 'desc' => '查询默认值与归档策略'],
+    ['key' => 'profit', 'title' => '利润参数', 'desc' => '利润分析与财务导出口径'],
+    ['key' => 'logistics', 'title' => '国内快递', 'desc' => '签收地与国内物流口径'],
+    ['key' => 'api1688', 'title' => '1688 接口', 'desc' => '租户业务接口配置'],
+];
+?>
+<div class="page-head">
+    <div>
+        <h1>系统设置 <span class="sub">当前租户独立设置：资料、订单参数、国内快递、1688 与利润口径</span></h1>
+    </div>
+    <div class="head-actions">
+        <button class="btn primary" type="submit" form="tenant-settings-form">保存设置</button>
+    </div>
+</div>
+
+<?php if (($saved ?? '') === '1'): ?>
+    <div class="notice">设置已保存，利润分析和导出报表会使用新的口径。</div>
+<?php endif; ?>
+
+<form id="tenant-settings-form" method="post" action="/settings/save" class="settings-page">
+    <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
+
+    <div class="tenant-settings-layout" data-settings-layout>
+        <aside class="settings-nav-panel" aria-label="系统设置导航">
+            <div class="settings-nav-title">设置导航</div>
+            <div class="settings-nav-list" role="tablist" aria-label="系统设置分类">
+                <?php foreach ($settingsTabs as $index => $tab): ?>
+                    <button
+                        type="button"
+                        class="settings-tab <?= $index === 0 ? 'active' : '' ?>"
+                        data-settings-tab="<?= e($tab['key']) ?>"
+                        aria-controls="settings-pane-<?= e($tab['key']) ?>"
+                        aria-selected="<?= $index === 0 ? 'true' : 'false' ?>"
+                        role="tab"
+                    >
+                        <strong><?= e($tab['title']) ?></strong>
+                        <span><?= e($tab['desc']) ?></span>
+                    </button>
+                <?php endforeach; ?>
+            </div>
+            <div class="settings-nav-note">这里的设置只影响当前租户；平台级物流编号对照表、ShowAPI 与轮循代理在 SaaS 超管维护。</div>
+        </aside>
+
+        <div class="settings-pane-wrap">
+            <section class="panel settings-pane active" id="settings-pane-company" data-settings-pane="company" role="tabpanel">
+                <div class="panel-head"><span>公司资料</span><span class="sub">用于登录页、侧栏与租户资料</span></div>
+                <div class="panel-body form-grid">
+                    <label><span>公司名</span><input name="company_name" value="<?= e($company['company_name'] ?? '') ?>"></label>
+                    <label><span>简称</span><input name="short_name" value="<?= e($company['short_name'] ?? '') ?>"></label>
+                    <label><span>联系人</span><input name="contact" value="<?= e($company['contact'] ?? '') ?>"></label>
+                    <label><span>电话</span><input name="phone" value="<?= e($company['phone'] ?? '') ?>"></label>
+                    <label class="wide"><span>地址</span><input name="address" value="<?= e($company['address'] ?? '') ?>"></label>
+                    <label class="wide"><span>业务备注</span><textarea name="note"><?= e($company['note'] ?? '') ?></textarea></label>
+                </div>
+            </section>
+
+            <section class="panel settings-pane" id="settings-pane-orders" data-settings-pane="orders" role="tabpanel" hidden>
+                <div class="panel-head"><span>订单参数</span><span class="sub">查询默认值与归档策略</span></div>
+                <div class="panel-body form-grid">
+                    <label><span>默认分页</span><input type="number" min="20" max="1000" name="default_page_size" value="<?= e($orders['default_page_size'] ?? 200) ?>"></label>
+                    <label><span>默认查询天数</span><input type="number" min="1" max="365" name="default_query_days" value="<?= e($orders['default_query_days'] ?? 30) ?>"></label>
+                    <label><span>归档周期天数</span><input type="number" min="30" max="3650" name="archive_days" value="<?= e($orders['archive_days'] ?? 180) ?>"></label>
+                    <label><span>售价预警指数</span><input type="number" step="0.01" min="0" name="price_warning_index" value="<?= e($orders['price_warning_index'] ?? 0) ?>"></label>
+                </div>
+            </section>
+
+            <section class="panel settings-pane" id="settings-pane-profit" data-settings-pane="profit" role="tabpanel" hidden>
+                <div class="panel-head"><span>利润参数</span><span class="sub">利润分析与财务导出口径</span></div>
+                <div class="panel-body form-grid">
+                    <label><span>汇率</span><input type="number" step="0.0001" min="0.0001" name="exchange_rate" value="<?= e($profit['exchange_rate'] ?? 0.046) ?>"></label>
+                    <label><span>汇率模式</span><select name="exchange_rate_mode">
+                        <option value="fixed" <?= ($profit['exchange_rate_mode'] ?? 'fixed') === 'fixed' ? 'selected' : '' ?>>固定汇率</option>
+                        <option value="manual" <?= ($profit['exchange_rate_mode'] ?? '') === 'manual' ? 'selected' : '' ?>>手动维护</option>
+                    </select></label>
+                    <label><span>固定汇率</span><input type="number" step="0.0001" min="0.0001" name="fixed_exchange_rate" value="<?= e($profit['fixed_exchange_rate'] ?? ($profit['exchange_rate'] ?? 0.046)) ?>"></label>
+                    <label><span>默认国际运费/件</span><input type="number" step="0.01" min="0" name="default_intl_fee" value="<?= e($profit['default_intl_fee'] ?? 820) ?>"></label>
+                    <label class="check-line"><input type="checkbox" name="store_deduction_enabled" value="1" <?= !empty($profit['store_deduction_enabled']) ? 'checked' : '' ?>>优先使用店铺扣点</label>
+                    <?php foreach (($platformNames ?? []) as $code => $name): ?>
+                        <label><span><?= e($name) ?> 扣点/回款率</span><input type="number" step="0.01" min="0" max="100" name="platform_deductions[<?= e($code) ?>]" value="<?= e($platformDeductions[$code] ?? 70) ?>"></label>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+
+            <section class="panel settings-pane" id="settings-pane-logistics" data-settings-pane="logistics" role="tabpanel" hidden>
+                <div class="panel-head"><span>国内快递设置</span><span class="sub">每个租户自己的签收地和国内物流口径</span></div>
+                <div class="panel-body form-grid">
+                    <label class="wide">
+                        <span>国内快递签收地</span>
+                        <textarea name="domestic_receive_places" placeholder="例如：义乌,广州新势力,深圳威通"><?= e($logistics['domestic_receive_places'] ?? '') ?></textarea>
+                    </label>
+                </div>
+            </section>
+
+            <section class="panel settings-pane" id="settings-pane-api1688" data-settings-pane="api1688" role="tabpanel" hidden>
+                <div class="panel-head"><span>1688 接口配置</span><span class="sub">租户级 API 配置替换入口</span></div>
+                <div class="panel-body form-grid">
+                    <label class="check-line"><input type="checkbox" name="api_1688_enabled" value="1" <?= !empty($api1688['enabled']) ? 'checked' : '' ?>>启用租户 1688 接口</label>
+                    <label class="wide api-config-field">
+                        <span>替换 API 账户配置</span>
+                        <textarea name="api_1688_config_content" spellcheck="false" placeholder="#账号名称 APP_KEY APP_SECRET ACCESS_TOKEN&#10;留空表示保留现有配置"></textarea>
+                    </label>
+                    <div class="setting-muted wide">
+                        <div>当前状态：<?= !empty($api1688['has_config']) ? '已配置' : '未配置' ?>。每行一个账户配置，格式：账号名称 APP_KEY APP_SECRET ACCESS_TOKEN。留空保存不会清空现有配置。</div>
+                        <div>保存位置：<?= e($api1688['config_file'] ?? '') ?></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div class="settings-submit-row settings-wide">
+        <button class="btn primary" type="submit">保存设置</button>
+        <span class="setting-muted">保存后仅对当前租户生效，不会影响其他租户。</span>
+    </div>
+</form>

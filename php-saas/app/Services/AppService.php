@@ -11,6 +11,27 @@ use Xizhen\Core\TenantFeature;
 final class AppService
 {
     /** @var array<int, string> */
+    private const PURCHASE_STATUSES = [
+        '未处理的订单',
+        '国内采购-准备',
+        '国内采购--问题',
+        '国内采购-已采购',
+        '国内采购-TB/PDD已采购',
+        '发货中',
+        '已到货',
+        '已发货代订单',
+        '已发日本',
+        '已发出荷通知',
+        '日本仓库存订单',
+        '日本仓库已发出荷通知',
+        '客人取消订单',
+        '问题订单(后台处理)',
+        '库存缺货订单',
+        '刷单订单',
+        '已取消',
+    ];
+
+    /** @var array<int, string> */
     private const DEFAULT_HIDDEN_PURCHASE_STATUSES = [
         '国内采购-已采购',
         '发货中',
@@ -35,6 +56,12 @@ final class AppService
 
     public function __construct(private readonly StoreInterface $store)
     {
+    }
+
+    /** @return array<int, string> */
+    public function purchaseStatuses(): array
+    {
+        return self::PURCHASE_STATUSES;
     }
 
     /** @return array<int, array<string, mixed>> */
@@ -290,13 +317,20 @@ final class AppService
             '经营分析' => [
                 ['feature' => 'analytics.profit', 'title' => '利润分析', 'desc' => '对应 old/plugins/profit-analysis。', 'href' => "/analytics/profit?tenant={$tenantKey}", 'status' => '开发数据'],
                 ['feature' => 'stats.purchase', 'title' => '采购统计', 'desc' => '对应 caigou_status / caigou_stats。', 'href' => "/stats/purchase?tenant={$tenantKey}", 'status' => '开发数据'],
+                ['feature' => 'stats.performance', 'title' => '业绩统计', 'desc' => '对应 old/performance，按日、平台、店铺聚合订单和金额。', 'href' => "/performance?tenant={$tenantKey}", 'status' => '已接页面'],
+                ['feature' => 'stats.products', 'title' => '出单商品分析', 'desc' => '对应 old/performance/product_analysis，按商品编码统计热卖排名。', 'href' => "/performance/products?tenant={$tenantKey}", 'status' => '已接页面'],
                 ['feature' => 'stats.shipping_anomaly', 'title' => '异常运费检测', 'desc' => '对应 old/plugins/shipping-anomaly，按商品 ID 与数量聚合对比国际运费。', 'href' => "/stats/shipping-anomaly?tenant={$tenantKey}", 'status' => '已接页面'],
+                ['feature' => 'tools.price_calculator', 'title' => '核价计算器', 'desc' => '对应 old/price_calculator.php，支持多行成本核算和目标利润反推售价。', 'href' => "/price-calculator?tenant={$tenantKey}", 'status' => '已接页面'],
                 ['feature' => 'import_export.center', 'title' => '导入导出', 'desc' => '对应 Excel 导入、物流导入、客户资料导出。', 'href' => "/import-export?tenant={$tenantKey}", 'status' => '页面已接'],
                 ['feature' => 'management.jobs', 'title' => '定时任务状态', 'desc' => '租户只查看同步状态；频率、开关和失败重试由超管设置。', 'href' => "/jobs?tenant={$tenantKey}", 'status' => '只读'],
             ],
             '权限与体系' => [
                 ['feature' => 'management.stores', 'title' => '店铺管理', 'desc' => '承接隐藏店铺、店铺扣点、店铺级 API 配置和平台状态。', 'href' => "/stores?tenant={$tenantKey}", 'status' => '已接后端'],
                 ['feature' => 'management.users', 'title' => '员工管理', 'desc' => '承接管理员、采购、客服、品检角色、首选入口、1688 配置和店铺范围。', 'href' => "/users?tenant={$tenantKey}", 'status' => '已接后端'],
+                ['feature' => 'account.password_edit', 'title' => '员工自助改密码', 'desc' => '对应 old/pwdedit.php，改用 password_hash 和旧密码校验。', 'href' => "/password/edit?tenant={$tenantKey}", 'status' => '已接页面'],
+                ['feature' => 'management.notices', 'title' => '通知公告', 'desc' => '对应 old/notice，租户管理员发布公告，员工在首页和订单页可见。', 'href' => "/notices?tenant={$tenantKey}", 'status' => '已接页面'],
+                ['feature' => 'management.user_permission_overrides', 'title' => '细粒度权限', 'desc' => '对应 old/user_permissions.php，支持单员工 allow/deny 覆盖。', 'href' => "/users/permissions?tenant={$tenantKey}", 'status' => '已接页面'],
+                ['feature' => 'management.customer_service_deductions', 'title' => '客服扣点', 'desc' => '对应 old 用户列表快捷扣点编辑，保存到租户利润设置。', 'href' => "/users/customer-service-deductions?tenant={$tenantKey}", 'status' => '已接页面'],
                 ['feature' => 'management.assignments', 'title' => '店铺分配', 'desc' => '承接旧 ph_userlevel，维护采购/品检与客服店铺关系。', 'href' => "/assignments?tenant={$tenantKey}", 'status' => '已接后端'],
                 ['feature' => 'management.settings', 'title' => '系统设置', 'desc' => '读取 old/setting.ini，区分可迁入参数和敏感密钥。', 'href' => "/settings?tenant={$tenantKey}", 'status' => '已接配置'],
                 ['feature' => 'management.logs', 'title' => '操作日志', 'desc' => '展示货源改判、批量更新、详情保存等审计记录。', 'href' => "/logs?tenant={$tenantKey}", 'status' => '已接后端'],

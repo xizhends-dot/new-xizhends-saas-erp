@@ -91,6 +91,9 @@ interface StoreInterface
     /** @param array<string, mixed> $data */
     public function updateUser(string $tenantKey, int $userId, array $data): void;
 
+    /** @param array{allow?: array<int, string>, deny?: array<int, string>} $overrides */
+    public function updateUserPermissionOverrides(string $tenantKey, int $userId, array $overrides, string $operator): void;
+
     /** @return array<int, array<string, mixed>> */
     public function assignments(string $tenantKey): array;
 
@@ -145,6 +148,14 @@ interface StoreInterface
     public function deleteOrders(string $tenantKey, array $orderIds): void;
 
     /**
+     * @param array<string, bool> $flags
+     */
+    public function updateOrderFlags(string $tenantKey, int $orderId, array $flags, string $operator): void;
+
+    /** @param array<string, mixed> $data */
+    public function insertExternalOrder(string $tenantKey, array $data, string $operator): int;
+
+    /**
      * @param array<int, array<string, mixed>> $orders
      * @return array{inserted: int, updated: int, skipped: int, items_inserted: int, items_updated: int}
      */
@@ -194,7 +205,7 @@ interface StoreInterface
     /** @param array<string, mixed> $data */
     public function addOrderAttachment(string $tenantKey, int $orderId, array $data): void;
 
-    public function deleteOrderAttachment(string $tenantKey, int $attachmentId): void;
+    public function deleteOrderAttachment(string $tenantKey, int $orderId, int $attachmentId): void;
 
     /** @return array<string, mixed> */
     public function globalSettings(): array;
@@ -207,6 +218,19 @@ interface StoreInterface
 
     /** @param array<string, mixed> $data */
     public function saveTenantSettings(string $tenantKey, array $data): void;
+
+    /** @return array<int, array<string, mixed>> */
+    public function tenantNotices(string $tenantKey): array;
+
+    /** @return array<string, mixed>|null */
+    public function tenantNotice(string $tenantKey, int $noticeId): ?array;
+
+    /** @param array<string, mixed> $data */
+    public function saveTenantNotice(string $tenantKey, array $data): int;
+
+    public function deleteTenantNotice(string $tenantKey, int $noticeId): void;
+
+    public function toggleTenantNoticePinned(string $tenantKey, int $noticeId, bool $pinned): void;
 
     /** @return array<int, array<string, mixed>> */
     public function importExportLogs(string $tenantKey): array;

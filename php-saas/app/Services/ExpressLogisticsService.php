@@ -428,24 +428,11 @@ final class ExpressLogisticsService
     /** @return array{app_id: string, sign: string, proxy: string, phone: string}|null */
     private function credentials(string $tenantKey): ?array
     {
-        $settings = $this->store->tenantSettings($tenantKey);
-        foreach ($this->tenantCredentialSections($settings) as $section) {
-            if (array_key_exists('enabled', $section) && empty($section['enabled'])) {
-                continue;
-            }
-
-            $appId = $this->firstString($section, ['app_id', 'appid', 'appId', 'AppID']);
-            $sign = $this->firstString($section, ['sign', 'secret', 'app_secret', 'Sign']);
-            if ($appId !== '' && $sign !== '') {
-                return [
-                    'app_id' => $appId,
-                    'sign' => $sign,
-                    'proxy' => $this->firstString($section, ['proxy', 'rotation_proxy']),
-                    'phone' => $this->phone($this->firstString($section, ['phone', 'default_phone']) ?: self::DEFAULT_PHONE),
-                ];
-            }
+        $global = $this->store->globalSettings();
+        $showapi = is_array($global['showapi'] ?? null) ? $global['showapi'] : [];
+        if (array_key_exists('enabled', $showapi) && empty($showapi['enabled'])) {
+            return null;
         }
-
         $appId = $this->env(['EXPRESS_SHOWAPI_APP_ID', 'EXPRESS_SHOWAPI_APPID', 'SHOWAPI_APP_ID', 'SHOWAPI_APPID', 'XIZHEN_SHOWAPI_APP_ID']);
         $sign = $this->env(['EXPRESS_SHOWAPI_SIGN', 'SHOWAPI_SIGN', 'XIZHEN_SHOWAPI_SIGN']);
         if ($appId === '' || $sign === '') {
@@ -455,45 +442,9 @@ final class ExpressLogisticsService
         return [
             'app_id' => $appId,
             'sign' => $sign,
-            'proxy' => $this->env(['EXPRESS_SHOWAPI_PROXY', 'SHOWAPI_PROXY', 'XIZHEN_SHOWAPI_PROXY']),
+            'proxy' => $this->env(['EXPRESS_SHOWAPI_PROXY', 'SHOWAPI_PROXY', 'XIZHEN_SHOWAPI_PROXY', 'XIZHEN_ROTATION_PROXY']),
             'phone' => $this->phone($this->env(['EXPRESS_SHOWAPI_PHONE', 'SHOWAPI_PHONE']) ?: self::DEFAULT_PHONE),
         ];
-    }
-
-    /**
-     * @param array<string, mixed> $settings
-     * @return array<int, array<string, mixed>>
-     */
-    private function tenantCredentialSections(array $settings): array
-    {
-        $sections = [];
-        foreach (['showapi', 'express_showapi'] as $key) {
-            if (is_array($settings[$key] ?? null)) {
-                $sections[] = $settings[$key];
-            }
-        }
-
-        $logistics = is_array($settings['logistics'] ?? null) ? $settings['logistics'] : [];
-        foreach (['showapi', 'express_showapi'] as $key) {
-            if (is_array($logistics[$key] ?? null)) {
-                $sections[] = $logistics[$key];
-            }
-        }
-
-        return $sections;
-    }
-
-    /** @param array<string, mixed> $section @param array<int, string> $keys */
-    private function firstString(array $section, array $keys): string
-    {
-        foreach ($keys as $key) {
-            $value = trim((string) ($section[$key] ?? ''));
-            if ($value !== '') {
-                return $value;
-            }
-        }
-
-        return '';
     }
 
     /** @param array<int, string> $names */

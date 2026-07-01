@@ -8,7 +8,7 @@ use Xizhen\Core\StoreInterface;
 
 final class Alibaba1688LogisticsService
 {
-    private const API_BASE = 'http://gw.open.1688.com/openapi';
+    private const API_BASE = 'https://gw.open.1688.com/openapi';
     private const ARRIVAL_KEYWORDS = ['签收', '妈妈', '自提点', '派送成功', '菜鸟驿站', '兔喜快递超市', '已投递', '已妥投', '喵站', '兔喜生活'];
 
     public function __construct(private readonly StoreInterface $store)
