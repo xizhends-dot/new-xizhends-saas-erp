@@ -35,7 +35,7 @@
 - ✅ **定时任务(cron)框架** — 已提供系统 cron 可调用的 `php-saas/bin/cron.php` CLI 入口和任务注册约定。（commit: feat: 增加定时任务 CLI 框架）
 
 ### 导入导出 & 经营分析
-- ☐ **订单导入字段映射核对** — old `orderinsert.php` 各平台 20+ 字段。需确认 CsvImportService 映射完整（尤其新补的详情字段）。
+- ✅ **订单导入字段映射核对** — old `orderinsert.php` 各平台 20+ 字段。需确认 CsvImportService 映射完整（尤其新补的详情字段）。（commit: feat: 核对并补齐订单导入字段映射）
 - ☐ **利润分析：运费/邮费分摊 + 店铺扣点优先级** — old `profit-analysis`(1949行) 多商品订单按数量分摊国际运费、Y/R平台分摊日本邮费、按店铺 profit_deduction 优先。php-saas profit 只算单商品、无分摊、无邮费概念。
 
 ---
