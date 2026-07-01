@@ -3280,6 +3280,7 @@ final class JsonStore implements StoreInterface
             'showapi' => [
                 'app_id' => trim((string) ($showapi['app_id'] ?? '')),
                 'sign' => trim((string) ($showapi['sign'] ?? '')),
+                'baidu_enabled' => !empty($showapi['baidu_enabled']),
                 'enabled' => !empty($showapi['enabled']),
             ],
             'proxy' => [

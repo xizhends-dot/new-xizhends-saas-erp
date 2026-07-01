@@ -74,7 +74,8 @@ $lineCount = static function (string $value): int {
             <div class="panel-head"><span>ShowAPI 配置</span><span class="sub">平台级物流查询接口</span></div>
             <div class="panel-body form-grid">
                 <label class="check-line admin-check"><input type="checkbox" name="showapi[enabled]" value="1" <?= !empty($showapi['enabled']) ? 'checked' : '' ?>>启用 ShowAPI</label>
-                <div class="setting-muted wide">ShowAPI AppID/Sign 不写入 Store，也不在页面回显；请通过环境变量 `SHOWAPI_APP_ID` 和 `SHOWAPI_SIGN` 配置。</div>
+                <label class="check-line admin-check"><input type="checkbox" name="showapi[baidu_enabled]" value="1" <?= !empty($showapi['baidu_enabled']) ? 'checked' : '' ?>>启用百度物流备用查询</label>
+                <div class="setting-muted wide">ShowAPI AppID/Sign 不写入 Store，也不在页面回显；请通过环境变量 `SHOWAPI_APP_ID` 和 `SHOWAPI_SIGN` 配置。启用百度备用后，ShowAPI 失败或无轨迹时会访问 https://www.baidu.com/s?wd=物流号 {国内运单号} 并解析页面轨迹。</div>
             </div>
         </section>
 

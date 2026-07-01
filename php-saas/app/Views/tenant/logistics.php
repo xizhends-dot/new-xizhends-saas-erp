@@ -9,7 +9,7 @@ $logisticsMeta = match ($type) {
     'express' => [
         'title' => 'TB/PDD 物流',
         'return_path' => '/logistics/express',
-        'notice' => '已接入 old/plugins/express-showapi 的国内快递查询规则；ShowAPI app_id/sign 需通过租户配置或环境变量提供。',
+        'notice' => '已接入 old/plugins/express-showapi 的国内快递查询规则；ShowAPI 失败或无轨迹时，可由超管开启百度物流备用查询。',
         'tracking_label' => '国内运单',
     ],
     default => [

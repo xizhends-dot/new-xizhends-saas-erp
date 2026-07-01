@@ -247,6 +247,7 @@ final class AdminController
             'showapi' => [
                 'app_id' => '',
                 'sign' => '',
+                'baidu_enabled' => isset($showapi['baidu_enabled']),
                 'enabled' => isset($showapi['enabled']),
             ],
             'proxy' => [

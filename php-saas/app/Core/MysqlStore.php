@@ -3631,6 +3631,7 @@ SQL);
             'showapi' => [
                 'app_id' => '',
                 'sign' => '',
+                'baidu_enabled' => false,
                 'enabled' => false,
             ],
             'proxy' => [
@@ -3659,6 +3660,7 @@ SQL);
             'showapi' => [
                 'app_id' => trim((string) ($showapi['app_id'] ?? '')),
                 'sign' => trim((string) ($showapi['sign'] ?? '')),
+                'baidu_enabled' => !empty($showapi['baidu_enabled']),
                 'enabled' => !empty($showapi['enabled']),
             ],
             'proxy' => [
