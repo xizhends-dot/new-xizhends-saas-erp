@@ -1,12 +1,34 @@
+<?php
+$logisticsMeta = match ($type) {
+    '1688' => [
+        'title' => '1688 物流',
+        'return_path' => '/logistics/1688',
+        'notice' => '已接入 old/plugins/1688api 与 cron/update_1688_logistics.php 的 1688 物流查询规则。',
+        'tracking_label' => '运单 / 1688号',
+    ],
+    'express' => [
+        'title' => 'TB/PDD 物流',
+        'return_path' => '/logistics/express',
+        'notice' => '已接入 old/plugins/express-showapi 的国内快递查询规则；ShowAPI app_id/sign 需通过租户配置或环境变量提供。',
+        'tracking_label' => '国内运单',
+    ],
+    default => [
+        'title' => '日本物流',
+        'return_path' => '/logistics/jp',
+        'notice' => '已接入 old/plugins/jpshipinfo、sagawa-shipinfo 与 cron/update_jpship_logistics.php 的日本物流查询规则。',
+        'tracking_label' => '国际运单',
+    ],
+};
+?>
 <div class="page-head">
     <div>
-        <h1><?= e($type === '1688' ? '1688 物流' : '日本物流') ?> <span class="sub">旧系统物流任务迁移入口</span></h1>
+        <h1><?= e($logisticsMeta['title']) ?> <span class="sub">旧系统物流任务迁移入口</span></h1>
     </div>
     <div class="head-actions">
         <form method="post" action="/orders/logistics/update">
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
             <input type="hidden" name="type" value="<?= e($type) ?>">
-            <input type="hidden" name="return" value="<?= e('/logistics/' . ($type === '1688' ? '1688' : 'jp') . '?tenant=' . rawurlencode((string) $tenantKey)) ?>">
+            <input type="hidden" name="return" value="<?= e($logisticsMeta['return_path'] . '?tenant=' . rawurlencode((string) $tenantKey)) ?>">
             <button class="btn primary" type="submit">立即同步</button>
         </form>
         <a class="btn" href="/jobs?tenant=<?= e($tenantKey) ?>">查看任务</a>
@@ -18,16 +40,14 @@
 <?php endif; ?>
 
 <div class="notice">
-    <?= e($type === '1688'
-        ? '已接入 old/plugins/1688api 与 cron/update_1688_logistics.php 的 1688 物流查询规则。'
-        : '已接入 old/plugins/jpshipinfo、sagawa-shipinfo 与 cron/update_jpship_logistics.php 的日本物流查询规则。') ?>
+    <?= e($logisticsMeta['notice']) ?>
 </div>
 
 <div class="panel">
     <div class="panel-head"><span>物流明细</span><span class="sub"><?= e(count($rows)) ?> 条</span></div>
     <div class="panel-body">
         <table class="table">
-            <thead><tr><th>订单号</th><th>商品</th><th>运单 / 1688号</th><th>承运商</th><th>状态</th><th>更新时间</th></tr></thead>
+            <thead><tr><th>订单号</th><th>商品</th><th><?= e($logisticsMeta['tracking_label']) ?></th><th>承运商</th><th>状态</th><th>更新时间</th></tr></thead>
             <tbody>
             <?php foreach ($rows as $row): ?>
                 <tr>

@@ -43,9 +43,9 @@
 ## P1 — 常用缺失（高频使用，尽快补）
 
 ### 物流
-- ☐ **国内快递查询 ShowAPI(TB/PDD)** — old `plugins/express-showapi/`。php-saas 有 logistics.express 开关但无对接。
-- ☐ **异常运费检测** — old `plugins/shipping-anomaly/`(同商品同数量运费不一致检测+导出)。php-saas TenantFeature 标 stats.shipping_anomaly=false，未实现。
-- ☐ **运单核对 checkyd / 日本快递跳转 jpyd-check** — old 提供运单核对与快递官网跳转。
+- ✅ **国内快递查询 ShowAPI(TB/PDD)**（commit: feat: 迁移国内快递查询） — old `plugins/express-showapi/`。php-saas 有 logistics.express 开关但无对接。
+- ✅ **异常运费检测**（commit: feat: 迁移异常运费检测） — old `plugins/shipping-anomaly/`(同商品同数量运费不一致检测+导出)。php-saas TenantFeature 标 stats.shipping_anomaly=false，未实现。
+- ✅ **运单核对 checkyd / 日本快递跳转 jpyd-check**（commit: feat: 迁移运单核对与快递跳转） — old 提供运单核对与快递官网跳转。
 
 ### 统计分析
 - ☐ **采购状态每日统计** — old `caigou_status/`(状态分布+日环比+平台分别+图表)。php-saas 缺。

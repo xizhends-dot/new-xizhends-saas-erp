@@ -11,12 +11,15 @@ use Xizhen\Services\Alibaba1688LogisticsService;
 use Xizhen\Services\AppService;
 use Xizhen\Services\AuthService;
 use Xizhen\Services\CsvImportService;
+use Xizhen\Services\ExpressLogisticsService;
 use Xizhen\Services\JapanLogisticsService;
 use Xizhen\Services\LegacySettingsService;
 use Xizhen\Services\MailService;
 use Xizhen\Services\OrderItemSaveRuleService;
 use Xizhen\Services\PlatformOrderSyncRegistry;
+use Xizhen\Services\ShippingAnomalyService;
 use Xizhen\Services\ShippingWorkflowService;
+use Xizhen\Services\WaybillCheckService;
 
 final class TenantController
 {
@@ -27,7 +30,10 @@ final class TenantController
     private PlatformOrderSyncRegistry $platformOrderSyncRegistry;
     private ShippingWorkflowService $shippingWorkflowService;
     private Alibaba1688LogisticsService $alibaba1688LogisticsService;
+    private ExpressLogisticsService $expressLogisticsService;
     private JapanLogisticsService $japanLogisticsService;
+    private ShippingAnomalyService $shippingAnomalyService;
+    private WaybillCheckService $waybillCheckService;
 
     public function __construct(private readonly StoreInterface $store, private readonly View $view, private readonly AuthService $auth)
     {
@@ -38,7 +44,10 @@ final class TenantController
         $this->platformOrderSyncRegistry = new PlatformOrderSyncRegistry($store);
         $this->shippingWorkflowService = new ShippingWorkflowService();
         $this->alibaba1688LogisticsService = new Alibaba1688LogisticsService($store);
+        $this->expressLogisticsService = new ExpressLogisticsService($store);
         $this->japanLogisticsService = new JapanLogisticsService($store);
+        $this->shippingAnomalyService = new ShippingAnomalyService($store);
+        $this->waybillCheckService = new WaybillCheckService($store);
     }
 
     public function loginForm(): void
@@ -715,6 +724,70 @@ final class TenantController
         ]);
     }
 
+    public function logisticsExpress(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'logistics.express');
+        $this->auth->requireAnyTenantPermission($tenantKey, ['1688物流', '物流查看']);
+        $this->renderTenant('tenant/logistics', $tenantKey, [
+            'title' => 'TB/PDD 物流',
+            'active' => 'logistics_express',
+            'type' => 'express',
+            'rows' => $this->service->logisticsRows($tenantKey, 'express', $this->auth->currentTenantUser($tenantKey)),
+        ]);
+    }
+
+    public function shippingAnomaly(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'stats.shipping_anomaly');
+        $this->auth->requireTenantPermission($tenantKey, '异常运费');
+        $currentUser = $this->auth->currentTenantUser($tenantKey);
+
+        if ((string) ($_GET['export'] ?? '') === 'csv') {
+            $this->sendCsvDataset($tenantKey, $this->shippingAnomalyService->csvRows($tenantKey, $currentUser, $_GET));
+        }
+
+        $this->renderTenant('tenant/shipping_anomaly', $tenantKey, [
+            'title' => '异常运费检测',
+            'active' => 'shipping_anomaly',
+            'result' => $this->shippingAnomalyService->detect($tenantKey, $currentUser, $_GET),
+        ]);
+    }
+
+    public function waybillCheck(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'logistics.jp');
+        $this->auth->requireAnyTenantPermission($tenantKey, ['日本物流日志', '物流查看']);
+        $this->renderTenant('tenant/waybill_check', $tenantKey, [
+            'title' => '运单核对',
+            'active' => 'waybill_check',
+            'report' => $this->waybillCheckService->report($tenantKey, $this->auth->currentTenantUser($tenantKey), $_GET),
+            'carrierLabels' => $this->waybillCheckService->japaneseCarrierLabels(),
+            'platformNames' => $this->service->tenantPlatformNames($tenantKey),
+            'stores' => $this->service->storesForTenant($tenantKey),
+        ]);
+    }
+
+    public function jpydCheck(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'logistics.jp');
+        $this->auth->requireAnyTenantPermission($tenantKey, ['日本物流日志', '物流查看']);
+        $result = $this->waybillCheckService->japaneseTrackingUrl(
+            $tenantKey,
+            (string) ($_GET['number'] ?? $_GET['no'] ?? $_GET['shipno'] ?? ''),
+            (string) ($_GET['carrier'] ?? '')
+        );
+        if ($result['ok'] && $result['url'] !== '') {
+            redirect_to($result['url']);
+        }
+
+        $return = tenant_url('/logistics/waybill-check?message=' . rawurlencode($result['message'] ?: '未匹配到日本快递跳转链接。'), $tenantKey);
+        redirect_to($return);
+    }
+
     public function mail(): void
     {
         $tenantKey = current_tenant_key();
@@ -956,6 +1029,17 @@ final class TenantController
             $logStatus = $syncResult['ok'] ? '同步完成' : '同步异常';
         } elseif ($type === 'jp') {
             $syncResult = $this->japanLogisticsService->syncItems($tenantKey, $targetItemIds, [], $this->currentUserName($tenantKey));
+            $updated = (int) $syncResult['updated'];
+            $message = (string) $syncResult['message'];
+            $logStatus = $syncResult['ok'] ? '同步完成' : '同步异常';
+        } elseif ($type === 'express') {
+            $syncResult = $this->expressLogisticsService->syncItems(
+                $tenantKey,
+                $targetItemIds,
+                [],
+                $this->currentUserName($tenantKey),
+                $this->auth->currentTenantUser($tenantKey)
+            );
             $updated = (int) $syncResult['updated'];
             $message = (string) $syncResult['message'];
             $logStatus = $syncResult['ok'] ? '同步完成' : '同步异常';

@@ -281,13 +281,16 @@ final class AppService
             ],
             '旧系统插件' => [
                 ['feature' => 'logistics.1688', 'title' => '1688 物流', 'desc' => '对应 old/plugins/1688api 与 cron/update_1688_logistics.php。', 'href' => "/logistics/1688?tenant={$tenantKey}", 'status' => '已接 API/CLI'],
+                ['feature' => 'logistics.express', 'title' => 'TB/PDD 物流', 'desc' => '对应 old/plugins/express-showapi 的国内快递查询。', 'href' => "/logistics/express?tenant={$tenantKey}", 'status' => '已接 ShowAPI 占位配置'],
                 ['feature' => 'logistics.jp', 'title' => '日本物流', 'desc' => '对应 jpshipinfo、sagawa-shipinfo 与 update_jpship_logistics.php。', 'href' => "/logistics/jp?tenant={$tenantKey}", 'status' => '已接 API/CLI'],
+                ['feature' => 'logistics.jp', 'title' => '运单核对', 'desc' => '对应 checkyd 与 jpyd-check，核对国内/国际运单并跳转日本快递官网。', 'href' => "/logistics/waybill-check?tenant={$tenantKey}", 'status' => '已接页面'],
                 ['feature' => 'mail.center', 'title' => '客服邮件中心', 'desc' => '对应 old/kefu_mail 与 cron/mail_sync.php。', 'href' => "/mail?tenant={$tenantKey}", 'status' => '已接 IMAP/SMTP'],
                 ['feature' => 'media.library', 'title' => '租户图片库', 'desc' => '按公司隔离订单主图、SKU 图、上传凭证和旧图清理策略。', 'href' => "/media?tenant={$tenantKey}", 'status' => '页面已接'],
             ],
             '经营分析' => [
                 ['feature' => 'analytics.profit', 'title' => '利润分析', 'desc' => '对应 old/plugins/profit-analysis。', 'href' => "/analytics/profit?tenant={$tenantKey}", 'status' => '开发数据'],
                 ['feature' => 'stats.purchase', 'title' => '采购统计', 'desc' => '对应 caigou_status / caigou_stats。', 'href' => "/stats/purchase?tenant={$tenantKey}", 'status' => '开发数据'],
+                ['feature' => 'stats.shipping_anomaly', 'title' => '异常运费检测', 'desc' => '对应 old/plugins/shipping-anomaly，按商品 ID 与数量聚合对比国际运费。', 'href' => "/stats/shipping-anomaly?tenant={$tenantKey}", 'status' => '已接页面'],
                 ['feature' => 'import_export.center', 'title' => '导入导出', 'desc' => '对应 Excel 导入、物流导入、客户资料导出。', 'href' => "/import-export?tenant={$tenantKey}", 'status' => '页面已接'],
                 ['feature' => 'management.jobs', 'title' => '定时任务状态', 'desc' => '租户只查看同步状态；频率、开关和失败重试由超管设置。', 'href' => "/jobs?tenant={$tenantKey}", 'status' => '只读'],
             ],
@@ -467,6 +470,9 @@ final class AppService
                 if ($type === '1688' && ($item['source_type'] ?? '') !== 'cn_purchase') {
                     continue;
                 }
+                if ($type === 'express' && (($item['source_type'] ?? '') !== 'cn_purchase' || trim((string) ($item['ship_number'] ?? '')) === '')) {
+                    continue;
+                }
                 if ($type === 'jp' && ($item['source_type'] ?? '') !== 'jp_stock') {
                     continue;
                 }
@@ -474,7 +480,11 @@ final class AppService
                 $rows[] = [
                     'order_no' => $order['platform_order_id'] ?? '',
                     'item' => $item['title'] ?? '',
-                    'tracking_no' => $type === '1688' ? ($item['tabaono'] ?? '') : (($item['intl_number'] ?? '') ?: ($item['ship_number'] ?? '')),
+                    'tracking_no' => match ($type) {
+                        '1688' => $item['tabaono'] ?? '',
+                        'express' => $item['ship_number'] ?? '',
+                        default => ($item['intl_number'] ?? '') ?: ($item['ship_number'] ?? ''),
+                    },
                     'carrier' => $item['ship_company'] ?? '',
                     'status' => ($item['logistics'] ?? '') ?: ($item['purchase_status'] ?? ''),
                     'updated_at' => $item['purchase_time'] ?: ($order['order_date'] ?? ''),
