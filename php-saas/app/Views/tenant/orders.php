@@ -33,6 +33,13 @@ $can1688Logistics = (bool) ($can1688Logistics ?? false);
 $canExpressLogistics = (bool) ($canExpressLogistics ?? false);
 $canJpLogistics = (bool) ($canJpLogistics ?? false);
 $stores = is_array($stores ?? null) ? $stores : [];
+$storeNames = array_values(array_unique(array_filter(array_map(
+    static fn (array $store): string => (string) (($store['name'] ?? '') ?: ($store['short'] ?? '')),
+    $stores
+), static fn (string $name): bool => $name !== '')));
+$filterValue = static fn (string $key): string => (string) ($filters[$key] ?? '');
+$selectedFilter = static fn (string $key, string $value): string => ((string) ($filters[$key] ?? '') === $value) ? 'selected' : '';
+$checkedFilter = static fn (string $key): string => trim((string) ($filters[$key] ?? '')) !== '' ? 'checked' : '';
 $platformSyncServices = is_array($platformSyncServices ?? null) ? $platformSyncServices : [];
 $currentPlatform = (string) ($platform ?? '');
 $platformSyncName = $currentPlatform !== '' ? (string) ($platformSyncServices[$currentPlatform] ?? '') : '';
@@ -119,7 +126,7 @@ $statusOptions = [
                     <select name="platform">
                         <option value="">全部平台</option>
                         <?php foreach ($platformNames as $code => $name): ?>
-                            <option value="<?= e($code) ?>" <?= $platform === $code ? 'selected' : '' ?>><?= e($name) ?></option>
+                            <option value="<?= e($code) ?>" <?= e($platform === $code ? 'selected' : '') ?>><?= e($name) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </label>
@@ -127,19 +134,19 @@ $statusOptions = [
                     <span class="lb">出库状态</span>
                     <select name="status">
                         <option value="">全部</option>
-                        <option <?= ($filters['status'] ?? '') === '待分配' ? 'selected' : '' ?>>待分配</option>
-                        <option <?= ($filters['status'] ?? '') === '已分配' ? 'selected' : '' ?>>已分配</option>
-                        <option <?= ($filters['status'] ?? '') === '已出库' ? 'selected' : '' ?>>已出库</option>
-                        <option <?= ($filters['status'] ?? '') === '已发货' ? 'selected' : '' ?>>已发货</option>
+                        <option <?= e(($filters['status'] ?? '') === '待分配' ? 'selected' : '') ?>>待分配</option>
+                        <option <?= e(($filters['status'] ?? '') === '已分配' ? 'selected' : '') ?>>已分配</option>
+                        <option <?= e(($filters['status'] ?? '') === '已出库' ? 'selected' : '') ?>>已出库</option>
+                        <option <?= e(($filters['status'] ?? '') === '已发货' ? 'selected' : '') ?>>已发货</option>
                     </select>
                 </label>
                 <label class="fg">
                     <span class="lb">发货员</span>
                     <select name="buyer">
                         <option value="">全部</option>
-                        <option <?= ($filters['buyer'] ?? '') === '李四' ? 'selected' : '' ?>>李四</option>
-                        <option <?= ($filters['buyer'] ?? '') === '王五' ? 'selected' : '' ?>>王五</option>
-                        <option <?= ($filters['buyer'] ?? '') === '赵六' ? 'selected' : '' ?>>赵六</option>
+                        <option <?= e(($filters['buyer'] ?? '') === '李四' ? 'selected' : '') ?>>李四</option>
+                        <option <?= e(($filters['buyer'] ?? '') === '王五' ? 'selected' : '') ?>>王五</option>
+                        <option <?= e(($filters['buyer'] ?? '') === '赵六' ? 'selected' : '') ?>>赵六</option>
                     </select>
                 </label>
                 <label class="fg">
@@ -153,7 +160,7 @@ $statusOptions = [
                         <select name="platform">
                             <option value="">全部平台</option>
                             <?php foreach ($platformNames as $code => $name): ?>
-                                <option value="<?= e($code) ?>" <?= $platform === $code ? 'selected' : '' ?>><?= e($name) ?></option>
+                                <option value="<?= e($code) ?>" <?= e($platform === $code ? 'selected' : '') ?>><?= e($name) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </label>
@@ -170,9 +177,9 @@ $statusOptions = [
                     <span class="lb">采购状态</span>
                     <select name="status">
                         <option value="">— 待处理订单 —</option>
-                        <option value="__ALL__" <?= ($filters['status'] ?? '') === '__ALL__' ? 'selected' : '' ?>>全部订单</option>
+                        <option value="__ALL__" <?= e(($filters['status'] ?? '') === '__ALL__' ? 'selected' : '') ?>>全部订单</option>
                         <?php foreach ($statusOptions as $statusOption): ?>
-                            <option value="<?= e($statusOption) ?>" <?= ($filters['status'] ?? '') === $statusOption ? 'selected' : '' ?>><?= e($statusOption) ?></option>
+                            <option value="<?= e($statusOption) ?>" <?= e(($filters['status'] ?? '') === $statusOption ? 'selected' : '') ?>><?= e($statusOption) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </label>
@@ -181,18 +188,18 @@ $statusOptions = [
                         <span class="lb">店铺</span>
                         <select name="store">
                             <option value="">全部店铺</option>
-                            <option <?= ($filters['store'] ?? '') === '乐天旗舰店' ? 'selected' : '' ?>>乐天旗舰店</option>
-                            <option <?= ($filters['store'] ?? '') === 'Yahoo 一号店' ? 'selected' : '' ?>>Yahoo 一号店</option>
-                            <option <?= ($filters['store'] ?? '') === 'Wowma 综合店' ? 'selected' : '' ?>>Wowma 综合店</option>
+                            <?php foreach ($storeNames as $storeName): ?>
+                                <option value="<?= e($storeName) ?>" <?= e($filterValue('store') === $storeName ? 'selected' : '') ?>><?= e($storeName) ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </label>
                     <label class="fg">
                         <span class="lb">货源地</span>
                         <select name="source">
-                            <option value="all" <?= $source === 'all' ? 'selected' : '' ?>>全部货源地</option>
-                            <option value="jp_stock" <?= $source === 'jp_stock' ? 'selected' : '' ?>>日本仓</option>
-                            <option value="cn_purchase" <?= $source === 'cn_purchase' ? 'selected' : '' ?>>国内采购</option>
-                            <option value="pending" <?= $source === 'pending' ? 'selected' : '' ?>>待定</option>
+                            <option value="all" <?= e($source === 'all' ? 'selected' : '') ?>>全部货源地</option>
+                            <option value="jp_stock" <?= e($source === 'jp_stock' ? 'selected' : '') ?>>日本仓</option>
+                            <option value="cn_purchase" <?= e($source === 'cn_purchase' ? 'selected' : '') ?>>国内采购</option>
+                            <option value="pending" <?= e($source === 'pending' ? 'selected' : '') ?>>待定</option>
                         </select>
                     </label>
                 <?php endif; ?>
@@ -203,43 +210,60 @@ $statusOptions = [
             <div class="filter-adv-title">高级搜索</div>
             <div class="filter-grid">
                 <?php if ($orderView === 'jp'): ?>
-                    <label class="fg"><span class="lb">店铺</span><select name="store"><option value="">全部店铺</option><option>乐天旗舰店</option><option>Yahoo 一号店</option></select></label>
-                    <label class="fg"><span class="lb">仓位</span><input type="text" name="location" placeholder="如 A-12-3"></label>
+                    <label class="fg"><span class="lb">店铺</span><select name="store"><option value="">全部店铺</option><?php foreach ($storeNames as $storeName): ?><option value="<?= e($storeName) ?>" <?= e($filterValue('store') === $storeName ? 'selected' : '') ?>><?= e($storeName) ?></option><?php endforeach; ?></select></label>
+                    <label class="fg"><span class="lb">仓位</span><input type="text" name="location" value="<?= e($filterValue('location')) ?>" placeholder="如 A-12-3"></label>
                     <label class="fg"><span class="lb">商品名</span><input type="text" name="item_id" value="<?= e($filters['item_id'] ?? '') ?>" placeholder="商品名 / 项目选择"></label>
+                    <label class="fg"><span class="lb">国际运单号</span><input type="text" name="intl_ship_no" value="<?= e($filterValue('intl_ship_no')) ?>" placeholder="国际发货单号"></label>
+                    <label class="fg"><span class="lb">物流公司</span><input type="text" name="carrier" value="<?= e($filterValue('carrier')) ?>" placeholder="物流公司"></label>
                     <label class="fg col2"><span class="lb">下单时间</span><span class="dwrap"><input type="date" name="date_from" value="<?= e($filters['date_from'] ?? '') ?>"><span>至</span><input type="date" name="date_to" value="<?= e($filters['date_to'] ?? '') ?>"></span></label>
                 <?php elseif ($orderView === 'purchase'): ?>
-                    <label class="fg"><span class="lb">国内运单号</span><input type="text" name="cn_ship_no" placeholder="国内发货单号"></label>
+                    <label class="fg"><span class="lb">国内运单号</span><input type="text" name="cn_ship_no" value="<?= e($filterValue('cn_ship_no')) ?>" placeholder="国内发货单号"></label>
+                    <label class="fg"><span class="lb">国际运单号</span><input type="text" name="intl_ship_no" value="<?= e($filterValue('intl_ship_no')) ?>" placeholder="国际发货单号"></label>
                     <label class="fg"><span class="lb">ItemId</span><input type="text" name="item_id" value="<?= e($filters['item_id'] ?? '') ?>" placeholder="ItemId"></label>
-                    <label class="fg"><span class="lb">商品名</span><input type="text" name="product_name" placeholder="商品名 / 项目选择"></label>
-                    <label class="fg"><span class="lb">采购人</span><select name="buyer"><option value="">全部</option><option>王五</option><option>李四</option></select></label>
-                    <label class="fg"><span class="lb">物流公司</span><select name="carrier"><option value="">全部</option><option>ヤマト</option><option>佐川急便</option></select></label>
+                    <label class="fg"><span class="lb">lotNumber</span><input type="text" name="lot_number" value="<?= e($filterValue('lot_number')) ?>" placeholder="lotNumber"></label>
+                    <label class="fg"><span class="lb">商品管理ID</span><input type="text" name="item_management_id" value="<?= e($filterValue('item_management_id')) ?>" placeholder="商品管理ID"></label>
+                    <label class="fg"><span class="lb">商品名</span><input type="text" name="product_name" value="<?= e($filterValue('product_name')) ?>" placeholder="商品名 / 项目选择"></label>
+                    <label class="fg"><span class="lb">采购链接</span><input type="text" name="purchase_link" value="<?= e($filterValue('purchase_link')) ?>" placeholder="1688 / 补货链接"></label>
+                    <label class="fg"><span class="lb">订单备注</span><input type="text" name="comment" value="<?= e($filterValue('comment')) ?>" placeholder="订单备注"></label>
+                    <label class="fg"><span class="lb">采购人</span><select name="buyer"><option value="">全部</option><option <?= e($selectedFilter('buyer', '王五')) ?>>王五</option><option <?= e($selectedFilter('buyer', '李四')) ?>>李四</option><option <?= e($selectedFilter('buyer', '赵六')) ?>>赵六</option></select></label>
+                    <label class="fg"><span class="lb">物流公司</span><input type="text" name="carrier" value="<?= e($filterValue('carrier')) ?>" placeholder="物流公司"></label>
                     <label class="fg col2"><span class="lb">采购时间</span><span class="dwrap"><input type="date" name="date_from" value="<?= e($filters['date_from'] ?? '') ?>"><span>至</span><input type="date" name="date_to" value="<?= e($filters['date_to'] ?? '') ?>"></span></label>
-                    <label class="fg"><span class="lb">每页</span><select name="page_size"><option <?= ($filters['page_size'] ?? '') === '100' ? 'selected' : '' ?>>100</option><option <?= ($filters['page_size'] ?? '200') === '200' ? 'selected' : '' ?>>200</option><option <?= ($filters['page_size'] ?? '') === '500' ? 'selected' : '' ?>>500</option><option <?= ($filters['page_size'] ?? '') === '1000' ? 'selected' : '' ?>>1000</option></select></label>
+                    <label class="fg"><span class="lb">每页</span><select name="page_size"><option value="100" <?= e($selectedFilter('page_size', '100')) ?>>100</option><option value="200" <?= e($filterValue('page_size') === '200' ? 'selected' : '') ?>>200</option><option value="500" <?= e($selectedFilter('page_size', '500')) ?>>500</option><option value="1000" <?= e($selectedFilter('page_size', '1000')) ?>>1000</option></select></label>
                 <?php else: ?>
                     <label class="fg"><span class="lb">ItemId</span><input type="text" name="item_id" value="<?= e($filters['item_id'] ?? '') ?>" placeholder="ItemId"></label>
+                    <label class="fg"><span class="lb">订单明细ID</span><input type="text" name="order_detail_id" value="<?= e($filterValue('order_detail_id')) ?>" placeholder="orderDetailId"></label>
+                    <label class="fg"><span class="lb">lotNumber</span><input type="text" name="lot_number" value="<?= e($filterValue('lot_number')) ?>" placeholder="lotNumber"></label>
+                    <label class="fg"><span class="lb">商品管理ID</span><input type="text" name="item_management_id" value="<?= e($filterValue('item_management_id')) ?>" placeholder="商品管理ID"></label>
+                    <label class="fg ckline"><span class="lb">lotNumber为空</span><span class="ck"><input type="checkbox" name="lot_number_empty" value="1" <?= e($checkedFilter('lot_number_empty')) ?>> 空</span></label>
                     <label class="fg"><span class="lb">客人邮箱</span><input type="text" name="mail" value="<?= e($filters['mail'] ?? '') ?>" placeholder="邮箱"></label>
                     <label class="fg"><span class="lb">收件人</span><input type="text" name="customer_name" value="<?= e($filters['customer_name'] ?? '') ?>" placeholder="收件人姓名"></label>
                     <label class="fg"><span class="lb">客人电话</span><input type="text" name="phone" value="<?= e($filters['phone'] ?? '') ?>" placeholder="电话"></label>
-                    <label class="fg"><span class="lb">片假名</span><input type="text" name="kana" placeholder="セイ メイ"></label>
-                    <label class="fg"><span class="lb">运送方式</span><input type="text" name="ship_method" placeholder="运送方式"></label>
-                    <label class="fg"><span class="lb">国内运单号</span><input type="text" name="cn_ship_no" placeholder="国内发货单号"></label>
-                    <label class="fg"><span class="lb">国际运单号</span><input type="text" name="intl_ship_no" placeholder="国际发货单号"></label>
-                    <label class="fg"><span class="lb">采购人</span><select name="buyer"><option value="">全部</option><option>王五</option><option>李四</option></select></label>
-                    <label class="fg"><span class="lb">国内签收地</span><select name="receive_place"><option value="">请选择</option><option>未设置</option><option>东京仓</option><option>大阪仓</option></select></label>
+                    <label class="fg"><span class="lb">片假名</span><input type="text" name="kana" value="<?= e($filterValue('kana')) ?>" placeholder="セイ メイ"></label>
+                    <label class="fg"><span class="lb">支付方式</span><input type="text" name="pay_method" value="<?= e($filterValue('pay_method')) ?>" placeholder="支付方式"></label>
+                    <label class="fg"><span class="lb">运送方式</span><input type="text" name="ship_method" value="<?= e($filterValue('ship_method')) ?>" placeholder="运送方式"></label>
+                    <label class="fg"><span class="lb">国内运单号</span><input type="text" name="cn_ship_no" value="<?= e($filterValue('cn_ship_no')) ?>" placeholder="国内发货单号"></label>
+                    <label class="fg"><span class="lb">国际运单号</span><input type="text" name="intl_ship_no" value="<?= e($filterValue('intl_ship_no')) ?>" placeholder="国际发货单号"></label>
+                    <label class="fg ckline"><span class="lb">国际单号为空</span><span class="ck"><input type="checkbox" name="intl_ship_empty" value="1" <?= e($checkedFilter('intl_ship_empty')) ?>> 空</span></label>
+                    <label class="fg"><span class="lb">采购人</span><select name="buyer"><option value="">全部</option><option <?= e($selectedFilter('buyer', '王五')) ?>>王五</option><option <?= e($selectedFilter('buyer', '李四')) ?>>李四</option><option <?= e($selectedFilter('buyer', '赵六')) ?>>赵六</option></select></label>
+                    <label class="fg"><span class="lb">采购链接</span><input type="text" name="purchase_link" value="<?= e($filterValue('purchase_link')) ?>" placeholder="1688 / 补货链接"></label>
+                    <label class="fg"><span class="lb">订单备注</span><input type="text" name="comment" value="<?= e($filterValue('comment')) ?>" placeholder="订单备注"></label>
+                    <label class="fg"><span class="lb">采购备注</span><input type="text" name="purchase_comment" value="<?= e($filterValue('purchase_comment')) ?>" placeholder="采购备注"></label>
+                    <label class="fg"><span class="lb">材质</span><input type="text" name="material" value="<?= e($filterValue('material')) ?>" placeholder="材质"></label>
+                    <label class="fg"><span class="lb">国内签收地</span><input type="text" name="receipt_city" value="<?= e($filterValue('receipt_city')) ?>" placeholder="签收地"></label>
                     <?php if ($showRakutenReviewFilters): ?>
-                        <label class="fg"><span class="lb">邀评状态</span><select name="review_invited"><option value="">全部</option><option>已邀评</option><option>未邀评</option></select></label>
-                        <label class="fg"><span class="lb">评价状态</span><select name="reviewed"><option value="">全部</option><option>已评价</option><option>未评价</option></select></label>
+                        <label class="fg"><span class="lb">邀评状态</span><select name="review_invited"><option value="">全部</option><option value="1" <?= e($selectedFilter('review_invited', '1')) ?>>已邀评</option><option value="0" <?= e($selectedFilter('review_invited', '0')) ?>>未邀评</option></select></label>
+                        <label class="fg"><span class="lb">评价状态</span><select name="reviewed"><option value="">全部</option><option value="1" <?= e($selectedFilter('reviewed', '1')) ?>>已评价</option><option value="0" <?= e($selectedFilter('reviewed', '0')) ?>>未评价</option></select></label>
                     <?php endif; ?>
                     <label class="fg col2"><span class="lb">导入时间</span><span class="dwrap"><input type="date" name="date_from" value="<?= e($filters['date_from'] ?? '') ?>"><span>至</span><input type="date" name="date_to" value="<?= e($filters['date_to'] ?? '') ?>"></span></label>
-                    <label class="fg"><span class="lb">每页</span><select name="page_size"><option <?= ($filters['page_size'] ?? '') === '100' ? 'selected' : '' ?>>100</option><option <?= ($filters['page_size'] ?? '200') === '200' ? 'selected' : '' ?>>200</option><option <?= ($filters['page_size'] ?? '') === '500' ? 'selected' : '' ?>>500</option><option <?= ($filters['page_size'] ?? '') === '1000' ? 'selected' : '' ?>>1000</option></select></label>
+                    <label class="fg"><span class="lb">每页</span><select name="page_size"><option value="100" <?= e($selectedFilter('page_size', '100')) ?>>100</option><option value="200" <?= e($filterValue('page_size') === '200' ? 'selected' : '') ?>>200</option><option value="500" <?= e($selectedFilter('page_size', '500')) ?>>500</option><option value="1000" <?= e($selectedFilter('page_size', '1000')) ?>>1000</option></select></label>
                 <?php endif; ?>
             </div>
             <div class="filter-foot adv-checks">
                 <div class="filter-cks">
-                    <label class="ck warn"><input type="checkbox" name="late_ship" value="1" <?= !empty($filters['late_ship']) ? 'checked' : '' ?>> 超时发货</label>
+                    <label class="ck warn"><input type="checkbox" name="late_ship" value="1" <?= e(!empty($filters['late_ship']) ? 'checked' : '') ?>> 超时发货</label>
                     <?php if ($orderView !== 'purchase'): ?>
-                        <label class="ck"><input type="checkbox" name="in_delivery" value="1" <?= !empty($filters['in_delivery']) ? 'checked' : '' ?>> 配達中</label>
-                        <label class="ck"><input type="checkbox" name="delivered" value="1" <?= !empty($filters['delivered']) ? 'checked' : '' ?>> 配達完了</label>
+                        <label class="ck"><input type="checkbox" name="in_delivery" value="1" <?= e(!empty($filters['in_delivery']) ? 'checked' : '') ?>> 配達中</label>
+                        <label class="ck"><input type="checkbox" name="delivered" value="1" <?= e(!empty($filters['delivered']) ? 'checked' : '') ?>> 配達完了</label>
                     <?php endif; ?>
                 </div>
             </div>
@@ -250,7 +274,7 @@ $statusOptions = [
             <div class="fsp"></div>
             <div class="fsum">共 <strong><?= e($resultTotal) ?></strong> <?= e($resultLabel) ?></div>
             <button class="btn btn-p search-btn" type="submit">搜索</button>
-            <a class="btn reset-btn" href="/orders?tenant=<?= e($tenantKey) ?>&view=<?= e($orderView) ?><?= $platform ? '&platform=' . e($platform) : '' ?>">重置</a>
+            <a class="btn reset-btn" href="/orders?tenant=<?= e($tenantKey) ?>&view=<?= e($orderView) ?><?= e($platform ? '&platform=' . (string) $platform : '') ?>">重置</a>
         </div>
     </form>
 

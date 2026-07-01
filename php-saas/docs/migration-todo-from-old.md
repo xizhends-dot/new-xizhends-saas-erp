@@ -19,7 +19,7 @@
 - ✅ **采购人自动记录** — old 采购员首次填 1688 单号(tabaono)时自动记 caigou_user。php-saas 有 buyer 字段但无自动赋值逻辑。（commit: feat: 迁移订单保存规则）
 - ✅ **同品项同步修改** — old 改 material/tranship_comment 时自动同步同 ItemId 的其他行。php-saas 缺。（commit: feat: 迁移订单保存规则）
 - ✅ **发货流程 sendjp / sendxizhends** — old 批量"已发日本"状态 + 西阵发货(调1688物流API)。php-saas 有批量框架但无发货端点。（commit: feat: 迁移发货流程 sendjp/sendxizhends）
-- ☐ **订单高级筛选条件** — old `inc_list_default.php` 有 25+ 筛选（运单号、采购链接、采购备注、客服备注、发件人/电话、收货城市、超时发货、邀评、已评价、日期范围…）。php-saas 仅基础几个。
+- ✅ **订单高级筛选条件** — old `inc_list_default.php` 有 25+ 筛选（运单号、采购链接、采购备注、客服备注、发件人/电话、收货城市、超时发货、邀评、已评价、日期范围…）。php-saas 仅基础几个。（commit: feat: 迁移订单高级筛选条件）
 
 ### 平台订单同步（最大缺口）
 - ✅ **Wowma 订单同步服务** — old `plugins/wmshopapi/`。php-saas 只有 RakutenOrderService。（commit: feat: 迁移 Wowma 订单同步服务）

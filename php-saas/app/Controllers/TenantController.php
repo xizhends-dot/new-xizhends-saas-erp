@@ -131,6 +131,8 @@ final class TenantController
         $source = $_GET['source'] ?? 'all';
         $keyword = $this->keywordFrom($_GET);
         $filters = $this->orderFiltersFrom($_GET, $keyword);
+        $filters['date_scope'] = $this->orderDateScope($view);
+        $filters['default_pending'] = '1';
         $canEditFeature = $this->service->tenantFeatureEnabled($tenantKey, 'orders.edit');
         $canPlatformImportExport = $this->service->tenantFeatureEnabled($tenantKey, 'import_export.center')
             && $this->service->tenantFeatureEnabled($tenantKey, 'import_export.platform')
@@ -1562,29 +1564,71 @@ final class TenantController
      */
     private function orderFiltersFrom(array $source, string $keyword = ''): array
     {
+        $first = static function (array $keys) use ($source): string {
+            foreach ($keys as $key) {
+                $value = trim((string) ($source[$key] ?? ''));
+                if ($value !== '') {
+                    return $value;
+                }
+            }
+
+            return '';
+        };
+
         return [
-            'order_no' => trim((string) ($source['order_no'] ?? '')),
-            'tabaono' => trim((string) ($source['tabaono'] ?? '')),
-            'status' => (string) ($source['status'] ?? ''),
-            'store' => (string) ($source['store'] ?? ''),
-            'item_id' => trim((string) ($source['item_id'] ?? '')),
-            'mail' => trim((string) ($source['mail'] ?? '')),
-            'customer_name' => trim((string) ($source['customer_name'] ?? '')),
-            'phone' => trim((string) ($source['phone'] ?? '')),
-            'buyer' => (string) ($source['buyer'] ?? ''),
-            'product_name' => trim((string) ($source['product_name'] ?? '')),
-            'cn_ship_no' => trim((string) ($source['cn_ship_no'] ?? '')),
-            'intl_ship_no' => trim((string) ($source['intl_ship_no'] ?? '')),
-            'carrier' => trim((string) ($source['carrier'] ?? '')),
-            'location' => trim((string) ($source['location'] ?? '')),
-            'date_from' => trim((string) ($source['date_from'] ?? '')),
-            'date_to' => trim((string) ($source['date_to'] ?? '')),
-            'late_ship' => (string) ($source['late_ship'] ?? ''),
-            'in_delivery' => (string) ($source['in_delivery'] ?? ''),
-            'delivered' => (string) ($source['delivered'] ?? ''),
-            'page_size' => (string) ($source['page_size'] ?? '200'),
+            'order_no' => $first(['order_no', 'orderId', 'ziid']),
+            'tabaono' => $first(['tabaono']),
+            'status' => $first(['status', 'beizhu']),
+            'store' => $first(['store', 'shop_select']),
+            'item_id' => $first(['item_id', 'ItemId']),
+            'lot_number' => $first(['lot_number', 'lotnumber']),
+            'lot_number_empty' => $first(['lot_number_empty']),
+            'item_management_id' => $first(['item_management_id', 'itemManagementId']),
+            'order_detail_id' => $first(['order_detail_id']),
+            'mail' => $first(['mail', 'mails']),
+            'customer_name' => $first(['customer_name', 'sendname']),
+            'kana' => $first(['kana', 'senderKana', 'pianjiaming']),
+            'phone' => $first(['phone', 'sendphone']),
+            'pay_method' => $first(['pay_method', 'settlementName']),
+            'ship_method' => $first(['ship_method', 'deliveryName', 'PayStatus', 'yunshu']),
+            'buyer' => $first(['buyer']),
+            'product_name' => $first(['product_name', 'product_title']),
+            'purchase_link' => $first(['purchase_link', 'caigoulink']),
+            'comment' => $first(['comment']),
+            'purchase_comment' => $first(['purchase_comment', 'cg_comment']),
+            'cn_ship_no' => $first(['cn_ship_no', 'shipno']),
+            'intl_ship_no' => $first(['intl_ship_no', 'shipnumber']),
+            'intl_ship_empty' => $first(['intl_ship_empty', 'kong']),
+            'carrier' => $first(['carrier']),
+            'location' => $first(['location']),
+            'receipt_city' => $first(['receipt_city']),
+            'material' => $first(['material']),
+            'date_from' => $first(['date_from']),
+            'date_to' => $first(['date_to']),
+            'import_date_from' => $first(['import_date_from', 'cdate']),
+            'import_date_to' => $first(['import_date_to', 'cdate2']),
+            'order_date_from' => $first(['order_date_from', 'orderDate', 'OrderTime']),
+            'order_date_to' => $first(['order_date_to', 'orderDate2', 'OrderTime2']),
+            'purchase_date_from' => $first(['purchase_date_from']),
+            'purchase_date_to' => $first(['purchase_date_to']),
+            'purchase_date' => $first(['purchase_date', 'caigoutime']),
+            'review_invited' => $first(['review_invited', 'invite_review']),
+            'reviewed' => $first(['reviewed']),
+            'late_ship' => $first(['late_ship', 'chaoshifahuo']),
+            'in_delivery' => $first(['in_delivery', 'haitatsuchuu']),
+            'delivered' => $first(['delivered', 'haitatsukanryo']),
+            'page_size' => (string) $this->boundedInt($source['page_size'] ?? $source['npage'] ?? 200, 20, 1000),
             'keyword' => $keyword,
         ];
+    }
+
+    private function orderDateScope(string $view): string
+    {
+        return match ($view) {
+            'purchase' => 'purchase',
+            'jp' => 'order',
+            default => 'imported',
+        };
     }
 
     /**
@@ -1594,13 +1638,18 @@ final class TenantController
     private function exportCriteriaFrom(array $source): array
     {
         $keyword = $this->keywordFrom($source);
+        $view = (string) ($source['view'] ?? 'platform');
+        $view = in_array($view, ['platform', 'purchase', 'jp'], true) ? $view : 'platform';
+        $filters = $this->orderFiltersFrom($source, $keyword);
+        $filters['date_scope'] = $this->orderDateScope($view);
+        $filters['default_pending'] = '1';
 
         return [
-            'view' => (string) ($source['view'] ?? 'platform'),
+            'view' => $view,
             'platform' => (string) ($source['platform'] ?? ''),
             'source' => (string) ($source['source'] ?? 'all'),
             'keyword' => $keyword,
-            'filters' => $this->orderFiltersFrom($source, $keyword),
+            'filters' => $filters,
             'item_ids' => $this->intList($source['item_ids'] ?? []),
             'order_ids' => $this->intList($source['order_ids'] ?? []),
         ];
