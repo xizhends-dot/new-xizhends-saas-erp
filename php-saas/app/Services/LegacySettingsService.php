@@ -93,7 +93,6 @@ final class LegacySettingsService
                 'group' => '接口与安全',
                 'source' => 'old/setting.ini',
                 'items' => [
-                    $this->item('两步验证密码', $this->masked($settings['安全设置']['两步验证密码'] ?? '')),
                     $this->item('ShowAPI AppID', $global['showapi']['app_id'] ?? ''),
                     $this->item('ShowAPI Sign', $this->masked((string) ($global['showapi']['sign'] ?? ''))),
                     $this->item('1688配置文件', $settings['1688接口配置']['配置文件'] ?? ''),
@@ -257,9 +256,8 @@ final class LegacySettingsService
                 'source' => 'old/config.php / plugins',
                 'items' => [
                     $this->item('数据库连接', '只走环境变量或密钥管理，不写入 app.json'),
-                    $this->item('两步验证密码', '不迁明文；上线前重置或迁为哈希'),
                     $this->item('ShowAPI Sign', '设置页只显示脱敏摘要，保存时加密'),
-                    $this->item('1688 / OB / 平台 API', 'AppKey、Secret、Token 全部加密保存'),
+                    $this->item('1688 / 平台 API', 'AppKey、Secret、Token 全部加密保存'),
                     $this->item('轮循代理', '只显示协议和主机摘要，密码不展示'),
                 ],
             ],

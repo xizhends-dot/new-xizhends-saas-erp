@@ -129,7 +129,7 @@
 - ☐ 刷单导出 outshuadan.php
 - ☐ 运单/订单外部插入 ydorderinsert.php
 - ☐ 物流查询百度备用方案（ShowAPI 失败降级）
-- ☐ 物流编号对照表 / ShowAPI / OBAPI缓存 / 两步验证密码 等 setting 项（部分由超管维护，先确认是否暴露给租户）
+- ✅ 物流编号对照表 / ShowAPI 等 setting 项（超管全局维护；OBAPI缓存、两步验证密码不迁移）
 - ☐ 行内编辑 / 编辑侧栏（UI 优化，详情页可替代）
 - ☐ 动态组件配置 component-ini（先确认是否还需要）
 

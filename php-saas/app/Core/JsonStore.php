@@ -3247,13 +3247,6 @@ final class JsonStore implements StoreInterface
                 'baidu_enabled' => false,
                 'enabled' => false,
             ],
-            'obapi' => [
-                'cache_ttl' => 3600,
-                'enabled' => false,
-            ],
-            'security' => [
-                'two_factor_password_hash' => '',
-            ],
             'proxy' => [
                 'rotation_proxy' => '',
                 'enabled' => false,

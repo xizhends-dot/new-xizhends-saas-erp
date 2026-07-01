@@ -77,7 +77,7 @@
 - ✅ **刷单导出 outshuadan.php**（commit: 41ebd0a）。
 - ✅ **运单/订单外部插入 ydorderinsert.php**（commit: 41ebd0a）。
 - ✅ **物流查询百度备用方案**（commit: 801f2e8） — ShowAPI 失败或无轨迹时，可由超管开启百度搜索页备用查询，访问 https://www.baidu.com/s?wd=物流号 {国内运单号} 并解析物流轨迹。
-- ◐ **物流编号对照表 / ShowAPI / OBAPI缓存 / 两步验证密码 等 setting 项**（commit: 41ebd0a，部分配置项） — 已补配置占位，是否暴露给租户仍需确认。
+- ✅ **物流编号对照表 / ShowAPI 等 setting 项**（commit: 待回填） — 物流编号对照表、ShowAPI、轮循代理确认由超管全局维护；OBAPI 缓存和两步验证密码确认不迁移。
 - ◐ **行内编辑 / 编辑侧栏**（commit: 41ebd0a，详情页替代） — 现有详情页和 AJAX 刷新已覆盖主路径，专门侧栏 UI 暂未迁移。
 - ◐ **动态组件配置 component-ini**（commit: 41ebd0a，决策报告） — 已补只读决策报告，是否需要完整配置 UI 待确认。
 

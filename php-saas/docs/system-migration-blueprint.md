@@ -36,11 +36,15 @@
 
 必须脱敏或加密：
 
-- 两步验证密码
 - ShowAPI Sign
 - 轮循代理账号密码
 - 1688 AppSecret / AccessToken
 - 旧数据库密码
+
+确认不迁移：
+
+- 两步验证密码
+- OBAPI / OneBound 1688 备用接口缓存
 
 ## 页面模块对应
 
