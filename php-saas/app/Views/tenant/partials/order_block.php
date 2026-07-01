@@ -301,12 +301,29 @@ $outStatusClass = static fn (string $status): string => match ($status) {
                     <?php endforeach; ?>
                 </select></label>
                 <label><span>采购人</span><input name="buyer" value="<?= e($item['buyer'] ?? '') ?>"></label>
-                <label><span>采购时间</span><input name="purchase_time" value="<?= e($item['purchase_time'] ?? '') ?>"></label>
+                <label><span>采购时间</span><input name="purchase_time" value="<?= e($item['purchase_time'] ?? '') ?>" placeholder="YYYY-MM-DD HH:MM"></label>
                 <label><span>1688订单号</span><input name="tabaono" value="<?= e($item['tabaono'] ?? '') ?>"></label>
-                <label><span>采购金额</span><input name="amount" value="<?= e($item['amount'] ?? '') ?>"></label>
-                <label><span>采购链接</span><input name="purchase_link" value="<?= e($item['purchase_link'] ?? '') ?>"></label>
-                <label><span>物流公司</span><input name="ship_company" value="<?= e($item['ship_company'] ?? '') ?>"></label>
-                <label><span>国内运单号</span><input name="ship_number" value="<?= e($item['ship_number'] ?? '') ?>"></label>
+                <label class="drawer-wide"><span>历史1688单号</span><input name="caigou_ordernums" value="<?= e($item['caigou_ordernums'] ?? '') ?>"></label>
+                <label class="drawer-wide"><span>采购链接</span><textarea name="purchase_link"><?= e($item['purchase_link'] ?? '') ?></textarea></label>
+                <label class="drawer-wide"><span>补货链接</span><textarea name="buhuo_link"><?= e($item['buhuo_link'] ?? '') ?></textarea></label>
+                <div class="drawer-split cols-3">
+                    <label><span>采购金额</span><input name="amount" value="<?= e($item['amount'] ?? '') ?>"></label>
+                    <label><span>cnamount</span><input name="cn_amount" value="<?= e($item['cn_amount'] ?? '') ?>"></label>
+                    <label><span>comamount</span><input name="com_amount" value="<?= e($item['com_amount'] ?? '') ?>"></label>
+                </div>
+                <div class="drawer-split">
+                    <label><span>材质</span><input name="material" value="<?= e($item['material'] ?? '') ?>"></label>
+                    <label><span>重量</span><input name="weight" value="<?= e($item['weight'] ?? '') ?>"></label>
+                </div>
+                <label class="drawer-wide"><span>托运备注</span><input name="tranship_comment" value="<?= e($item['tranship_comment'] ?? '') ?>"></label>
+                <label class="drawer-wide"><span>中文属性备注</span><textarea name="chinese_option"><?= e($item['chinese_option'] ?? '') ?></textarea></label>
+                <label class="drawer-wide"><span>订单备注</span><textarea name="comment"><?= e($item['comment'] ?? '') ?></textarea></label>
+                <div class="drawer-split">
+                    <label><span>物流公司</span><input name="ship_company" value="<?= e($item['ship_company'] ?? '') ?>"></label>
+                    <label><span>国内运单号</span><input name="ship_number" value="<?= e($item['ship_number'] ?? '') ?>"></label>
+                </div>
+                <label><span>物流状态</span><input name="logistics" value="<?= e($item['logistics'] ?? '') ?>"></label>
+                <label class="drawer-wide"><span>物流轨迹</span><textarea name="logistic_trace"><?= e($item['logistic_trace'] ?? '') ?></textarea></label>
                 <?php endif; ?>
                 <?php if ($canEditOrders || $canEditJp): ?>
                 <label><span>日本仓ID</span><input name="jp_warehouse_id" value="<?= e($item['jp_warehouse_id'] ?? '') ?>"></label>
@@ -316,6 +333,15 @@ $outStatusClass = static fn (string $status): string => match ($status) {
                         <option <?= ($item['out_status'] ?? '') === $outOption ? 'selected' : '' ?>><?= e($outOption) ?></option>
                     <?php endforeach; ?>
                 </select></label>
+                <div class="drawer-split">
+                    <label><span>国际运单号</span><input name="intl_number" value="<?= e($item['intl_number'] ?? '') ?>"></label>
+                    <label><span>国际运费</span><input name="intl_fee" value="<?= e(($item['intl_fee'] ?? 0) ?: ($item['com_amount'] ?? '')) ?>"></label>
+                </div>
+                <div class="drawer-split">
+                    <label><span>件数</span><input name="intl_qty" value="<?= e(($item['intl_qty'] ?? 0) ?: ($item['ship_quantity'] ?? '')) ?>"></label>
+                    <label><span>国际重量</span><input name="intl_weight" value="<?= e(($item['intl_weight'] ?? 0) ?: ($item['weight'] ?? '')) ?>"></label>
+                </div>
+                <label class="drawer-wide"><span>国际备注</span><input name="intl_comment" value="<?= e($item['intl_comment'] ?? '') ?>"></label>
                 <?php endif; ?>
                 <div class="drawer-actions">
                     <a class="btn" href="<?= e($detailUrl) ?>">完整详情</a>

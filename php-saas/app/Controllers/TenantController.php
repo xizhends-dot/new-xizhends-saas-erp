@@ -374,7 +374,6 @@ final class TenantController
         }
 
         $data = $this->allowedOrderItemPostData($tenantKey);
-        $data = array_filter($data, fn (mixed $value): bool => trim((string) $value) !== '');
         $data = $rules->withAutoBuyer($data, $currentItem, $currentUser);
         if (!$data) {
             $this->forbid('当前租户未开通可保存的订单字段，请联系 SaaS 超级管理员。');
@@ -2442,11 +2441,16 @@ final class TenantController
     private function allowedOrderItemPostData(string $tenantKey): array
     {
         $data = [];
+        $postField = static function (string $field, array &$target): void {
+            if (array_key_exists($field, $_POST)) {
+                $target[$field] = (string) $_POST[$field];
+            }
+        };
         if (
             $this->service->tenantFeatureEnabled($tenantKey, 'orders.platform')
             && ($this->auth->tenantCan($tenantKey, '货源改判') || $this->auth->tenantCan($tenantKey, '订单编辑'))
         ) {
-            $data['source_type'] = (string) ($_POST['source_type'] ?? '');
+            $postField('source_type', $data);
         }
         if (
             $this->service->tenantFeatureEnabled($tenantKey, 'orders.purchase')
@@ -2473,7 +2477,7 @@ final class TenantController
                 'comment',
                 'tranship_comment',
             ] as $field) {
-                $data[$field] = (string) ($_POST[$field] ?? '');
+                $postField($field, $data);
             }
         }
         if (
@@ -2481,7 +2485,7 @@ final class TenantController
             && ($this->auth->tenantCan($tenantKey, '日本仓发货') || $this->auth->tenantCan($tenantKey, '订单编辑'))
         ) {
             foreach (['assignee', 'out_status', 'jp_warehouse_id', 'intl_number', 'intl_fee', 'intl_qty', 'intl_weight', 'intl_comment'] as $field) {
-                $data[$field] = (string) ($_POST[$field] ?? '');
+                $postField($field, $data);
             }
         }
 

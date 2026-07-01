@@ -2026,9 +2026,30 @@ label.ck.warn { color: #475569; }
 }
 
 .drawer-body input,
-.drawer-body select {
+.drawer-body select,
+.drawer-body textarea {
   min-height: 30px;
   font-size: 12px;
+  width: 100%;
+}
+
+.drawer-body textarea {
+  min-height: 66px;
+  resize: vertical;
+}
+
+.drawer-wide {
+  display: block;
+}
+
+.drawer-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.drawer-split.cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .drawer-actions {

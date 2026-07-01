@@ -3487,6 +3487,12 @@ SQL);
                 if ($field === 'out_status' && !in_array($newValue, ['待分配', '已分配', '已出库', '已发货'], true)) {
                     continue;
                 }
+                if (in_array($field, ['amount', 'cn_amount', 'com_amount', 'intl_fee', 'intl_weight', 'weight'], true)) {
+                    $newValue = (float) $newValue;
+                }
+                if (in_array($field, ['ship_quantity', 'intl_qty'], true)) {
+                    $newValue = (int) $newValue;
+                }
 
                 $oldValue = $snapshot[$field] ?? ($field === 'ship_number' ? ($snapshot['cn_ship_number'] ?? '') : '');
                 if ((string) $oldValue === (string) $newValue) {
