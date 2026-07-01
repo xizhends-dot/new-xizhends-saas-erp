@@ -22,7 +22,7 @@
 - ☐ **订单高级筛选条件** — old `inc_list_default.php` 有 25+ 筛选（运单号、采购链接、采购备注、客服备注、发件人/电话、收货城市、超时发货、邀评、已评价、日期范围…）。php-saas 仅基础几个。
 
 ### 平台订单同步（最大缺口）
-- ☐ **Wowma 订单同步服务** — old `plugins/wmshopapi/`。php-saas 只有 RakutenOrderService。
+- ✅ **Wowma 订单同步服务** — old `plugins/wmshopapi/`。php-saas 只有 RakutenOrderService。（commit: feat: 迁移 Wowma 订单同步服务）
 - ☐ **Yahoo Shop 订单同步服务** — old `plugins/yahooshop-api/`。
 - ☐ **Mercari 订单同步服务** — old 支持平台 m。
 - ☐ **Qoo10 订单同步服务** — old 支持平台 q。
