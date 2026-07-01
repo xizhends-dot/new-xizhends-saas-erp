@@ -30,9 +30,9 @@
   > 建议：抽象一个 `PlatformOrderSyncInterface`，RakutenOrderService 作为范本，各平台实现。
 
 ### 物流（php-saas 当前只有 UI 壳，无真实 API 对接）
-- ✅ **1688 采购物流：真实 API 对接 + 自动同步** — old `plugins/1688api/func.php`(1716行) + `cron/update_1688_logistics.php`(每2h)。php-saas `logistics1688` 只读现有库数据，updateLogistics 返回"等待接口回写"。（commit: feat: 迁移 1688 采购物流同步）
-- ✅ **日本国际物流：佐川/日本邮政/雅玛多查询 + 自动同步** — old `plugins/jpshipinfo/`、`sagawa-shipinfo/` + `cron/update_jpship_logistics.php`(每天3次)。php-saas 完全无对接。（commit: feat: 迁移日本国际物流同步）
-- ✅ **定时任务(cron)框架** — old 靠 cron 脚本跑物流/订单同步。php-saas 只有 jobs.php 只读展示，无实际调度。建议用 Laravel Schedule/系统 cron。（commit: feat: 增加定时任务 CLI 框架）
+- ✅ **1688 采购物流：真实 API 对接 + 自动同步** — 已接 old `plugins/1688api/func.php`(1716行) + `cron/update_1688_logistics.php`(每2h) 的 1688 OpenAPI 查询、签收二次判定与 CLI 自动同步。（commit: feat: 迁移 1688 采购物流同步）
+- ✅ **日本国际物流：佐川/日本邮政/雅玛多查询 + 自动同步** — 已接 old `plugins/jpshipinfo/`、`sagawa-shipinfo/` + `cron/update_jpship_logistics.php`(每天3次) 的承运商识别、三家查询与 CLI 自动同步。（commit: feat: 迁移日本国际物流同步）
+- ✅ **定时任务(cron)框架** — 已提供系统 cron 可调用的 `php-saas/bin/cron.php` CLI 入口和任务注册约定。（commit: feat: 增加定时任务 CLI 框架）
 
 ### 导入导出 & 经营分析
 - ☐ **订单导入字段映射核对** — old `orderinsert.php` 各平台 20+ 字段。需确认 CsvImportService 映射完整（尤其新补的详情字段）。
