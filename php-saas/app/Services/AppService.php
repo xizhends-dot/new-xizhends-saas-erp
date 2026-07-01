@@ -320,23 +320,32 @@ final class AppService
         $defaultIntlFee = $this->positiveFloat($profitSettings['default_intl_fee'] ?? 820, 820);
         $platformDeductions = is_array($profitSettings['platform_deductions'] ?? null) ? $profitSettings['platform_deductions'] : [];
         $storeDeductionEnabled = (bool) ($profitSettings['store_deduction_enabled'] ?? true);
-        $stores = [];
+        $storesById = [];
+        $storesByName = [];
         foreach ($this->store->stores($tenantKey) as $store) {
-            $stores[(string) ($store['name'] ?? '')] = $store;
+            $storeId = (int) ($store['id'] ?? 0);
+            if ($storeId > 0) {
+                $storesById[$storeId] = $store;
+            }
+            $storeName = (string) ($store['name'] ?? '');
+            if ($storeName !== '') {
+                $storesByName[$storeName] = $store;
+            }
         }
 
         $rows = [];
         foreach ($orders as $order) {
-            $sales = (float) ($order['total'] ?? 0);
+            $items = array_values(array_filter($order['items'] ?? [], 'is_array'));
+            $quantity = $this->itemsQuantity($items);
+            $japanPostage = $this->japanPostageForOrder($order, $items);
+            $intlFeeData = $this->intlFeeForOrder($items, $defaultIntlFee);
+            $sales = $this->salesForProfitOrder($order, $items, $japanPostage['total']);
             $purchaseCost = array_sum(array_map(
-                fn (array $item): float => (float) ($item['amount'] ?? 0) * max(1, (int) ($item['quantity'] ?? 1)),
-                $order['items'] ?? []
+                fn (array $item): float => $this->firstPositiveItemMoney($item, ['amount', 'cn_amount']),
+                $items
             ));
-            $intlFee = array_sum(array_map(
-                fn (array $item): float => $defaultIntlFee * max(1, (int) ($item['quantity'] ?? 1)),
-                $order['items'] ?? []
-            ));
-            $store = $stores[(string) ($order['store'] ?? '')] ?? [];
+            $intlFee = $intlFeeData['total'];
+            $store = $this->storeForProfitOrder($order, $storesById, $storesByName);
             $deduction = $platformDeductions[(string) ($order['platform'] ?? '')] ?? 70;
             $deductionSource = '平台扣点';
             if ($storeDeductionEnabled && isset($store['profit_deduction']) && is_numeric($store['profit_deduction'])) {
@@ -344,22 +353,35 @@ final class AppService
                 $deductionSource = '店铺扣点';
             }
             $feeRatio = $this->deductionFeeRatio($deduction);
+            $keepRatio = 1.0 - $feeRatio;
             $platformFee = round($sales * $feeRatio, 2);
-            $profit = (float) ($order['total'] ?? 0) - $purchaseCost - $intlFee - $platformFee;
+            $salesAfterDeduction = round($sales * $keepRatio, 2);
+            $salesAfterDeductionConverted = round($salesAfterDeduction * $exchangeRate, 2);
+            $profit = $salesAfterDeductionConverted - $purchaseCost - $intlFee;
             $rows[] = [
                 'order_no' => $order['platform_order_id'] ?? '',
                 'store' => $order['store'] ?? '',
                 'platform' => $order['platform'] ?? '',
+                'item_count' => count($items),
+                'quantity' => $quantity,
                 'sales' => $sales,
+                'japan_postage' => $japanPostage['total'],
+                'japan_postage_shared' => $japanPostage['shared'],
+                'postage_allocations' => $japanPostage['allocations'],
                 'purchase_cost' => $purchaseCost,
                 'intl_fee' => $intlFee,
+                'intl_fee_source' => $intlFeeData['source'],
+                'intl_fee_allocations' => $intlFeeData['allocations'],
                 'platform_fee' => $platformFee,
+                'platform_fee_converted' => round($platformFee * $exchangeRate, 2),
                 'deduction' => round((float) $deduction, 2),
                 'deduction_source' => $deductionSource,
                 'exchange_rate' => $exchangeRate,
                 'sales_converted' => round($sales * $exchangeRate, 2),
+                'sales_after_deduction' => $salesAfterDeduction,
+                'sales_after_deduction_converted' => $salesAfterDeductionConverted,
                 'profit' => $profit,
-                'margin' => (float) ($order['total'] ?? 0) > 0 ? round($profit / (float) $order['total'] * 100, 1) : 0,
+                'margin' => $sales > 0 && $exchangeRate > 0 ? round($profit / $exchangeRate / $sales * 100, 1) : 0,
             ];
         }
 
@@ -372,11 +394,15 @@ final class AppService
                 'platform_deductions' => $platformDeductions,
             ],
             'order_count' => count($rows),
+            'quantity' => array_sum(array_column($rows, 'quantity')),
             'sales' => array_sum(array_column($rows, 'sales')),
+            'japan_postage' => array_sum(array_column($rows, 'japan_postage')),
             'sales_converted' => array_sum(array_column($rows, 'sales_converted')),
+            'sales_after_deduction_converted' => array_sum(array_column($rows, 'sales_after_deduction_converted')),
             'purchase_cost' => array_sum(array_column($rows, 'purchase_cost')),
             'intl_fee' => array_sum(array_column($rows, 'intl_fee')),
             'platform_fee' => array_sum(array_column($rows, 'platform_fee')),
+            'platform_fee_converted' => array_sum(array_column($rows, 'platform_fee_converted')),
             'profit' => array_sum(array_column($rows, 'profit')),
         ];
     }
@@ -490,17 +516,21 @@ final class AppService
             return [
                 'name' => '财务利润表',
                 'filename' => "finance-{$tenantKey}-{$today}.csv",
-                'headers' => ['订单号', '店铺', '平台', '销售额', '采购成本', '国际运费', '扣点来源', '扣点', '平台费', '毛利', '毛利率', '汇率', '折算销售额'],
+                'headers' => ['订单号', '店铺', '平台', '数量合计', '销售额', '日本邮费', '采购成本', '国际运费', '运费口径', '扣点来源', '扣点', '平台费', '扣点后折算收入', '毛利', '毛利率', '汇率', '折算销售额'],
                 'rows' => array_map(fn (array $row): array => [
                     $row['order_no'],
                     $row['store'],
                     $platformNames[(string) ($row['platform'] ?? '')] ?? ($row['platform'] ?? ''),
+                    $row['quantity'],
                     $row['sales'],
+                    $row['japan_postage'],
                     $row['purchase_cost'],
                     $row['intl_fee'],
+                    $row['intl_fee_source'],
                     $row['deduction_source'],
                     $row['deduction'],
                     $row['platform_fee'],
+                    $row['sales_after_deduction_converted'],
                     $row['profit'],
                     $row['margin'] . '%',
                     $row['exchange_rate'],
@@ -1098,6 +1128,212 @@ final class AppService
 
         $purchaseTime = strtotime((string) ($item['purchase_time'] ?? ''));
         return $purchaseTime !== false && $purchaseTime < strtotime('-3 days');
+    }
+
+    /**
+     * @param array<string, mixed> $order
+     * @param array<int, array<string, mixed>> $storesById
+     * @param array<string, array<string, mixed>> $storesByName
+     * @return array<string, mixed>
+     */
+    private function storeForProfitOrder(array $order, array $storesById, array $storesByName): array
+    {
+        $storeId = (int) ($order['store_id'] ?? 0);
+        if ($storeId > 0 && isset($storesById[$storeId])) {
+            return $storesById[$storeId];
+        }
+
+        $storeName = (string) ($order['store'] ?? '');
+        return $storeName !== '' ? ($storesByName[$storeName] ?? []) : [];
+    }
+
+    /**
+     * @param array<string, mixed> $order
+     * @param array<int, array<string, mixed>> $items
+     * @return array{total: float, shared: bool, allocations: array<int, array<string, mixed>>}
+     */
+    private function japanPostageForOrder(array $order, array $items): array
+    {
+        $platform = strtolower((string) ($order['platform'] ?? ''));
+        $orderPostage = $this->moneyFloat($order['postage_price'] ?? 0);
+        $itemPostages = array_map(fn (array $item): float => $this->moneyFloat($item['postage_price'] ?? 0), $items);
+
+        if (in_array($platform, ['y', 'r'], true)) {
+            $total = $orderPostage > 0 ? $orderPostage : ($itemPostages ? max($itemPostages) : 0.0);
+
+            return [
+                'total' => $total,
+                'shared' => $total > 0 && $this->itemsQuantity($items) > 1,
+                'allocations' => $this->allocationsByQuantity($total, $items),
+            ];
+        }
+
+        $total = $orderPostage > 0 ? $orderPostage : array_sum($itemPostages);
+
+        return [
+            'total' => $total,
+            'shared' => false,
+            'allocations' => $this->allocationsByQuantity($total, $items),
+        ];
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $items
+     * @return array{total: float, source: string, allocations: array<int, array<string, mixed>>}
+     */
+    private function intlFeeForOrder(array $items, float $defaultIntlFee): array
+    {
+        if (!$items) {
+            return ['total' => 0.0, 'source' => '无商品', 'allocations' => []];
+        }
+
+        $total = $this->positiveItemMoneyTotal($items, 'intl_fee', 'intl_number');
+        $source = '实际国际运费';
+        if ($total <= 0) {
+            $total = $this->positiveItemMoneyTotal($items, 'com_amount');
+            $source = '旧comamount运费';
+        }
+        if ($total <= 0) {
+            $total = $defaultIntlFee;
+            $source = '默认国际运费';
+        }
+
+        return [
+            'total' => $total,
+            'source' => $source,
+            'allocations' => $this->allocationsByQuantity($total, $items),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $order
+     * @param array<int, array<string, mixed>> $items
+     */
+    private function salesForProfitOrder(array $order, array $items, float $japanPostage): float
+    {
+        $orderTotal = $this->moneyFloat($order['total'] ?? 0);
+        $itemTotal = array_sum(array_map(fn (array $item): float => $this->itemSales($item), $items));
+        if ($orderTotal > 0) {
+            $platform = strtolower((string) ($order['platform'] ?? ''));
+            if (in_array($platform, ['y', 'r'], true) && $japanPostage > 0 && $itemTotal > 0 && $orderTotal <= $itemTotal) {
+                return $orderTotal + $japanPostage;
+            }
+
+            return $orderTotal;
+        }
+
+        return $itemTotal + $japanPostage;
+    }
+
+    /** @param array<string, mixed> $item */
+    private function itemSales(array $item): float
+    {
+        $lineTotal = $this->moneyFloat($item['line_total'] ?? 0);
+        if ($lineTotal > 0) {
+            return $lineTotal;
+        }
+
+        return $this->moneyFloat($item['unit_price'] ?? 0) * $this->itemQuantity($item);
+    }
+
+    /** @param array<string, mixed> $item @param array<int, string> $fields */
+    private function firstPositiveItemMoney(array $item, array $fields): float
+    {
+        foreach ($fields as $field) {
+            $amount = $this->moneyFloat($item[$field] ?? 0);
+            if ($amount > 0) {
+                return $amount;
+            }
+        }
+
+        return 0.0;
+    }
+
+    /** @param array<int, array<string, mixed>> $items */
+    private function positiveItemMoneyTotal(array $items, string $field, ?string $dedupeField = null): float
+    {
+        $total = 0.0;
+        $seen = [];
+        foreach ($items as $index => $item) {
+            $amount = $this->moneyFloat($item[$field] ?? 0);
+            if ($amount <= 0) {
+                continue;
+            }
+
+            if ($dedupeField !== null) {
+                $key = trim((string) ($item[$dedupeField] ?? ''));
+                if ($key !== '') {
+                    if (isset($seen[$key])) {
+                        continue;
+                    }
+                    $seen[$key] = true;
+                } else {
+                    $seen["__row_{$index}"] = true;
+                }
+            }
+
+            $total += $amount;
+        }
+
+        return $total;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $items
+     * @return array<int, array<string, mixed>>
+     */
+    private function allocationsByQuantity(float $total, array $items): array
+    {
+        if (!$items || $total <= 0) {
+            return [];
+        }
+
+        $totalQuantity = $this->itemsQuantity($items);
+        $remaining = round($total, 2);
+        $lastIndex = array_key_last($items);
+        $allocations = [];
+        foreach ($items as $index => $item) {
+            $quantity = $this->itemQuantity($item);
+            $amount = $index === $lastIndex
+                ? round($remaining, 2)
+                : round($total * $quantity / $totalQuantity, 2);
+            $remaining -= $amount;
+            $allocations[] = [
+                'item_id' => (int) ($item['id'] ?? 0),
+                'item_code' => (string) (($item['item_code'] ?? '') ?: ($item['lot_number'] ?? '')),
+                'quantity' => $quantity,
+                'amount' => $amount,
+            ];
+        }
+
+        return $allocations;
+    }
+
+    /** @param array<int, array<string, mixed>> $items */
+    private function itemsQuantity(array $items): int
+    {
+        if (!$items) {
+            return 0;
+        }
+
+        $quantity = array_sum(array_map(fn (array $item): int => $this->itemQuantity($item), $items));
+        return max(1, (int) $quantity);
+    }
+
+    /** @param array<string, mixed> $item */
+    private function itemQuantity(array $item): int
+    {
+        return max(1, (int) ($item['quantity'] ?? 1));
+    }
+
+    private function moneyFloat(mixed $value): float
+    {
+        if (is_int($value) || is_float($value)) {
+            return (float) $value;
+        }
+
+        $normalized = preg_replace('/[^\d.\-]+/', '', str_replace(',', '', (string) ($value ?? '')));
+        return is_numeric($normalized) ? (float) $normalized : 0.0;
     }
 
     private function positiveFloat(mixed $value, float $default): float
