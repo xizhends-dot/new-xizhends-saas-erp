@@ -550,8 +550,8 @@ final class AppService
             ['key' => 'purchase_import', 'name' => '采购表导入', 'source' => 'old/*/caigou_import.php', 'status' => '已接 CSV 更新', 'scope' => '采购状态、采购金额、采购人、采购时间', 'direction' => 'import'],
             ['key' => 'shipping_import', 'name' => '国际运单导入', 'source' => 'old/*/shipping_import.php', 'status' => '已接 CSV 更新', 'scope' => '国际运单号、运费、重量、件数', 'direction' => 'import'],
             ['key' => 'shipment_export', 'name' => '发货表导出', 'source' => 'old/*/outexcel.php', 'status' => '已接 CSV 导出', 'scope' => '平台发货通知 / 已发日本', 'direction' => 'export'],
-            ['key' => 'finance_export', 'name' => '财务表导出', 'source' => 'old/*/outcwexcel.php', 'status' => '已接 CSV 导出', 'scope' => '销售额、采购额、运费、扣点、利润', 'direction' => 'export'],
-            ['key' => 'customers_export', 'name' => '客户资料导出', 'source' => 'old/*/custinfo_export.php', 'status' => '已接 CSV 导出', 'scope' => '按平台 / 店铺 / 日期', 'direction' => 'export'],
+            ['key' => 'finance_export', 'name' => '财务表导出', 'source' => 'old/*/outcwexcel.php', 'status' => '已接 XLSX 图片导出', 'scope' => '销售额、采购额、运费、扣点、利润', 'direction' => 'export'],
+            ['key' => 'customers_export', 'name' => '客户资料导出', 'source' => 'old/*/custinfo_export.php', 'status' => '已接 XLSX 样式导出', 'scope' => '按平台 / 店铺 / 日期', 'direction' => 'export'],
             ['key' => 'logistics_export', 'name' => '物流表导出', 'source' => 'old/*/wuliu_export.php', 'status' => '已接 CSV 导出', 'scope' => '国内/国际运单与状态', 'direction' => 'export'],
         ];
     }

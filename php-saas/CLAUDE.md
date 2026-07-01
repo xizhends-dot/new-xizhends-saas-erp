@@ -19,7 +19,7 @@
 
 ## 技术栈与约定（重要）
 
-- **PHP 8.4，零框架、零 Composer/npm 依赖**。刻意保持极简，先用 PHP 内置服务器跑通核心。
+- **PHP 8.4，零框架，Composer 仅用于 Excel 导出依赖**。当前已引入 `phpoffice/phpspreadsheet` 生成财务/客户资料 `.xlsx`；其余业务仍保持极简，先用 PHP 内置服务器跑通核心。
 - **双存储驱动**：通过 `DATA_DRIVER=json|mysql` 切换。`StoreInterface` 是契约，`JsonStore` 与 `MysqlStore` 两套实现必须**行为一致**。
   - 缺 `pdo_mysql` 扩展或 DSN 未配置时自动回退 JSON，并在 `/admin/system` 显示原因。
   - JSON 数据落在 `storage/data/app.json`（单一大文件，所有租户共用）。
@@ -51,6 +51,7 @@ php -S 127.0.0.1:8090 -t public
 - `app/Views/` — `admin/`、`tenant/`、`auth/`、`layouts/`、`tenant/partials/`
 - `storage/` — `data/app.json`（JSON 模式数据）、`tenants/<key>/`（租户上传图片、1688 配置）、日志
 - `config/app.php` — 驱动与 MySQL 连接配置
+- `composer.json` / `composer.lock` — Excel 导出依赖（`PhpSpreadsheet`）；部署后执行 `composer install --no-dev`
 - `docs/` — 数据库契约、迁移蓝图、路线图等
 
 ## 已知问题 / 待办

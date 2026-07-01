@@ -31,10 +31,12 @@ use Xizhen\Services\PurchaseStatsService;
 use Xizhen\Services\ShippingAnomalyService;
 use Xizhen\Services\ShippingImportModeService;
 use Xizhen\Services\ShippingWorkflowService;
+use Xizhen\Services\SpreadsheetExportService;
 use Xizhen\Services\TenantNoticeService;
 use Xizhen\Services\TenantUserSecurityService;
 use Xizhen\Services\UserPermissionOverrideService;
 use Xizhen\Services\WaybillCheckService;
+use RuntimeException;
 
 final class TenantController
 {
@@ -64,6 +66,7 @@ final class TenantController
     private CustomerServiceDeductionService $customerServiceDeductionService;
     private OrderAjaxService $orderAjaxService;
     private LegacyEdgeToolService $legacyEdgeToolService;
+    private SpreadsheetExportService $spreadsheetExportService;
 
     public function __construct(private readonly StoreInterface $store, private readonly View $view, private readonly AuthService $auth)
     {
@@ -93,6 +96,7 @@ final class TenantController
         $this->customerServiceDeductionService = new CustomerServiceDeductionService($store);
         $this->orderAjaxService = new OrderAjaxService($store, $this->service, $view);
         $this->legacyEdgeToolService = new LegacyEdgeToolService($store);
+        $this->spreadsheetExportService = new SpreadsheetExportService(BASE_PATH);
     }
 
     public function loginForm(): void
@@ -1261,6 +1265,8 @@ final class TenantController
         $type = preg_replace('/[^a-z_]/', '', (string) ($_GET['type'] ?? 'purchase')) ?: 'purchase';
         $this->ensurePlatformFeatureAccess($tenantKey, (string) ($_GET['platform'] ?? ''));
         $this->ensureImportExportAccess($tenantKey, $type);
+        $this->sendSpreadsheetExportIfNeeded($tenantKey, $type, $_GET);
+
         $dataset = $this->service->exportDataset($tenantKey, $type, $this->auth->currentTenantUser($tenantKey), $this->exportCriteriaFrom($_GET));
         $this->sendCsvDataset($tenantKey, $dataset);
     }
@@ -1288,7 +1294,7 @@ final class TenantController
             'excelRequirements' => array_merge(
                 $this->financeExportRequirementService->excelRequirements(),
                 array_map(
-                    static fn (string $item): array => ['item' => $item, 'reason' => '客户资料样式导出需要电子表格库。', 'old_source' => 'old/*/custinfo_export.php'],
+                    static fn (string $item): array => ['item' => $item, 'reason' => '已通过 PhpSpreadsheet 生成样式 XLSX。', 'old_source' => 'old/*/custinfo_export.php'],
                     $this->customerExportService->excelRequirements()
                 )
             ),
@@ -1313,7 +1319,8 @@ final class TenantController
         $this->requireTenantFeature($tenantKey, 'customers.data');
         $this->auth->requireTenantPermission($tenantKey, '客户资料');
         $orders = $this->service->ordersForExport($tenantKey, $this->auth->currentTenantUser($tenantKey), $this->exportCriteriaFrom($_GET));
-        $this->sendCsvDataset($tenantKey, $this->customerExportService->exportDataset($tenantKey, $orders, $_GET));
+        $dataset = $this->customerExportService->exportDataset($tenantKey, $orders, $_GET);
+        $this->sendXlsxFile($tenantKey, $this->buildCustomerWorkbook($tenantKey, $dataset));
     }
 
     public function exportFinancePlaceholder(): void
@@ -1322,7 +1329,8 @@ final class TenantController
         $this->requireTenantFeature($tenantKey, 'import_export.finance');
         $this->auth->requireAnyTenantPermission($tenantKey, ['导入导出', '财务导出']);
         $orders = $this->service->ordersForExport($tenantKey, $this->auth->currentTenantUser($tenantKey), $this->exportCriteriaFrom($_GET));
-        $this->sendCsvDataset($tenantKey, $this->financeExportRequirementService->csvPlaceholderDataset($tenantKey, $orders));
+        $orders = $this->withOrderAttachments($tenantKey, $orders);
+        $this->sendXlsxFile($tenantKey, $this->buildFinanceWorkbook($tenantKey, $orders));
     }
 
     public function exportBrushOrders(): void
@@ -1524,6 +1532,7 @@ final class TenantController
         $type = preg_replace('/[^a-z_]/', '', (string) ($_POST['type'] ?? 'purchase')) ?: 'purchase';
         $this->ensurePlatformFeatureAccess($tenantKey, (string) ($_POST['platform'] ?? ''));
         $this->ensureImportExportAccess($tenantKey, $type);
+        $this->sendSpreadsheetExportIfNeeded($tenantKey, $type, $_POST);
         $dataset = $this->service->exportDataset($tenantKey, $type, $this->auth->currentTenantUser($tenantKey), $this->exportCriteriaFrom($_POST));
         $this->sendCsvDataset($tenantKey, $dataset);
     }
@@ -1815,6 +1824,89 @@ final class TenantController
             fclose($out);
         }
         exit;
+    }
+
+    /** @param array{name: string, filename: string, path: string, rows: int, format: string} $file */
+    private function sendXlsxFile(string $tenantKey, array $file): never
+    {
+        $path = (string) ($file['path'] ?? '');
+        if ($path === '' || !is_file($path)) {
+            $this->forbid('Excel 文件生成失败，请检查导出服务配置。');
+        }
+
+        $this->store->addImportExportLog($tenantKey, [
+            'type' => 'export',
+            'name' => (string) ($file['name'] ?? 'Excel 导出'),
+            'status' => '已导出',
+            'file_name' => (string) ($file['filename'] ?? basename($path)),
+            'rows' => (int) ($file['rows'] ?? 0),
+            'message' => 'XLSX 已生成下载。',
+            'created_by' => $this->currentUserName($tenantKey),
+        ]);
+
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . str_replace('"', '', (string) ($file['filename'] ?? 'export.xlsx')) . '"');
+        header('Content-Length: ' . filesize($path));
+        header('Cache-Control: max-age=0');
+        readfile($path);
+        @unlink($path);
+        exit;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $orders
+     * @return array<int, array<string, mixed>>
+     */
+    private function withOrderAttachments(string $tenantKey, array $orders): array
+    {
+        foreach ($orders as &$order) {
+            $order['_attachments'] = $this->store->orderAttachments($tenantKey, (int) ($order['id'] ?? 0));
+        }
+        unset($order);
+
+        return $orders;
+    }
+
+    /** @param array<string, mixed> $source */
+    private function sendSpreadsheetExportIfNeeded(string $tenantKey, string $type, array $source): void
+    {
+        if (!in_array($type, ['finance', 'customers'], true)) {
+            return;
+        }
+
+        $orders = $this->service->ordersForExport($tenantKey, $this->auth->currentTenantUser($tenantKey), $this->exportCriteriaFrom($source));
+        if ($type === 'finance') {
+            $this->sendXlsxFile($tenantKey, $this->buildFinanceWorkbook($tenantKey, $this->withOrderAttachments($tenantKey, $orders)));
+        }
+
+        $dataset = $this->customerExportService->exportDataset($tenantKey, $orders, $source);
+        $this->sendXlsxFile($tenantKey, $this->buildCustomerWorkbook($tenantKey, $dataset));
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $orders
+     * @return array{name: string, filename: string, path: string, rows: int, format: string}
+     */
+    private function buildFinanceWorkbook(string $tenantKey, array $orders): array
+    {
+        try {
+            return $this->spreadsheetExportService->financeWorkbook($tenantKey, $orders, $this->currentUserName($tenantKey));
+        } catch (RuntimeException $exception) {
+            $this->forbid($exception->getMessage());
+        }
+    }
+
+    /**
+     * @param array{name: string, filename: string, headers: array<int, string>, rows: array<int, array<int, mixed>>} $dataset
+     * @return array{name: string, filename: string, path: string, rows: int, format: string}
+     */
+    private function buildCustomerWorkbook(string $tenantKey, array $dataset): array
+    {
+        try {
+            return $this->spreadsheetExportService->customerWorkbook($tenantKey, $dataset, $this->currentUserName($tenantKey));
+        } catch (RuntimeException $exception) {
+            $this->forbid($exception->getMessage());
+        }
     }
 
     /** @param array<int, mixed> $row @return array<int, mixed> */

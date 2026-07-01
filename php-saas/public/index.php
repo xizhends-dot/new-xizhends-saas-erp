@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 define('BASE_PATH', dirname(__DIR__));
 
+$composerAutoload = BASE_PATH . '/vendor/autoload.php';
+if (is_file($composerAutoload)) {
+    require $composerAutoload;
+}
+
 require BASE_PATH . '/app/Core/helpers.php';
 
 spl_autoload_register(function (string $class): void {

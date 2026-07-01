@@ -55,10 +55,10 @@
 - ✅ **核价计算器**（commit: 41ebd0a） — old `price_calculator.php`(多行成本核算工具)。已补多行核价与目标利润反推。
 - ✅ **采购统计补全**（commit: 41ebd0a） — php-saas 已有采购人/状态，已补日视图、用户追溯维度。
 
-### 导入导出（old 用 Excel/PHPExcel，php-saas 目前全 CSV）
+### 导入导出（old 用 Excel/PHPExcel，php-saas 已开始迁移 XLSX）
 - ✅ **多平台特定导出**（commit: 41ebd0a，CSV 版本） — old outexcel-riya/sx/wd/weier、outexcel_qoo10、outexcel_wowma 等平台专用发货单格式。已补平台变体 CSV 导出。
-- ◐ **财务导出嵌图片 + Excel 样式**（commit: 41ebd0a，CSV 占位） — old outcwexcel.php 用 PHPExcel 内嵌订单图片。真实 Excel 样式/嵌图需要引入电子表格库，需先确认。
-- ◐ **客户资料 Excel 样式导出**（commit: 41ebd0a，CSV 版本） — old custinfo_export.php(冻结行/列宽/保护)。已补客户资料 CSV 导出，Excel 样式需引库。
+- ✅ **财务导出嵌图片 + Excel 样式**（commit: 本次实现） — old outcwexcel.php 财务图片表已迁移为 PhpSpreadsheet XLSX，真实嵌入订单图片/采购凭证图片并保留行高、列宽、边框与文本单号格式。
+- ✅ **客户资料 Excel 样式导出**（commit: 本次实现） — old custinfo_export.php(冻结行/列宽/保护) 已迁移为 PhpSpreadsheet XLSX，保留冻结 A2、列宽、表头、边框、保护和邮编/电话文本格式。
 - ✅ **财务数据导入(运单号模糊匹配)**（commit: 41ebd0a） — old caiwu_new_import.php(精确/前缀/后缀/中间匹配)。已补预览与确认写入。
 - ✅ **国际运单导入：追加 vs 覆盖模式**（commit: 41ebd0a） — old shipping_import.php 第三列控制。已补追加/覆盖解析与确认写入。
 - ✅ **日本仓订单导入(YD表)**（commit: 41ebd0a） — old ydinsert.php(日本仓订单+发货员分配)。已补预览与确认写入。

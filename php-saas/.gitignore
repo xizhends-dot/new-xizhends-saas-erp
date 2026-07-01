@@ -1,4 +1,6 @@
 .codegraph/
+vendor/
+composer.phar
 storage/
 docs/project_id_*
 *.log

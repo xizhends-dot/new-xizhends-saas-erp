@@ -116,7 +116,7 @@ $json = static fn (mixed $value): string => json_encode($value, JSON_UNESCAPED_U
 </div>
 
 <div class="panel">
-    <div class="panel-head"><span>需确认引库的 Excel 项</span><span class="sub">本批次不实现</span></div>
+    <div class="panel-head"><span>已迁移的 Excel 项</span><span class="sub">PhpSpreadsheet XLSX</span></div>
     <div class="panel-body">
         <table class="table">
             <thead><tr><th>项目</th><th>原因</th><th>旧系统来源</th></tr></thead>

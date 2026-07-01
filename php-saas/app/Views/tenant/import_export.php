@@ -14,7 +14,7 @@ $exportMap = [
 ?>
 <div class="page-head">
     <div>
-        <h1>导入导出 <span class="sub">CSV / 物流 / 财务 / 客户资料</span></h1>
+        <h1>导入导出 <span class="sub">CSV / 物流 / 财务 XLSX / 客户资料 XLSX</span></h1>
     </div>
     <div class="head-actions">
         <?php if ($hasImportJobs): ?><a class="btn primary" href="#csv-import-form">上传 CSV</a><?php endif; ?>
@@ -72,7 +72,7 @@ $exportMap = [
     </section>
 
     <section class="panel">
-        <div class="panel-head"><span>CSV 导出</span><span class="sub">按当前租户和员工店铺范围生成</span></div>
+        <div class="panel-head"><span>导出</span><span class="sub">财务与客户资料输出 XLSX，其余任务输出 CSV</span></div>
         <div class="panel-body export-list">
             <?php foreach ($exportJobs as $job): ?>
                 <?php $type = $exportMap[$job['key']] ?? 'purchase'; ?>
@@ -81,7 +81,7 @@ $exportMap = [
                         <strong><?= e($job['name']) ?></strong>
                         <span><?= e($job['scope']) ?></span>
                     </div>
-                    <a class="btn" href="/import-export/export?tenant=<?= e($tenantKey) ?>&type=<?= e($type) ?>">下载 CSV</a>
+                    <a class="btn" href="/import-export/export?tenant=<?= e($tenantKey) ?>&type=<?= e($type) ?>"><?= in_array($type, ['finance', 'customers'], true) ? '下载 XLSX' : '下载 CSV' ?></a>
                 </div>
             <?php endforeach; ?>
             <?php if (empty($exportJobs)): ?>

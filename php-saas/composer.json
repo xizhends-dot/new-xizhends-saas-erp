@@ -1,0 +1,12 @@
+{
+  "license": "proprietary",
+  "require": {
+    "phpoffice/phpspreadsheet": "^5.0"
+  },
+  "config": {
+    "platform": {
+      "php": "8.4.20"
+    },
+    "sort-packages": true
+  }
+}

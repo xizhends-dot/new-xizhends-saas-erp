@@ -31,11 +31,8 @@ final class CustomerExportService
             $customer = is_array($order['customer'] ?? null) ? $order['customer'] : [];
             $rows[] = $this->safeRow([
                 (string) ($customer['name'] ?? ''),
-                '',
-                $this->address1($customer),
-                $this->address2($customer),
-                (string) ($customer['city'] ?? ''),
-                (string) ($customer['prefecture'] ?? ''),
+                (string) ($customer['kana'] ?? ''),
+                $this->address($customer),
                 $this->zip((string) ($customer['zip'] ?? '')),
                 $this->phone((string) ($customer['phone'] ?? '')),
                 (string) ($customer['mail'] ?? ''),
@@ -46,12 +43,12 @@ final class CustomerExportService
         $today = date('Ymd-His');
 
         return [
-            'name' => '客户资料 CSV',
-            'filename' => "customers-legacy-{$tenantKey}-{$today}.csv",
+            'name' => '客户资料',
+            'filename' => "customers-legacy-{$tenantKey}-{$today}.xlsx",
             'headers' => $this->headers(),
             'rows' => $rows,
             'source' => 'old/*/custinfo_export.php',
-            'note' => '只迁移 CSV 结构；冻结首行、列宽、保护工作表等 Excel 样式需用户确认引库。',
+            'note' => '按旧 custinfo_export.php 输出样式化 XLSX。',
         ];
     }
 
@@ -59,15 +56,12 @@ final class CustomerExportService
     public function headers(): array
     {
         return [
-            'ShipName',
-            'ShipName1',
-            'ShipAddress1',
-            'ShipAddress2',
-            'ShipCity',
-            'ShipPrefecture',
-            'ShipZipCode',
-            'ShipPhoneNumber',
-            'BillMailAddress',
+            'senderName',
+            'senderKana',
+            'senderAddress',
+            'senderZipCode',
+            'senderPhoneNumber1',
+            'mailAddress',
             'cdate',
         ];
     }
@@ -112,18 +106,20 @@ final class CustomerExportService
     }
 
     /** @param array<string, mixed> $customer */
-    private function address1(array $customer): string
-    {
-        return (string) (($customer['address1'] ?? '') ?: ($customer['address'] ?? ''));
-    }
-
     /** @param array<string, mixed> $customer */
-    private function address2(array $customer): string
+    private function address(array $customer): string
     {
-        $address1 = (string) (($customer['address1'] ?? '') ?: ($customer['address'] ?? ''));
-        $address2 = (string) ($customer['address2'] ?? '');
+        $parts = array_values(array_filter(array_map(
+            static fn (mixed $value): string => trim((string) $value),
+            [
+                $customer['prefecture'] ?? '',
+                $customer['city'] ?? '',
+                $customer['address1'] ?? '',
+                $customer['address2'] ?? '',
+            ]
+        )));
 
-        return $address2 !== '' ? $address1 . ',' . $address2 : $address1;
+        return $parts ? implode('', $parts) : (string) ($customer['address'] ?? '');
     }
 
     private function phone(string $value): string
