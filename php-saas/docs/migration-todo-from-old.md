@@ -26,7 +26,7 @@
 - ✅ **Yahoo Shop 订单同步服务** — old `plugins/yahooshop-api/`。（commit: feat: 迁移 Yahoo Shop 订单同步服务）
 - ✅ **Mercari 订单同步服务** — old 支持平台 m。（commit: feat: 迁移 Mercari 订单同步服务）
 - ✅ **Qoo10 订单同步服务** — old 支持平台 q。（commit: feat: 迁移 Qoo10 订单同步服务）
-- ☐ **雅虎拍卖订单同步服务** — old 支持平台 yp。
+- ✅ **雅虎拍卖订单同步服务** — old 支持平台 yp。（commit: feat: 迁移雅虎拍卖订单同步服务）
   > 建议：抽象一个 `PlatformOrderSyncInterface`，RakutenOrderService 作为范本，各平台实现。
 
 ### 物流（php-saas 当前只有 UI 壳，无真实 API 对接）
