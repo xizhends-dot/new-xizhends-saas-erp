@@ -11,6 +11,7 @@ use Xizhen\Services\Alibaba1688LogisticsService;
 use Xizhen\Services\AppService;
 use Xizhen\Services\AuthService;
 use Xizhen\Services\CsvImportService;
+use Xizhen\Services\JapanLogisticsService;
 use Xizhen\Services\LegacySettingsService;
 use Xizhen\Services\MailService;
 use Xizhen\Services\OrderItemSaveRuleService;
@@ -26,6 +27,7 @@ final class TenantController
     private PlatformOrderSyncRegistry $platformOrderSyncRegistry;
     private ShippingWorkflowService $shippingWorkflowService;
     private Alibaba1688LogisticsService $alibaba1688LogisticsService;
+    private JapanLogisticsService $japanLogisticsService;
 
     public function __construct(private readonly StoreInterface $store, private readonly View $view, private readonly AuthService $auth)
     {
@@ -36,6 +38,7 @@ final class TenantController
         $this->platformOrderSyncRegistry = new PlatformOrderSyncRegistry($store);
         $this->shippingWorkflowService = new ShippingWorkflowService();
         $this->alibaba1688LogisticsService = new Alibaba1688LogisticsService($store);
+        $this->japanLogisticsService = new JapanLogisticsService($store);
     }
 
     public function loginForm(): void
@@ -940,6 +943,11 @@ final class TenantController
             $syncResult = $this->alibaba1688LogisticsService->syncItems($tenantKey, $targetItemIds, [], $this->currentUserName($tenantKey));
             $updated = (int) $syncResult['updated'];
             $message = $targetItemIds ? (string) $syncResult['message'] : '当前筛选范围没有符合条件的 1688 物流记录。';
+            $logStatus = $syncResult['ok'] ? '同步完成' : '同步异常';
+        } elseif ($type === 'jp') {
+            $syncResult = $this->japanLogisticsService->syncItems($tenantKey, $targetItemIds, [], $this->currentUserName($tenantKey));
+            $updated = (int) $syncResult['updated'];
+            $message = $targetItemIds ? (string) $syncResult['message'] : '当前筛选范围没有符合条件的日本物流记录。';
             $logStatus = $syncResult['ok'] ? '同步完成' : '同步异常';
         } else {
             $status = $this->service->logisticsUpdateStatus($type);

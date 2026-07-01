@@ -20,7 +20,7 @@
 <div class="notice">
     <?= e($type === '1688'
         ? '已接入 old/plugins/1688api 与 cron/update_1688_logistics.php 的 1688 物流查询规则。'
-        : '后续接入 old/plugins/jpshipinfo、sagawa-shipinfo 与 cron/update_jpship_logistics.php。') ?>
+        : '已接入 old/plugins/jpshipinfo、sagawa-shipinfo 与 cron/update_jpship_logistics.php 的日本物流查询规则。') ?>
 </div>
 
 <div class="panel">
