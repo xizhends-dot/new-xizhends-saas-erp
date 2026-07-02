@@ -53,7 +53,7 @@
 - 用 `SpreadsheetExportService` 同款 PhpSpreadsheet 方式重做采购表导出为 XLSX，嵌入商品图片、1688 链接做超链接、关键字段单元格保护/锁定。
 - 采购表导入端支持解析 XLSX（不只是 CSV）。如果业务方确认纯 CSV 可接受，则本项降级为文档说明，不用代码改造——**需先问用户**。
 
-完成提交：`c28e4e4`
+完成提交：`c28e4e4`；验证脚本 `tests/purchase_xlsx_workflow_test.php` 在补齐 zip/mbstring/gd 扩展后实际跑通，发现并修复锁定列缺少显式 `PROTECTION_PROTECTED` 声明的问题（`508825d`）。
 
 ---
 
