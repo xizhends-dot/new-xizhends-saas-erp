@@ -36,6 +36,7 @@ use Xizhen\Services\TenantNoticeService;
 use Xizhen\Services\TenantUserSecurityService;
 use Xizhen\Services\UserPermissionOverrideService;
 use Xizhen\Services\WaybillCheckService;
+use Xizhen\Services\YahooShopOAuthService;
 use RuntimeException;
 
 final class TenantController
@@ -67,6 +68,7 @@ final class TenantController
     private OrderAjaxService $orderAjaxService;
     private LegacyEdgeToolService $legacyEdgeToolService;
     private SpreadsheetExportService $spreadsheetExportService;
+    private YahooShopOAuthService $yahooShopOAuthService;
 
     public function __construct(private readonly StoreInterface $store, private readonly View $view, private readonly AuthService $auth)
     {
@@ -97,6 +99,7 @@ final class TenantController
         $this->orderAjaxService = new OrderAjaxService($store, $this->service, $view);
         $this->legacyEdgeToolService = new LegacyEdgeToolService($store);
         $this->spreadsheetExportService = new SpreadsheetExportService(BASE_PATH);
+        $this->yahooShopOAuthService = new YahooShopOAuthService($store);
     }
 
     public function loginForm(): void
@@ -572,6 +575,36 @@ final class TenantController
         ]);
 
         redirect_to('/stores?tenant=' . rawurlencode($tenantKey));
+    }
+
+    public function authorizeYahooShop(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'management.stores');
+        $this->auth->requireTenantPermission($tenantKey, '店铺新增');
+        $storeId = (int) ($_GET['id'] ?? 0);
+
+        try {
+            $url = $this->yahooShopOAuthService->authorizationUrl($tenantKey, $storeId, $this->absoluteUrl('/oauth/yahoo/callback'));
+            redirect_to($url);
+        } catch (RuntimeException $exception) {
+            redirect_to('/stores/edit?tenant=' . rawurlencode($tenantKey) . '&id=' . $storeId . '&error=' . rawurlencode($exception->getMessage()));
+        }
+    }
+
+    public function yahooOAuthCallback(): void
+    {
+        try {
+            $result = $this->yahooShopOAuthService->handleCallback(
+                (string) ($_GET['code'] ?? ''),
+                (string) ($_GET['state'] ?? ''),
+                $this->absoluteUrl('/oauth/yahoo/callback')
+            );
+            redirect_to('/stores/edit?tenant=' . rawurlencode($result['tenant_key']) . '&id=' . (int) $result['store_id'] . '&message=' . rawurlencode($result['message']));
+        } catch (RuntimeException $exception) {
+            $tenantKey = current_tenant_key();
+            redirect_to('/stores?tenant=' . rawurlencode($tenantKey) . '&error=' . rawurlencode($exception->getMessage()));
+        }
     }
 
     public function users(): void
@@ -2782,6 +2815,18 @@ final class TenantController
         }
 
         return $url . (str_contains($url, '?') ? '&' : '?') . $key . '=' . rawurlencode($message) . $fragment;
+    }
+
+    private function absoluteUrl(string $path): string
+    {
+        $forwardedProto = strtolower(trim((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')));
+        $scheme = $forwardedProto !== ''
+            ? explode(',', $forwardedProto)[0]
+            : ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http');
+        $scheme = in_array($scheme, ['http', 'https'], true) ? $scheme : 'http';
+        $host = (string) ($_SERVER['HTTP_HOST'] ?? '127.0.0.1');
+
+        return $scheme . '://' . $host . $path;
     }
 
     /** @param array<string, mixed> $payload */

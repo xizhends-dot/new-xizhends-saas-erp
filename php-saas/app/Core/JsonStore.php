@@ -490,6 +490,43 @@ final class JsonStore implements StoreInterface
         $this->save();
     }
 
+    /** @param array<string, mixed> $patch */
+    public function mergeStoreApiConfig(string $tenantKey, int $storeId, array $patch, string $apiStatus = '已配置'): void
+    {
+        if ($storeId <= 0 || !$patch) {
+            return;
+        }
+
+        $all = $this->all();
+        if (!isset($all['stores'][$tenantKey]) || !is_array($all['stores'][$tenantKey])) {
+            return;
+        }
+
+        foreach ($all['stores'][$tenantKey] as &$store) {
+            if ((int) ($store['id'] ?? 0) !== $storeId) {
+                continue;
+            }
+
+            $config = $this->storeApiConfig((string) ($store['api_config'] ?? ''));
+            foreach ($patch as $key => $value) {
+                $key = trim((string) $key);
+                if ($key === '') {
+                    continue;
+                }
+                $config[$key] = is_scalar($value) ? (string) $value : $value;
+            }
+            $store['api_config'] = json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $store['api_status'] = $apiStatus !== '' ? $apiStatus : ($store['api_status'] ?? '已配置');
+            $store['updated_by'] = 'Yahoo OAuth';
+            $store['updated_at'] = date('Y-m-d H:i');
+            break;
+        }
+        unset($store);
+
+        $this->data = $all;
+        $this->save();
+    }
+
     /** @return array<int, array<string, mixed>> */
     public function users(string $tenantKey): array
     {
@@ -3014,6 +3051,34 @@ final class JsonStore implements StoreInterface
     {
         $number = is_numeric($value) ? (float) $value : 70.0;
         return max(0.0, min(100.0, round($number, 2)));
+    }
+
+    /** @return array<string, mixed> */
+    private function storeApiConfig(string $raw): array
+    {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+
+        $config = [];
+        foreach (preg_split('/\r\n|\r|\n/', $raw) ?: [] as $line) {
+            if (!str_contains($line, '=')) {
+                continue;
+            }
+            [$key, $value] = explode('=', $line, 2);
+            $key = trim($key);
+            if ($key !== '') {
+                $config[$key] = trim($value);
+            }
+        }
+
+        return $config;
     }
 
     private function shortText(string $value, int $length): string

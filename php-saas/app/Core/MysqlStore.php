@@ -674,6 +674,40 @@ SQL);
         ]);
     }
 
+    /** @param array<string, mixed> $patch */
+    public function mergeStoreApiConfig(string $tenantKey, int $storeId, array $patch, string $apiStatus = '已配置'): void
+    {
+        $tenantPdo = $this->tenantPdo($tenantKey);
+        if (!$tenantPdo || $storeId <= 0 || !$patch || !$this->columnExists($tenantPdo, 'stores', 'api_config')) {
+            return;
+        }
+
+        $stmt = $tenantPdo->prepare('SELECT api_config FROM stores WHERE id = ? LIMIT 1');
+        $stmt->execute([$storeId]);
+        $config = $this->normalizeStoreApiConfig($stmt->fetchColumn() ?: null);
+        foreach ($patch as $key => $value) {
+            $key = trim((string) $key);
+            if ($key === '') {
+                continue;
+            }
+            $config[$key] = is_scalar($value) ? (string) $value : $value;
+        }
+
+        $sets = ['api_config = ?'];
+        $params = [json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)];
+        if ($this->columnExists($tenantPdo, 'stores', 'last_sync_status')) {
+            $sets[] = 'last_sync_status = ?';
+            $params[] = $apiStatus !== '' ? $apiStatus : '已配置';
+        }
+        if ($this->columnExists($tenantPdo, 'stores', 'rms_credentials_updated_at')) {
+            $sets[] = 'rms_credentials_updated_at = ?';
+            $params[] = date('Y-m-d H:i:s');
+        }
+        $params[] = $storeId;
+
+        $tenantPdo->prepare('UPDATE stores SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($params);
+    }
+
     /** @return array<int, array<string, mixed>> */
     public function users(string $tenantKey): array
     {

@@ -72,6 +72,9 @@ interface StoreInterface
     /** @param array<string, mixed> $data */
     public function updateStore(string $tenantKey, int $storeId, array $data): void;
 
+    /** @param array<string, mixed> $patch */
+    public function mergeStoreApiConfig(string $tenantKey, int $storeId, array $patch, string $apiStatus = '已配置'): void;
+
     /** @return array<int, array<string, mixed>> */
     public function users(string $tenantKey): array;
 

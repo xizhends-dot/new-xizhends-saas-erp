@@ -4,11 +4,19 @@
     </div>
     <div class="head-actions">
         <a class="btn" href="<?= e($returnUrl) ?>">返回列表</a>
+        <?php if (($store['platform'] ?? '') === 'y'): ?>
+            <a class="btn" href="/stores/yahoo/authorize?tenant=<?= e($tenantKey) ?>&id=<?= e($store['id'] ?? '') ?>">发起授权</a>
+        <?php endif; ?>
         <button class="btn primary" type="submit" form="store-edit-form">保存店铺</button>
     </div>
 </div>
 
 <div class="notice">店铺由租户管理员维护，用于订单归属、员工店铺范围、店铺级 API 凭证和隐藏店铺控制；平台授权开关仍由超管后台统一控制。</div>
+<?php if (trim((string) ($_GET['message'] ?? '')) !== ''): ?><div class="notice ok"><?= e($_GET['message']) ?></div><?php endif; ?>
+<?php if (trim((string) ($_GET['error'] ?? '')) !== ''): ?><div class="notice error"><?= e($_GET['error']) ?></div><?php endif; ?>
+<?php if (($store['platform'] ?? '') === 'y'): ?>
+    <div class="notice">Yahoo Shop 授权会使用店铺 API 配置中的 AppID/Secret 和 seller_id，回调地址为 <code>/oauth/yahoo/callback</code>。请确保 Yahoo Developer Console 中登记了当前域名的完整回调 URL。</div>
+<?php endif; ?>
 
 <div class="panel form-panel">
     <div class="panel-head"><span>店铺资料</span><span class="sub">只影响当前租户：<?= e($tenant['company_name'] ?? $tenantKey) ?></span></div>

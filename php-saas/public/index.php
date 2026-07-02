@@ -132,6 +132,8 @@ $router->get('/stores', [$tenant, 'stores']);
 $router->post('/stores/add', [$tenant, 'addStore']);
 $router->get('/stores/edit', [$tenant, 'editStore']);
 $router->post('/stores/update', [$tenant, 'updateStore']);
+$router->get('/stores/yahoo/authorize', [$tenant, 'authorizeYahooShop']);
+$router->get('/oauth/yahoo/callback', [$tenant, 'yahooOAuthCallback']);
 $router->get('/users', [$tenant, 'users']);
 $router->post('/users/add', [$tenant, 'addUser']);
 $router->get('/users/edit', [$tenant, 'editUser']);
