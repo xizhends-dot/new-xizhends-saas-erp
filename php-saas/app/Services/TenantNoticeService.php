@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Xizhen\Services;
 
 use DateTimeImmutable;
+use Xizhen\Core\Permission;
 use Xizhen\Core\StoreInterface;
 
 final class TenantNoticeService
@@ -111,8 +112,8 @@ final class TenantNoticeService
     public function payloadFromInput(string $tenantKey, array $input, array $operator, ?int $noticeId = null): array
     {
         $targetRoles = array_values(array_intersect(
-            ['公司管理员', '采购', '客服', '品检'],
-            array_map('trim', (array) ($input['target_roles'] ?? []))
+            $this->targetRoles(),
+            array_map($this->normalizeTargetRole(...), (array) ($input['target_roles'] ?? []))
         ));
         $targetUserIds = array_values(array_filter(
             array_map('intval', (array) ($input['target_user_ids'] ?? [])),
@@ -144,7 +145,7 @@ final class TenantNoticeService
     /** @return array<int, string> */
     public function targetRoles(): array
     {
-        return ['公司管理员', '采购', '客服', '品检'];
+        return ['公司管理员', '采购', '客服'];
     }
 
     /** @return array<int, string> */
@@ -181,7 +182,10 @@ final class TenantNoticeService
             'is_pinned' => (bool) ($row['is_pinned'] ?? (($row['status'] ?? '') === 'yes')),
             'show_on_dashboard' => !array_key_exists('show_on_dashboard', $row) || (bool) $row['show_on_dashboard'],
             'show_on_orders' => (bool) ($row['show_on_orders'] ?? false),
-            'target_roles' => array_values(array_filter(array_map('trim', (array) ($row['target_roles'] ?? [])))),
+            'target_roles' => array_values(array_unique(array_filter(array_map(
+                $this->normalizeTargetRole(...),
+                (array) ($row['target_roles'] ?? [])
+            )))),
             'target_user_ids' => array_values(array_filter(array_map('intval', (array) ($row['target_user_ids'] ?? [])))),
             'published_at' => (string) ($row['published_at'] ?? $row['created_at'] ?? $row['c_time'] ?? ''),
             'expired_at' => (string) ($row['expired_at'] ?? ''),
@@ -223,7 +227,7 @@ final class TenantNoticeService
         }
 
         $targetRoles = (array) ($notice['target_roles'] ?? []);
-        if ($targetRoles !== [] && !in_array((string) ($currentUser['role'] ?? ''), $targetRoles, true)) {
+        if ($targetRoles !== [] && !in_array(Permission::normalizeRole($currentUser['role'] ?? ''), $targetRoles, true)) {
             return false;
         }
 
@@ -251,6 +255,16 @@ final class TenantNoticeService
         }
 
         return $errors;
+    }
+
+    private function normalizeTargetRole(mixed $role): string
+    {
+        $role = trim((string) $role);
+        if ($role === '品检') {
+            return '采购';
+        }
+
+        return in_array($role, $this->targetRoles(), true) ? $role : '';
     }
 
     private function timestamp(string $value): ?int

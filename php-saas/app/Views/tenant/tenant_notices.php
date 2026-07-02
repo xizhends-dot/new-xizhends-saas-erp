@@ -1,7 +1,7 @@
 <?php
 $notices = is_array($notices ?? null) ? $notices : [];
 $draft = is_array($draft ?? null) ? $draft : [];
-$targetRoles = is_array($targetRoles ?? null) ? $targetRoles : ['公司管理员', '采购', '客服', '品检'];
+$targetRoles = is_array($targetRoles ?? null) ? $targetRoles : ['公司管理员', '采购', '客服'];
 $errors = is_array($errors ?? null) ? $errors : [];
 $message = (string) ($message ?? '');
 $requirements = is_array($requirements ?? null) ? $requirements : [];

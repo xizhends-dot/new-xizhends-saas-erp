@@ -62,7 +62,7 @@
             <tr><td>定时任务频率、启停、失败重试</td><td><span class="tag red">超管</span></td><td>订单同步、物流同步、邮件同步属于平台基础设施。</td></tr>
             <tr><td>公司名称、联系人、业务备注</td><td><span class="tag green">租户管理员</span></td><td>租户可自行维护公司资料。</td></tr>
             <tr><td>店铺新增、隐藏店铺、员工店铺范围</td><td><span class="tag green">租户管理员</span></td><td>可授权给有“店铺新增”或“员工管理”权限的员工。</td></tr>
-            <tr><td>采购、客服、品检角色权限</td><td><span class="tag green">租户管理员</span></td><td>员工操作权限在租户内生效，不影响超管。</td></tr>
+            <tr><td>采购、客服角色权限</td><td><span class="tag green">租户管理员</span></td><td>员工操作权限在租户内生效，不影响超管。</td></tr>
             <tr><td>开发阶段权限拦截</td><td><span class="tag blue">默认通过</span></td><td>当前按你的要求采用全权限开发模式，不阻断页面和接口；权限 key 与角色矩阵会保留，方便上线前切严格模式。</td></tr>
             </tbody>
         </table>

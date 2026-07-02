@@ -59,7 +59,7 @@ $canEditAnyItemField = $canEditOrders || $canEditPurchase || $canEditJp || $canC
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
             <input type="hidden" name="order_id" value="<?= e($order['id']) ?>">
             <label><span>类型</span><select name="type">
-                <?php foreach (['订单图片', '采购凭证', '客服截图', '品检照片', '附件'] as $type): ?>
+                <?php foreach (['订单图片', '采购凭证', '客服截图', '日本仓发货照片', '附件'] as $type): ?>
                     <option><?= e($type) ?></option>
                 <?php endforeach; ?>
             </select></label>
@@ -82,7 +82,7 @@ $canEditAnyItemField = $canEditOrders || $canEditPurchase || $canEditJp || $canC
             <input type="hidden" name="order_id" value="<?= e($order['id']) ?>">
             <input type="hidden" name="kind" value="attachment">
             <label><span>附件类型</span><select name="type">
-                <?php foreach (['订单图片', '采购凭证', '客服截图', '品检照片', '附件'] as $type): ?>
+                <?php foreach (['订单图片', '采购凭证', '客服截图', '日本仓发货照片', '附件'] as $type): ?>
                     <option><?= e($type) ?></option>
                 <?php endforeach; ?>
             </select></label>

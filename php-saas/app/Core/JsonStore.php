@@ -536,7 +536,18 @@ final class JsonStore implements StoreInterface
     public function users(string $tenantKey): array
     {
         $data = $this->all();
-        return $data['users'][$tenantKey] ?? [];
+        $users = is_array($data['users'][$tenantKey] ?? null) ? $data['users'][$tenantKey] : [];
+        foreach ($users as &$user) {
+            if (!is_array($user)) {
+                continue;
+            }
+            $user['role'] = !empty($user['is_company_admin'])
+                ? '公司管理员'
+                : Permission::normalizeRole($user['role'] ?? '客服');
+        }
+        unset($user);
+
+        return array_values(array_filter($users, 'is_array'));
     }
 
     /** @return array<string, mixed>|null */
@@ -622,10 +633,7 @@ final class JsonStore implements StoreInterface
     /** @param array<string, mixed> $data */
     public function addUser(string $tenantKey, array $data): void
     {
-        $role = (string) ($data['role'] ?? '客服');
-        if (!in_array($role, ['公司管理员', '采购', '客服', '品检'], true)) {
-            $role = '客服';
-        }
+        $role = Permission::normalizeRole($data['role'] ?? '客服');
 
         $user = [
             'id' => $this->nextId($this->users($tenantKey)),
@@ -670,10 +678,7 @@ final class JsonStore implements StoreInterface
             return;
         }
 
-        $role = (string) ($data['role'] ?? '客服');
-        if (!in_array($role, ['公司管理员', '采购', '客服', '品检'], true)) {
-            $role = '客服';
-        }
+        $role = Permission::normalizeRole($data['role'] ?? '客服');
 
         $all = $this->all();
         if (!isset($all['users'][$tenantKey]) || !is_array($all['users'][$tenantKey])) {
@@ -731,7 +736,7 @@ final class JsonStore implements StoreInterface
 
             $role = (string) ($user['role'] ?? '客服');
             $flat = array_values(array_unique(array_merge(
-                Permission::roleDefaults()[$role] ?? Permission::roleDefaults()['客服'],
+                Permission::roleDefaults()[Permission::normalizeRole($role)] ?? Permission::roleDefaults()['客服'],
                 $normalized['allow']
             )));
             $user['permission_overrides'] = $normalized;
@@ -3078,7 +3083,7 @@ final class JsonStore implements StoreInterface
         $buyer = null;
         $support = null;
         foreach ($users as $user) {
-            if (($user['role'] ?? '') === '采购' && $buyer === null) {
+            if (Permission::normalizeRole($user['role'] ?? '') === '采购' && $buyer === null) {
                 $buyer = $user;
             }
             if (($user['role'] ?? '') === '客服' && $support === null) {
@@ -3521,7 +3526,7 @@ final class JsonStore implements StoreInterface
     {
         $defaults = Permission::roleDefaults();
 
-        $permissions = $defaults[$role] ?? $defaults['客服'];
+        $permissions = $defaults[Permission::normalizeRole($role)] ?? $defaults['客服'];
         $extra = array_values(array_filter(array_map('trim', (array) $overrides)));
         return array_values(array_unique(array_merge($permissions, $extra)));
     }

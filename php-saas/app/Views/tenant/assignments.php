@@ -9,18 +9,18 @@ foreach ($assignments as $assignment) {
 
 <div class="page-head">
     <div>
-        <h1>店铺分配 <span class="sub">采购/品检与客服店铺关系</span></h1>
+        <h1>店铺分配 <span class="sub">采购与客服店铺关系</span></h1>
     </div>
     <div class="head-actions">
         <a class="btn" href="/users?tenant=<?= e($tenantKey) ?>">返回员工</a>
     </div>
 </div>
 
-<div class="notice">这里承接旧系统 `ph_userlevel`。采购或品检被分配到客服店铺后，后续订单查询、采购统计、品检处理都应按这个关系过滤；当前开发模式默认全权限，但关系数据仍先完整建立。</div>
+<div class="notice">这里承接旧系统 `ph_userlevel`。采购被分配到客服店铺后，后续订单查询、采购统计、日本仓发货处理都应按这个关系过滤；当前开发模式默认全权限，但关系数据仍先完整建立。</div>
 
 <div class="grid two-col">
     <div class="panel">
-        <div class="panel-head"><span>按采购/品检分配客服</span><span class="sub"><?= e(count($buyers)) ?> 人</span></div>
+        <div class="panel-head"><span>按采购分配客服</span><span class="sub"><?= e(count($buyers)) ?> 人</span></div>
         <div class="panel-body assignment-list">
             <?php foreach ($buyers as $buyer): ?>
                 <form class="assign-card" method="post" action="/assignments/save">
@@ -44,7 +44,7 @@ foreach ($assignments as $assignment) {
     </div>
 
     <div class="panel">
-        <div class="panel-head"><span>按客服店铺分配采购/品检</span><span class="sub"><?= e(count($supports)) ?> 人</span></div>
+        <div class="panel-head"><span>按客服店铺分配采购</span><span class="sub"><?= e(count($supports)) ?> 人</span></div>
         <div class="panel-body assignment-list">
             <?php foreach ($supports as $support): ?>
                 <form class="assign-card" method="post" action="/assignments/save">
@@ -72,7 +72,7 @@ foreach ($assignments as $assignment) {
     <div class="panel-head"><span>当前分配记录</span><span class="sub"><?= e(count($assignments)) ?> 条</span></div>
     <div class="panel-body">
         <table class="table">
-            <thead><tr><th>采购/品检</th><th>客服</th><th>客服店铺范围</th><th>创建时间</th></tr></thead>
+            <thead><tr><th>采购</th><th>客服</th><th>客服店铺范围</th><th>创建时间</th></tr></thead>
             <tbody>
             <?php foreach ($assignments as $assignment): ?>
                 <tr>

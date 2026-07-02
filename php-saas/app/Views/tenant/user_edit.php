@@ -14,7 +14,7 @@ $userStores = $user['stores'] ?? [];
     </div>
 </div>
 
-<div class="notice">员工权限只在当前租户内生效。公司管理员拥有本公司业务管理权限；采购、客服、品检按角色默认权限加附加权限生效。</div>
+<div class="notice">员工权限只在当前租户内生效。公司管理员拥有本公司业务管理权限；采购、客服按角色默认权限加附加权限生效。</div>
 
 <div class="panel form-panel">
     <div class="panel-head"><span>账号资料</span><span class="sub">角色、店铺范围与功能权限</span></div>

@@ -733,7 +733,7 @@ SQL);
             'id' => (int) $row['id'],
             'name' => (string) (($row['display_name'] ?? '') ?: $row['username']),
             'username' => (string) $row['username'],
-            'role' => (bool) $row['is_company_admin'] ? '公司管理员' : (string) $row['role'],
+            'role' => (bool) $row['is_company_admin'] ? '公司管理员' : Permission::normalizeRole($row['role'] ?? '客服'),
             'password_hash' => (string) ($row['password_hash'] ?? ''),
             'legacy_password' => (string) ($row['legacy_password'] ?? ''),
             'password_reset' => '',
@@ -817,7 +817,7 @@ SQL);
         $normalized = $this->normalizePermissionOverrides($overrides);
         $role = (string) ($user['role'] ?? '客服');
         $flat = array_values(array_unique(array_merge(
-            Permission::roleDefaults()[$role] ?? Permission::roleDefaults()['客服'],
+            Permission::roleDefaults()[Permission::normalizeRole($role)] ?? Permission::roleDefaults()['客服'],
             $normalized['allow']
         )));
         $flat = array_values(array_diff($flat, $normalized['deny']));
@@ -860,7 +860,7 @@ SQL);
             return;
         }
 
-        $role = in_array(($data['role'] ?? ''), ['公司管理员', '采购', '客服', '品检'], true) ? (string) $data['role'] : '客服';
+        $role = Permission::normalizeRole($data['role'] ?? '客服');
         $permissions = $this->permissionsForRole($role, $data['permissions'] ?? []);
         $stores = implode(',', array_values(array_filter(array_map('trim', (array) ($data['stores'] ?? [])))));
         $password = trim((string) ($data['password_reset'] ?? '')) ?: 'Tenant@2026';
@@ -914,7 +914,7 @@ SQL);
             return;
         }
 
-        $role = in_array(($data['role'] ?? ''), ['公司管理员', '采购', '客服', '品检'], true) ? (string) $data['role'] : '客服';
+        $role = Permission::normalizeRole($data['role'] ?? '客服');
         $permissions = $this->permissionsForRole($role, $data['permissions'] ?? []);
         $stores = array_values(array_filter(array_map('trim', (array) ($data['stores'] ?? []))));
 
@@ -3964,7 +3964,7 @@ SQL);
     {
         $defaults = Permission::roleDefaults();
 
-        $permissions = $defaults[$role] ?? $defaults['客服'];
+        $permissions = $defaults[Permission::normalizeRole($role)] ?? $defaults['客服'];
         $extra = array_values(array_filter(array_map('trim', (array) $overrides)));
         return array_values(array_unique(array_merge($permissions, $extra)));
     }

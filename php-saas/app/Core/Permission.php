@@ -14,15 +14,18 @@ final class Permission
             return false;
         }
 
-        if (($user['role'] ?? '') === '公司管理员' || ($user['is_company_admin'] ?? false)) {
+        $role = self::normalizeRole($user['role'] ?? '');
+        if ($role === '公司管理员' || ($user['is_company_admin'] ?? false)) {
             return true;
         }
 
         $overrides = self::normalizeOverrides($user['permission_overrides'] ?? []);
-        if (in_array($permission, $overrides['deny'], true)) {
+        $legacyMap = self::legacyMap();
+        $permissionLabel = $legacyMap[$permission] ?? $permission;
+        if (in_array($permission, $overrides['deny'], true) || in_array($permissionLabel, $overrides['deny'], true)) {
             return false;
         }
-        if (in_array($permission, $overrides['allow'], true)) {
+        if (in_array($permission, $overrides['allow'], true) || in_array($permissionLabel, $overrides['allow'], true)) {
             return true;
         }
 
@@ -31,12 +34,11 @@ final class Permission
             array_filter((array) ($user['permissions'] ?? []), static fn (mixed $item): bool => trim((string) $item) !== '')
         );
 
-        if (in_array($permission, $permissions, true)) {
+        if (in_array($permission, $permissions, true) || in_array($permissionLabel, $permissions, true)) {
             return true;
         }
 
-        $legacyMap = self::legacyMap();
-        return isset($legacyMap[$permission]) && in_array($legacyMap[$permission], $permissions, true);
+        return in_array($permissionLabel, self::roleDefaults()[$role] ?? [], true);
     }
 
     /**
@@ -61,7 +63,7 @@ final class Permission
             return false;
         }
 
-        if (($user['role'] ?? '') === '公司管理员' || ($user['is_company_admin'] ?? false)) {
+        if (self::normalizeRole($user['role'] ?? '') === '公司管理员' || ($user['is_company_admin'] ?? false)) {
             return true;
         }
 
@@ -78,10 +80,24 @@ final class Permission
     {
         return [
             '公司管理员' => ['订单查看', '订单编辑', '货源改判', '批量操作', '店铺新增', '员工管理', '店铺分配', '公司设置', '系统设置', '导入导出', '订单日志', '1688物流', '1688物流日志', '日本物流日志', '物流查看', '业绩统计', '出单商品统计', '采购统计', '利润分析', '异常运费', 'Wowma批量同步', '邮件中心', '客户资料', '图片管理', '图片上传', '图片删除', '公告管理', '通知查看', '权限覆盖', '客服扣点', '核价计算器', '财务导入', '财务导出'],
-            '采购' => ['订单查看', '采购订单', '采购状态', '1688物流', '1688物流日志', '采购导入导出', '订单日志', '图片上传'],
+            '采购' => ['订单查看', '采购订单', '采购状态', '1688物流', '1688物流日志', '采购导入导出', '订单日志', '日本仓发货', '物流查看', '日本物流日志', '图片管理', '图片上传', '图片删除'],
             '客服' => ['订单查看', '订单编辑', '货源改判', '客户资料', '邮件中心', '图片上传', '订单日志', '通知查看'],
-            '品检' => ['订单查看', '日本仓发货', '物流查看', '日本物流日志', '图片管理', '图片上传', '图片删除'],
         ];
+    }
+
+    public static function normalizeRole(mixed $role, string $fallback = '客服'): string
+    {
+        $role = trim((string) $role);
+        if ($role === '品检') {
+            return '采购';
+        }
+
+        $defaults = self::roleDefaults();
+        if (isset($defaults[$role])) {
+            return $role;
+        }
+
+        return isset($defaults[$fallback]) ? $fallback : '客服';
     }
 
     /** @return array<string, string> */

@@ -8,7 +8,7 @@
     </div>
 </div>
 
-<div class="notice">图片管理不是全局图片仓库，而是当前公司独立的图片文件区。订单主图、SKU 图、采购凭证、客服截图和品检照片都必须按租户隔离存储，避免不同公司之间互相看到或覆盖。</div>
+<div class="notice">图片管理不是全局图片仓库，而是当前公司独立的图片文件区。订单主图、SKU 图、采购凭证、客服截图和日本仓发货照片都必须按租户隔离存储，避免不同公司之间互相看到或覆盖。</div>
 
 <div class="grid stats media-stats">
     <?php foreach ($library['summary'] as $item): ?>

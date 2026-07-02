@@ -87,7 +87,7 @@ final class TenantFeature
                 'items' => [
                     ['key' => 'management.stores', 'name' => '店铺管理', 'desc' => '店铺资料、平台、API 配置和扣点。', 'default' => true],
                     ['key' => 'management.users', 'name' => '员工管理', 'desc' => '员工、角色、权限和店铺范围。', 'default' => true],
-                    ['key' => 'management.assignments', 'name' => '店铺分配', 'desc' => '采购、客服、品检的店铺关系。', 'default' => true],
+                    ['key' => 'management.assignments', 'name' => '店铺分配', 'desc' => '采购与客服的店铺关系。', 'default' => true],
                     ['key' => 'management.settings', 'name' => '系统设置', 'desc' => '公司资料、订单参数、利润和物流映射。', 'default' => true],
                     ['key' => 'management.logs', 'name' => '操作日志', 'desc' => '订单修改、导入导出和同步操作日志。', 'default' => true],
                     ['key' => 'management.jobs', 'name' => '定时任务状态', 'desc' => '租户只读查看任务状态。', 'default' => true],

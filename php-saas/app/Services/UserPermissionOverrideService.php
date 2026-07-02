@@ -41,7 +41,7 @@ final class UserPermissionOverrideService
     public function buildMatrix(array $user): array
     {
         $role = (string) ($user['role'] ?? '客服');
-        $roleDefaults = Permission::roleDefaults()[$role] ?? Permission::roleDefaults()['客服'];
+        $roleDefaults = Permission::roleDefaults()[Permission::normalizeRole($role)] ?? Permission::roleDefaults()['客服'];
         $storedPermissions = array_values(array_filter(array_map('trim', (array) ($user['permissions'] ?? []))));
         $storedLookup = array_flip($storedPermissions);
         $overrides = $this->normalizeStoredOverrides($user['permission_overrides'] ?? []);
@@ -231,7 +231,7 @@ final class UserPermissionOverrideService
      */
     private function flatPermissions(string $role, array $overrides): array
     {
-        $permissions = Permission::roleDefaults()[$role] ?? Permission::roleDefaults()['客服'];
+        $permissions = Permission::roleDefaults()[Permission::normalizeRole($role)] ?? Permission::roleDefaults()['客服'];
         $permissions = array_values(array_unique(array_merge($permissions, $overrides['allow'])));
 
         return array_values(array_diff($permissions, $overrides['deny']));

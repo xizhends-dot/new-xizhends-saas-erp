@@ -847,7 +847,7 @@ final class TenantController
             'title' => '店铺分配',
             'active' => 'users',
             'users' => $users,
-            'buyers' => array_values(array_filter($users, fn (array $user): bool => in_array(($user['role'] ?? ''), ['采购', '品检'], true))),
+            'buyers' => array_values(array_filter($users, fn (array $user): bool => Permission::normalizeRole($user['role'] ?? '') === '采购')),
             'supports' => array_values(array_filter($users, fn (array $user): bool => ($user['role'] ?? '') === '客服')),
             'assignments' => $this->store->assignments($tenantKey),
         ]);

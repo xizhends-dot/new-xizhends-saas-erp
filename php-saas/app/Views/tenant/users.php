@@ -11,7 +11,7 @@
 <div class="notice">租户管理员可以新增员工并授予权限；普通员工只有被授予“员工管理”权限后，才可以新增或修改员工。超管不直接管理租户内部员工日常权限。</div>
 
 <div class="panel form-panel">
-    <div class="panel-head"><span>新增员工</span><span class="sub">采购 / 客服 / 品检 / 公司管理员</span></div>
+    <div class="panel-head"><span>新增员工</span><span class="sub">采购 / 客服 / 公司管理员</span></div>
     <div class="panel-body">
         <form id="user-add-form" class="form-grid" method="post" action="/users/add">
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">

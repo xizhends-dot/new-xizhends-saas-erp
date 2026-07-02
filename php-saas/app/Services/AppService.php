@@ -326,12 +326,12 @@ final class AppService
             ],
             '权限与体系' => [
                 ['feature' => 'management.stores', 'title' => '店铺管理', 'desc' => '承接隐藏店铺、店铺扣点、店铺级 API 配置和平台状态。', 'href' => "/stores?tenant={$tenantKey}", 'status' => '已接后端'],
-                ['feature' => 'management.users', 'title' => '员工管理', 'desc' => '承接管理员、采购、客服、品检角色、首选入口、1688 配置和店铺范围。', 'href' => "/users?tenant={$tenantKey}", 'status' => '已接后端'],
+                ['feature' => 'management.users', 'title' => '员工管理', 'desc' => '承接管理员、采购、客服角色、首选入口、1688 配置和店铺范围。', 'href' => "/users?tenant={$tenantKey}", 'status' => '已接后端'],
                 ['feature' => 'account.password_edit', 'title' => '员工自助改密码', 'desc' => '对应 old/pwdedit.php，改用 password_hash 和旧密码校验。', 'href' => "/password/edit?tenant={$tenantKey}", 'status' => '已接页面'],
                 ['feature' => 'management.notices', 'title' => '通知公告', 'desc' => '对应 old/notice，租户管理员发布公告，员工在首页和订单页可见。', 'href' => "/notices?tenant={$tenantKey}", 'status' => '已接页面'],
                 ['feature' => 'management.user_permission_overrides', 'title' => '细粒度权限', 'desc' => '对应 old/user_permissions.php，支持单员工 allow/deny 覆盖。', 'href' => "/users/permissions?tenant={$tenantKey}", 'status' => '已接页面'],
                 ['feature' => 'management.customer_service_deductions', 'title' => '客服扣点', 'desc' => '对应 old 用户列表快捷扣点编辑，保存到租户利润设置。', 'href' => "/users/customer-service-deductions?tenant={$tenantKey}", 'status' => '已接页面'],
-                ['feature' => 'management.assignments', 'title' => '店铺分配', 'desc' => '承接旧 ph_userlevel，维护采购/品检与客服店铺关系。', 'href' => "/assignments?tenant={$tenantKey}", 'status' => '已接后端'],
+                ['feature' => 'management.assignments', 'title' => '店铺分配', 'desc' => '承接旧 ph_userlevel，维护采购与客服店铺关系。', 'href' => "/assignments?tenant={$tenantKey}", 'status' => '已接后端'],
                 ['feature' => 'management.settings', 'title' => '系统设置', 'desc' => '读取 old/setting.ini，区分可迁入参数和敏感密钥。', 'href' => "/settings?tenant={$tenantKey}", 'status' => '已接配置'],
                 ['feature' => 'management.logs', 'title' => '操作日志', 'desc' => '展示货源改判、批量更新、详情保存等审计记录。', 'href' => "/logs?tenant={$tenantKey}", 'status' => '已接后端'],
             ],
@@ -808,7 +808,7 @@ final class AppService
             'base' => $base,
             'summary' => [
                 ['label' => '订单图片', 'value' => (string) count($imageItems), 'note' => '来自平台订单主图与 SKU 图缓存'],
-                ['label' => '上传附件', 'value' => '0', 'note' => '采购、客服、品检上传凭证后进入当前租户附件区'],
+                ['label' => '上传附件', 'value' => '0', 'note' => '采购、客服上传凭证后进入当前租户附件区'],
                 ['label' => '隔离范围', 'value' => $tenantKey, 'note' => '不与其他公司共用目录或索引'],
                 ['label' => '清理策略', 'value' => '按归档', 'note' => '订单归档或超管保留策略触发清理'],
             ],
@@ -824,7 +824,7 @@ final class AppService
                 [
                     'name' => '员工上传附件',
                     'path' => "{$base}/uploads/",
-                    'scope' => '采购凭证、客服沟通截图、品检照片',
+                    'scope' => '采购凭证、客服沟通截图、日本仓发货照片',
                     'owner' => '租户员工',
                     'status' => '待接上传接口',
                     'policy' => '按订单号、子商品 ID 和上传人记录，禁止跨租户读取。',
@@ -901,7 +901,7 @@ final class AppService
     {
         return [
             ['group' => '公司资料', 'items' => ['公司名', '简称', '联系人', '电话', '地址', '业务备注']],
-            ['group' => '安全与权限', 'items' => ['登录会话', '管理员', '采购', '客服', '品检', '操作权限']],
+            ['group' => '安全与权限', 'items' => ['登录会话', '管理员', '采购', '客服', '操作权限']],
             ['group' => '店铺范围', 'items' => ['隐藏店铺', '员工店铺分配', '平台授权', '店铺级 API 状态']],
             ['group' => '店铺级 API 凭证', 'items' => ['1688', 'Yahoo 店铺', 'Rakuten RMS 店铺', 'Wowma 店铺', 'Mercari 店铺', 'Qoo10 店铺', '物流查询账号']],
             ['group' => '订单参数', 'items' => ['售价预警指数', '默认查询天数', '默认分页', '归档周期', '状态字典']],
