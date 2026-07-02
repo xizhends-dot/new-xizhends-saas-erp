@@ -31,7 +31,7 @@
 
 ---
 
-### ☐ 2. Yahoo Shop OAuth 授权回调路由缺失
+### ✅ 2. Yahoo Shop OAuth 授权回调路由缺失
 **现象**：老系统 `callback.php` 处理"授权码 code → access_token"的首次 OAuth 交换（依赖 `plugins/yahooshop-api/func.php` 的 token 换取逻辑）。php-saas 目前只有 `YahooShopOrderSyncService.php` 内部的 `refresh_token` 刷新逻辑，`public/index.php` 路由表里没有 `/callback` 等价路由。新店铺接入 Yahoo Shop 目前必须先在别处手工拿到 token 再填入 `api_config`，界面走不通"点击授权 → 跳转 Yahoo → 回调自动拿 token"的完整流程。
 
 **参考**：`old/callback.php`、`old/plugins/yahooshop-api/func.php`；`php-saas/app/Services/YahooShopOrderSyncService.php`。
@@ -39,6 +39,8 @@
 **要求**：
 - 在 `public/index.php` 新增 `/oauth/yahoo/callback`（或同等）路由，接收 `code`，调用 Yahoo token 端点换取 `access_token`/`refresh_token`，写回该店铺的 `api_config`。
 - 店铺编辑页（Yahoo 平台）增加"发起授权"入口，跳转到 Yahoo 授权页并带上正确的 redirect_uri。
+
+完成提交：`abe0b93`
 
 ---
 
