@@ -55,7 +55,7 @@
 
 ---
 
-### ☐ 4. 财务导出（outcwexcel）Yahoo 购物（ordery）平台专属模板未做，字段是错的
+### ✅ 4. 财务导出（outcwexcel）Yahoo 购物（ordery）平台专属模板未做，字段是错的
 **现象**：`old/{orderm,orderq,orderr,orderw,ordery,orderyp}/outcwexcel.php` 中，ordery（Yahoo 购物）版本是完全不同的模板：14 列，**没有**国内单号/国内运费/采购证据图片/淘宝订单号，多一列"产品总价（单价×数量）+利润"。而 `SpreadsheetExportService::financeWorkbook`（约 32-135 行）目前对所有平台统一用一套 17 列通用格式（对应 orderm/orderr/orderq/orderyp 默认版），**Yahoo 购物财务导出用的字段集是错的**。另外 orderw 版本比通用版多一列"单价"（应为 18 列）未覆盖；`old/orderr/outcwexcel-weier.php` 变体（图片列替换为"店铺名称"）也未覆盖。
 
 **参考**：`old/ordery/outcwexcel.php`、`old/orderw/outcwexcel.php`、`old/orderr/outcwexcel-weier.php`；`php-saas/app/Services/SpreadsheetExportService.php`。
@@ -63,6 +63,8 @@
 **要求**：
 - `financeWorkbook` 按平台分支输出对应列结构（至少 ordery / orderw / orderr-weier 三种特殊情况），而不是所有平台共用一套 17 列格式。
 - 逐一核对每种模板的列名、列序与老系统一致。
+
+完成提交：`415b40b`
 
 ---
 
