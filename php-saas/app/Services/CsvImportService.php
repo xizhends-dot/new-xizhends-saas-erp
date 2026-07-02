@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace Xizhen\Services;
 
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date as SpreadsheetDate;
+use RuntimeException;
+use Throwable;
+
 final class CsvImportService
 {
     /** @var array<string, array<int, string>> */
@@ -76,7 +82,18 @@ final class CsvImportService
     public function parseFile(string $file, string $job, array $context = []): array
     {
         $context['_job'] = $job;
-        [$rowCount, $preview, $rows] = $this->readCsv($file, $context);
+        try {
+            [$rowCount, $preview, $rows] = $this->looksLikeXlsx($file)
+                ? $this->readXlsx($file, $context)
+                : $this->readCsv($file, $context);
+        } catch (RuntimeException $exception) {
+            return [
+                'row_count' => 0,
+                'preview' => [],
+                'records' => [],
+                'errors' => [$exception->getMessage()],
+            ];
+        }
         $errors = [];
         $records = [];
 
@@ -113,16 +130,82 @@ final class CsvImportService
             return [0, [], []];
         }
 
+        $tableRows = [];
+        while (($raw = fgetcsv($handle, null, ',', '"', '\\')) !== false) {
+            $tableRows[] = array_map(
+                fn (mixed $value): string => $this->cleanCell((string) $value),
+                $this->normalizeDelimitedRow($raw)
+            );
+        }
+        fclose($handle);
+
+        return $this->readTabularRows($tableRows, $context);
+    }
+
+    /**
+     * @return array{0: int, 1: array<int, array<string, string>>, 2: array<int, array<string, mixed>>}
+     */
+    private function readXlsx(string $file, array $context): array
+    {
+        if (!class_exists(IOFactory::class)) {
+            throw new RuntimeException('缺少 PhpSpreadsheet 依赖，无法解析 XLSX 文件。');
+        }
+
+        try {
+            $spreadsheet = IOFactory::load($file);
+        } catch (Throwable $exception) {
+            throw new RuntimeException('XLSX 文件解析失败：' . $exception->getMessage(), 0, $exception);
+        }
+
+        try {
+            $sheet = $spreadsheet->getSheet(0);
+            $highestRow = $sheet->getHighestDataRow();
+            $highestColumn = Coordinate::columnIndexFromString($sheet->getHighestDataColumn());
+            $tableRows = [];
+
+            for ($row = 1; $row <= $highestRow; $row++) {
+                $values = [];
+                for ($column = 1; $column <= $highestColumn; $column++) {
+                    $cell = $sheet->getCell($this->cell($column, $row));
+                    $value = $cell->getValue();
+                    if (SpreadsheetDate::isDateTime($cell) && is_numeric($value)) {
+                        $value = SpreadsheetDate::excelToDateTimeObject((float) $value)->format('Y-m-d');
+                    } else {
+                        $value = $cell->getFormattedValue();
+                    }
+
+                    $value = $this->cleanCell((string) $value);
+                    if ($value === '') {
+                        $hyperlink = $cell->getHyperlink()->getUrl();
+                        if ($hyperlink !== '') {
+                            $value = $hyperlink;
+                        }
+                    }
+                    $values[] = $value;
+                }
+                $tableRows[] = $values;
+            }
+        } finally {
+            $spreadsheet->disconnectWorksheets();
+        }
+
+        return $this->readTabularRows($tableRows, $context);
+    }
+
+    /**
+     * @param array<int, array<int, string>> $tableRows
+     * @return array{0: int, 1: array<int, array<string, string>>, 2: array<int, array<string, mixed>>}
+     */
+    private function readTabularRows(array $tableRows, array $context): array
+    {
         $headers = [];
         $rows = [];
         $preview = [];
         $rowCount = 0;
         $line = 0;
 
-        while (($raw = fgetcsv($handle, null, ',', '"', '\\')) !== false) {
+        foreach ($tableRows as $values) {
             $line++;
-            $raw = $this->normalizeDelimitedRow($raw);
-            $values = array_map(fn (mixed $value): string => $this->cleanCell((string) $value), $raw);
             if (implode('', $values) === '') {
                 continue;
             }
@@ -160,7 +243,6 @@ final class CsvImportService
                 $preview[] = $copy;
             }
         }
-        fclose($handle);
 
         return [$rowCount, $preview, $rows];
     }
@@ -586,6 +668,23 @@ final class CsvImportService
         }
 
         return $raw;
+    }
+
+    private function looksLikeXlsx(string $file): bool
+    {
+        $handle = @fopen($file, 'rb');
+        if ($handle === false) {
+            return false;
+        }
+        $signature = fread($handle, 4);
+        fclose($handle);
+
+        return $signature === "PK\x03\x04";
+    }
+
+    private function cell(int $column, int $row): string
+    {
+        return Coordinate::stringFromColumnIndex($column) . $row;
     }
 
     /** @param array<string, mixed> $context */

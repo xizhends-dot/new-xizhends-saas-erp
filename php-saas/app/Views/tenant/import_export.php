@@ -14,10 +14,10 @@ $exportMap = [
 ?>
 <div class="page-head">
     <div>
-        <h1>导入导出 <span class="sub">CSV / 物流 / 财务 XLSX / 客户资料 XLSX</span></h1>
+        <h1>导入导出 <span class="sub">CSV / 采购 XLSX / 物流 / 财务 XLSX / 客户资料 XLSX</span></h1>
     </div>
     <div class="head-actions">
-        <?php if ($hasImportJobs): ?><a class="btn primary" href="#csv-import-form">上传 CSV</a><?php endif; ?>
+        <?php if ($hasImportJobs): ?><a class="btn primary" href="#csv-import-form">上传文件</a><?php endif; ?>
     </div>
 </div>
 
@@ -27,7 +27,7 @@ $exportMap = [
 
 <div class="import-export-grid">
     <section class="panel">
-        <div class="panel-head"><span>CSV 导入</span><span class="sub">解析预览后写入订单、采购或国际运单</span></div>
+        <div class="panel-head"><span>文件导入</span><span class="sub">解析预览后写入订单、采购或国际运单</span></div>
         <div class="panel-body">
             <?php if ($hasImportJobs): ?>
             <form id="csv-import-form" class="form-grid" method="post" action="/import-export/import" enctype="multipart/form-data">
@@ -52,7 +52,7 @@ $exportMap = [
                 <label>
                     <span>店铺</span>
                     <select name="store_id">
-                        <option value="0">按 CSV 或默认店铺</option>
+                        <option value="0">按文件或默认店铺</option>
                         <?php foreach (($stores ?? []) as $store): ?>
                             <option value="<?= e($store['id'] ?? 0) ?>"><?= e(($store['name'] ?? '') ?: ($store['short'] ?? '')) ?></option>
                         <?php endforeach; ?>
@@ -60,19 +60,19 @@ $exportMap = [
                 </label>
                 <label class="wide">
                     <span>导入文件</span>
-                    <input type="file" name="csv_file" accept=".csv,.xls,text/csv,text/plain">
+                    <input type="file" name="csv_file" accept=".csv,.xls,.xlsx,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
                 </label>
-                <div class="setting-muted wide">支持 3MB 以内 CSV / 制表符文本 / 旧系统导出的文本型 .xls。会先解析前 5 行预览，再按导入类型写入或更新订单数据。</div>
+                <div class="setting-muted wide">支持 10MB 以内 CSV / 制表符文本 / 旧系统文本型 .xls / 采购 XLSX。会先解析前 5 行预览，再按导入类型写入或更新订单数据。</div>
                 <div class="form-submit"><button class="btn primary" type="submit">导入并记录</button></div>
             </form>
             <?php else: ?>
-                <div class="empty slim">当前租户未开通可用的 CSV 导入任务。</div>
+                <div class="empty slim">当前租户未开通可用的导入任务。</div>
             <?php endif; ?>
         </div>
     </section>
 
     <section class="panel">
-        <div class="panel-head"><span>导出</span><span class="sub">财务与客户资料输出 XLSX，其余任务输出 CSV</span></div>
+        <div class="panel-head"><span>导出</span><span class="sub">采购、财务与客户资料输出 XLSX，其余任务输出 CSV</span></div>
         <div class="panel-body export-list">
             <?php foreach ($exportJobs as $job): ?>
                 <?php $type = $exportMap[$job['key']] ?? 'purchase'; ?>
@@ -81,11 +81,11 @@ $exportMap = [
                         <strong><?= e($job['name']) ?></strong>
                         <span><?= e($job['scope']) ?></span>
                     </div>
-                    <a class="btn" href="/import-export/export?tenant=<?= e($tenantKey) ?>&type=<?= e($type) ?>"><?= in_array($type, ['finance', 'customers'], true) ? '下载 XLSX' : '下载 CSV' ?></a>
+                    <a class="btn" href="/import-export/export?tenant=<?= e($tenantKey) ?>&type=<?= e($type) ?>"><?= in_array($type, ['purchase', 'finance', 'customers'], true) ? '下载 XLSX' : '下载 CSV' ?></a>
                 </div>
             <?php endforeach; ?>
             <?php if (empty($exportJobs)): ?>
-                <div class="empty slim">当前租户未开通可用的 CSV 导出任务。</div>
+                <div class="empty slim">当前租户未开通可用的导出任务。</div>
             <?php endif; ?>
         </div>
     </section>

@@ -1951,11 +1951,23 @@ final class TenantController
     /** @param array<string, mixed> $source */
     private function sendSpreadsheetExportIfNeeded(string $tenantKey, string $type, array $source): void
     {
-        if (!in_array($type, ['finance', 'customers'], true)) {
+        if (!in_array($type, ['purchase', 'finance', 'customers'], true)) {
             return;
         }
 
-        $orders = $this->service->ordersForExport($tenantKey, $this->auth->currentTenantUser($tenantKey), $this->exportCriteriaFrom($source));
+        $criteria = $this->exportCriteriaFrom($source);
+        if ($type === 'purchase') {
+            $criteria['view'] = 'purchase';
+        }
+        $orders = $this->service->ordersForExport($tenantKey, $this->auth->currentTenantUser($tenantKey), $criteria);
+        if ($type === 'purchase') {
+            $this->sendXlsxFile($tenantKey, $this->buildPurchaseWorkbook(
+                $tenantKey,
+                $orders,
+                preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($source['platform'] ?? '')) ?: ''
+            ));
+        }
+
         if ($type === 'finance') {
             $this->sendXlsxFile($tenantKey, $this->buildFinanceWorkbook(
                 $tenantKey,
@@ -1966,6 +1978,19 @@ final class TenantController
 
         $dataset = $this->customerExportService->exportDataset($tenantKey, $orders, $source);
         $this->sendXlsxFile($tenantKey, $this->buildCustomerWorkbook($tenantKey, $dataset));
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $orders
+     * @return array{name: string, filename: string, path: string, rows: int, format: string}
+     */
+    private function buildPurchaseWorkbook(string $tenantKey, array $orders, string $platform = ''): array
+    {
+        try {
+            return $this->spreadsheetExportService->purchaseWorkbook($tenantKey, $orders, $this->currentUserName($tenantKey), $platform);
+        } catch (RuntimeException $exception) {
+            $this->forbid($exception->getMessage());
+        }
     }
 
     /**
@@ -2028,7 +2053,7 @@ final class TenantController
         $job = preg_replace('/[^a-z_]/', '', (string) ($_POST['job'] ?? 'platform_orders_import')) ?: 'platform_orders_import';
         $this->ensureImportExportAccess($tenantKey, $job);
         $label = $this->importJobLabel($job);
-        $message = '未收到可解析的 CSV 文件。';
+        $message = '未收到可解析的 CSV/XLSX 文件。';
         $preview = [];
         $rowCount = 0;
         $fileName = '';
@@ -2040,7 +2065,7 @@ final class TenantController
         if (isset($_FILES['csv_file']) && is_array($_FILES['csv_file']) && (int) ($_FILES['csv_file']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
             $fileName = (string) ($_FILES['csv_file']['name'] ?? '');
             $tmpName = (string) ($_FILES['csv_file']['tmp_name'] ?? '');
-            if ($tmpName !== '' && is_uploaded_file($tmpName) && (int) ($_FILES['csv_file']['size'] ?? 0) <= 3 * 1024 * 1024) {
+            if ($tmpName !== '' && is_uploaded_file($tmpName) && (int) ($_FILES['csv_file']['size'] ?? 0) <= 10 * 1024 * 1024) {
                 $platform = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($_POST['platform'] ?? '')) ?: '';
                 $storeId = max(0, (int) ($_POST['store_id'] ?? 0));
                 if ($platform !== '') {
@@ -2062,10 +2087,10 @@ final class TenantController
 
                 if ($rowCount <= 0) {
                     $status = '空文件';
-                    $message = 'CSV 文件没有数据行。';
+                    $message = '导入文件没有数据行。';
                 } elseif (!$records) {
                     $status = '解析失败';
-                    $message = '已读取 CSV，但没有可写入的数据。' . ($parseErrors ? ' ' . implode('；', array_slice($parseErrors, 0, 3)) : '');
+                    $message = '已读取导入文件，但没有可写入的数据。' . ($parseErrors ? ' ' . implode('；', array_slice($parseErrors, 0, 3)) : '');
                 } else {
                     $writeReport = match ($job) {
                         'purchase_import' => $this->store->importPurchaseRows($tenantKey, $records, $operator),
@@ -2085,7 +2110,7 @@ final class TenantController
                     );
                 }
             } else {
-                $message = '文件超过 3MB 或上传临时文件不可读。';
+                $message = '文件超过 10MB 或上传临时文件不可读。';
             }
         }
 

@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Xizhen\Services;
 
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Protection;
 use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 use RuntimeException;
 
@@ -196,6 +198,127 @@ final class SpreadsheetExportService
 
     /**
      * @param array<int, array<string, mixed>> $orders
+     * @return array{name: string, filename: string, path: string, rows: int, format: string}
+     */
+    public function purchaseWorkbook(string $tenantKey, array $orders, string $operator = '', string $platform = ''): array
+    {
+        $this->assertRuntime();
+        $template = $this->purchaseTemplate($orders, $platform);
+
+        $spreadsheet = new Spreadsheet();
+        $spreadsheet->getProperties()
+            ->setCreator($operator !== '' ? $operator : 'Xizhen SaaS')
+            ->setLastModifiedBy($operator !== '' ? $operator : 'Xizhen SaaS')
+            ->setTitle($template['name'])
+            ->setSubject('采购数据批量导出导入')
+            ->setDescription('由采购系统后台导出采购相关的数据，修改相关采购信息后导回采购系统')
+            ->setCategory('Purchase');
+
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle($template['sheet']);
+        $spreadsheet->getDefaultStyle()->getFont()->setName('微软雅黑')->setSize(12);
+        $sheet->getDefaultColumnDimension()->setWidth(20);
+        $sheet->getDefaultRowDimension()->setRowHeight(20);
+        $sheet->freezePane('A2');
+        $sheet->getProtection()->setSheet(true);
+
+        $headers = $template['headers'];
+        foreach ($headers as $index => $header) {
+            $column = $index + 1;
+            $sheet->setCellValue($this->cell($column, 1), $header);
+            $sheet->getColumnDimensionByColumn($column)->setWidth($template['widths'][$index] ?? 20);
+        }
+
+        $lastColumn = count($headers);
+        $sheet->getStyle($this->range(1, 1, $lastColumn, 1))->applyFromArray([
+            'font' => ['bold' => true],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EBEBEB']],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'A9A9A9']]],
+        ]);
+
+        $row = 2;
+        foreach ($orders as $order) {
+            foreach (array_values(array_filter($order['items'] ?? [], 'is_array')) as $item) {
+                if ((string) ($item['source_type'] ?? '') !== 'cn_purchase') {
+                    continue;
+                }
+
+                $rowValues = $this->purchaseRowValues($template['key'], $order, $item);
+                foreach ($template['columns'] as $index => $key) {
+                    $column = $index + 1;
+                    $cell = $this->cell($column, $row);
+                    $value = $rowValues[$key] ?? '';
+                    if ($key === 'image') {
+                        continue;
+                    }
+
+                    if (in_array($key, $template['text_columns'], true)) {
+                        $this->setText($sheet, $cell, (string) $value);
+                    } else {
+                        $sheet->setCellValue($cell, $value);
+                    }
+
+                    if ($key === 'purchase_link') {
+                        $this->setHyperlink($sheet, $cell, (string) $value);
+                    }
+                    if ($key === 'purchase_status') {
+                        $this->setPurchaseStatusValidation($sheet, $cell);
+                    }
+                }
+
+                $imageColumn = array_search('image', $template['columns'], true);
+                if ($imageColumn !== false) {
+                    $sheet->getRowDimension($row)->setRowHeight(78);
+                    $this->embedImage($sheet, $this->cell((int) $imageColumn + 1, $row), $this->itemImagePath($item), 90, 90);
+                }
+                $row++;
+            }
+        }
+
+        $lastRow = max(1, $row - 1);
+        $sheet->getStyle($this->range(1, 1, $lastColumn, $lastRow))->applyFromArray([
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => false],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'D9D9D9']]],
+        ]);
+
+        if ($lastRow >= 2) {
+            foreach ($template['columns'] as $index => $key) {
+                $column = $index + 1;
+                $range = $this->range($column, 2, $column, $lastRow);
+                if (in_array($key, $template['editable_columns'], true)) {
+                    $sheet->getStyle($range)->getProtection()->setLocked(Protection::PROTECTION_UNPROTECTED);
+                } else {
+                    $sheet->getStyle($range)->applyFromArray([
+                        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EBEBEB']],
+                    ]);
+                }
+                if (in_array($key, ['quantity'], true)) {
+                    $sheet->getStyle($range)->getNumberFormat()->setFormatCode('#,##0');
+                    $sheet->getStyle($range)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                }
+                if (in_array($key, ['unit_price', 'line_total', 'amount'], true)) {
+                    $sheet->getStyle($range)->getNumberFormat()->setFormatCode('#,##0.00');
+                    $sheet->getStyle($range)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                }
+                if ($key === 'purchase_time') {
+                    $sheet->getStyle($range)->getNumberFormat()->setFormatCode('yyyy-mm-dd');
+                }
+            }
+        }
+
+        $sheet->setSelectedCell($this->cell($template['first_editable_column'], 2));
+
+        return $this->writeWorkbook(
+            $spreadsheet,
+            $template['name'],
+            $template['filename_prefix'] . "-{$tenantKey}-" . date('Ymd-His') . '.xlsx',
+            max(0, $lastRow - 1)
+        );
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $orders
      * @return array{key: string, name: string, filename_prefix: string, headers: array<int, string>, columns: array<int, string>, widths: array<int, int>, numeric_columns: array<int, string>, text_columns: array<int, string>}
      */
     private function financeTemplate(array $orders, string $variant): array
@@ -309,6 +432,104 @@ final class SpreadsheetExportService
         ];
     }
 
+    /**
+     * @param array<int, array<string, mixed>> $orders
+     * @return array{key: string, name: string, sheet: string, filename_prefix: string, headers: array<int, string>, columns: array<int, string>, widths: array<int, int>, editable_columns: array<int, string>, text_columns: array<int, string>, first_editable_column: int}
+     */
+    private function purchaseTemplate(array $orders, string $platform): array
+    {
+        $key = strtolower(trim($platform));
+        if ($key === '') {
+            $platforms = [];
+            foreach ($orders as $order) {
+                foreach (array_values(array_filter($order['items'] ?? [], 'is_array')) as $item) {
+                    if ((string) ($item['source_type'] ?? '') !== 'cn_purchase') {
+                        continue;
+                    }
+                    $orderPlatform = strtolower((string) ($order['platform'] ?? ''));
+                    if ($orderPlatform !== '') {
+                        $platforms[$orderPlatform] = true;
+                    }
+                }
+            }
+            if (count($platforms) === 1) {
+                $key = (string) array_key_first($platforms);
+            } else {
+                $key = array_intersect(array_keys($platforms), ['m', 'q', 'w', 'yp']) !== [] ? 'w' : '';
+            }
+        }
+        $key = in_array($key, ['m', 'q', 'w', 'yp'], true) ? 'detail' : 'standard';
+
+        if ($key === 'detail') {
+            return [
+                'key' => 'detail',
+                'name' => '采购表 Excel',
+                'sheet' => '采购数据',
+                'filename_prefix' => 'purchase-legacy-detail',
+                'headers' => ['ID', '产品图', '订单ID', '子订单ID', 'itemCode', 'lotnumber', 'itemOption', 'unit', 'totalItemPrice', '采购状态', '采购时间', '采购金额', '淘宝订单号', '采购地址'],
+                'columns' => ['legacy_id', 'image', 'order_id', 'order_detail_id', 'item_code', 'lot_number', 'item_option', 'quantity', 'line_total', 'purchase_status', 'purchase_time', 'amount', 'tabaono', 'purchase_link'],
+                'widths' => [8, 14, 18, 12, 24, 12, 30, 6, 13, 10, 14, 10, 18, 28],
+                'editable_columns' => ['purchase_status', 'purchase_time', 'amount', 'tabaono', 'purchase_link'],
+                'text_columns' => ['legacy_id', 'order_id', 'order_detail_id', 'item_code', 'lot_number', 'item_option', 'purchase_status', 'purchase_time', 'tabaono', 'purchase_link'],
+                'first_editable_column' => 10,
+            ];
+        }
+
+        return [
+            'key' => 'standard',
+            'name' => '采购表 Excel',
+            'sheet' => '采购数据',
+            'filename_prefix' => 'purchase-legacy',
+            'headers' => ['ID', '产品图', '订单ID', 'itemID', '商品属性', '数量', '单价', '采购状态', '采购时间', '采购金额', '淘宝订单ID', '采购地址'],
+            'columns' => ['legacy_id', 'image', 'order_id', 'item_code', 'item_option', 'quantity', 'unit_price', 'purchase_status', 'purchase_time', 'amount', 'tabaono', 'purchase_link'],
+            'widths' => [8, 14, 18, 24, 30, 6, 12, 10, 14, 10, 18, 28],
+            'editable_columns' => ['purchase_status', 'purchase_time', 'amount', 'tabaono', 'purchase_link'],
+            'text_columns' => ['legacy_id', 'order_id', 'item_code', 'item_option', 'purchase_status', 'purchase_time', 'tabaono', 'purchase_link'],
+            'first_editable_column' => 8,
+        ];
+    }
+
+    /** @param array<string, mixed> $order @param array<string, mixed> $item @return array<string, mixed> */
+    private function purchaseRowValues(string $template, array $order, array $item): array
+    {
+        $quantity = max(1, (int) ($item['quantity'] ?? 1));
+        $unitPrice = $this->unitPrice($item, $quantity);
+        $lineTotal = $this->money($item['line_total'] ?? '');
+        if ($lineTotal <= 0 && $unitPrice > 0) {
+            $lineTotal = $unitPrice * $quantity;
+        }
+
+        $itemCode = (string) ($item['item_code'] ?? '');
+        $lotNumber = (string) ($item['lot_number'] ?? '');
+        $identityCode = $itemCode !== '' ? $itemCode : (($lotNumber !== '') ? $lotNumber : (string) ($item['item_management_id'] ?? ''));
+
+        return [
+            'legacy_id' => (string) ($item['id'] ?? ''),
+            'order_id' => (string) ($order['platform_order_id'] ?? ''),
+            'order_detail_id' => (string) (($item['order_detail_id'] ?? '') ?: ($item['line_id'] ?? '')),
+            'item_code' => $template === 'detail' ? $itemCode : $identityCode,
+            'lot_number' => $lotNumber,
+            'item_option' => (string) (($item['option'] ?? '') ?: ($item['item_option'] ?? '')),
+            'quantity' => $quantity,
+            'line_total' => $lineTotal,
+            'unit_price' => $unitPrice,
+            'purchase_status' => $this->purchaseExportStatus((string) ($item['purchase_status'] ?? '')),
+            'purchase_time' => (string) ($item['purchase_time'] ?? ''),
+            'amount' => $this->money(($item['amount'] ?? '') ?: ($item['purchase_amount'] ?? '')),
+            'tabaono' => (string) ($item['tabaono'] ?? ''),
+            'purchase_link' => (string) ($item['purchase_link'] ?? ''),
+        ];
+    }
+
+    private function purchaseExportStatus(string $status): string
+    {
+        return match ($status) {
+            '', '待处理', '未采购', '国内采购-准备' => '未采购',
+            '已采购', '国内采购-已采购' => '已采购',
+            default => $status,
+        };
+    }
+
     private function assertRuntime(): void
     {
         if (!class_exists(Spreadsheet::class)) {
@@ -349,6 +570,35 @@ final class SpreadsheetExportService
     private function setText(object $sheet, string $cell, string $value): void
     {
         $sheet->setCellValueExplicit($cell, $value, DataType::TYPE_STRING);
+    }
+
+    private function setHyperlink(object $sheet, string $cell, string $url): void
+    {
+        $url = $this->safeHyperlinkUrl($url);
+        if ($url === '') {
+            return;
+        }
+
+        $sheet->getCell($cell)->getHyperlink()->setUrl($url)->setTooltip('点击打开链接');
+        $style = $sheet->getStyle($cell);
+        $style->getFont()->setUnderline(true);
+        $style->getFont()->getColor()->setRGB('0563C1');
+    }
+
+    private function setPurchaseStatusValidation(object $sheet, string $cell): void
+    {
+        $validation = $sheet->getCell($cell)->getDataValidation();
+        $validation->setType(DataValidation::TYPE_LIST)
+            ->setErrorStyle(DataValidation::STYLE_INFORMATION)
+            ->setAllowBlank(true)
+            ->setShowInputMessage(true)
+            ->setShowErrorMessage(true)
+            ->setShowDropDown(true)
+            ->setErrorTitle('输入有误')
+            ->setError('您输入的值不在下拉框列表内')
+            ->setPromptTitle('【采购状态】')
+            ->setPrompt('请点击右边下拉按钮选择采购状态')
+            ->setFormula1('"已采购,未采购"');
     }
 
     private function cell(int $column, int $row): string
@@ -545,6 +795,15 @@ final class SpreadsheetExportService
         }
 
         return true;
+    }
+
+    private function safeHyperlinkUrl(string $url): string
+    {
+        $url = trim($url);
+        $parts = parse_url($url);
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+
+        return in_array($scheme, ['http', 'https'], true) ? $url : '';
     }
 
     private function validImagePath(string $path): bool
