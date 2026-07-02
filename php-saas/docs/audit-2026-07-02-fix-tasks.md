@@ -85,14 +85,25 @@
 
 ## P1 — 中优先级
 
-### ☐ 6. 品检（pinjian）角色可编辑字段集变窄 + 默认列表未按状态收窄
-**现象**：老系统品检可改 weight/material/beizhu/comment 等字段（`inc_order_save_pinjian.php`），且 `inc_list_pinjian.php` 默认只显示 `beizhu IN('已到货','问题件','已发日本')` 的订单。php-saas 品检权限组只放开了"日本仓发货"相关结构化字段（assignee/out_status/jp_warehouse_id/intl_number/intl_fee/intl_qty/intl_weight/intl_comment），若无叠加权限无法改 weight/material/beizhu/comment；订单列表也没有按状态收窄，只按店铺范围过滤。
+### ☐ 6. 品检（pinjian）角色作废，权限点并入采购角色
+**口径已确认（2026-07-03，业务方决定）**：本次审计原本发现"品检可编辑字段集变窄 + 默认列表未按状态收窄"，但与业务方核对后，结论不是补权限，而是**新系统不再保留"品检"这个独立角色**。品检目前持有的"日本仓发货"相关权限点（日本仓发货/物流查看/日本物流日志/图片管理，含图片上传/图片删除）**并入"采购"角色**，以后由采购角色统一承担日本仓发货相关操作。
 
-**参考**：`old/orderm/inc_order_save_pinjian.php`、`inc_list_pinjian.php`；`php-saas/app/Core/Permission.php`（`roleDefaults()['品检']`）；`php-saas/app/Controllers/TenantController.php`（`allowedOrderItemPostData()`）；`php-saas/app/Services/AppService.php`（`ordersForUser()`）。
+**现状核实**（2026-07-03）：
+- 角色定义：`php-saas/app/Core/Permission.php:83` `roleDefaults()['品检']`。
+- `role` 是自由文本字段（`migrations/tenant/0001_init_tenant_schema.sql` 里 `VARCHAR(32)`），代码里**没有硬编码的角色白名单校验**，删除"品检"选项不会破坏既有校验逻辑。
+- 当前 JSON 数据（`storage/data/app.json`）里**没有任何用户的 `role` 是"品检"**，只有 公司管理员/客服/采购，无需做历史数据迁移/转换脚本（但正式上生产前建议用 `MysqlStore` 也确认一遍租户库没有遗留品检用户）。
+- 代码里"品检"字符串出现在 14 个文件（`grep -rln 品检 app/` 结果），包括 `Permission.php`、`JsonStore.php`、`MysqlStore.php`、`TenantFeature.php`、`AppService.php`、`TenantController.php`、`TenantNoticeService.php`，以及视图 `assignments.php`/`media.php`/`order_detail.php`/`tenant_notices.php`/`users.php`/`user_edit.php`/`system_status.php`。
+- `TenantController.php:847` `assignments()` 方法里 `buyers` 列表目前是 `in_array($role, ['采购','品检'])` 过滤——这行逻辑本身已经隐含"采购和品检共用店铺分配范围"的语义，删除品检角色后这里改成只保留 `['采购']` 即可，行为自然衔接。
 
-**要求**（**需先与业务方确认品检角色到底需要哪些字段权限**）：
-- 按确认结果，在 `allowedOrderItemPostData()` 里给品检分组补齐 weight/material/beizhu/comment，或明确保留现状并在文档说明这是有意收窄。
-- 品检默认订单列表增加按状态过滤选项，对齐老系统默认视图或做成可配置。
+**要求**：
+1. `Permission::roleDefaults()` 删除 `'品检'` 这一项；把品检原有的权限点（日本仓发货、物流查看、日本物流日志、图片管理、图片上传、图片删除）合并进 `roleDefaults()['采购']`（与"采购"现有权限点去重合并，不要重复项）。
+2. 全局搜索并清理上述 14 个文件里所有"品检"相关的角色分支、UI 文案、下拉选项（如 `users.php`/`user_edit.php` 的角色选择器、`assignments.php` 的岗位说明文案）——删除"品检"作为可选角色，不要留下选了就报错或静默失效的死选项。
+3. `TenantController::allowedOrderItemPostData()` 里如果有单独判断 `role === '品检'` 的分支，按并入采购的口径合并处理（采购角色已经能通过"采购状态"权限点编辑的字段不用重复开，只需确保"日本仓发货"权限点下的字段对采购角色也生效）。
+4. 检查 `UserPermissionOverrideService`、`TenantNoticeService`、`system_status.php` 等文件里对"品检"的引用，同步清理或改写为"采购"。
+5. 如果现有测试/文档（如 `docs/migration-todo-from-old.md`）提到品检角色，一并更新表述。
+6. 不需要写数据迁移脚本（当前无历史品检用户数据），但改完后建议手工确认：如果某个租户的 MySQL 库里确实存在 `role='品检'` 的员工记录，登录后角色显示、权限计算不会报错（至少要优雅处理"未知角色"，不能是空白权限导致锁死账号——如果发现这种记录，按"视为采购角色"处理）。
+
+完成提交：待定
 
 ---
 
