@@ -183,6 +183,11 @@ interface StoreInterface
     ): void;
 
     /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function purchaseStatusEvents(string $tenantKey, string $date, ?array $user = null, string $platform = ''): array;
+
+    /**
      * @param array<int, array<string, mixed>> $records
      * @return array{inserted: int, updated: int, skipped: int, failed: int, messages: array<int, string>}
      */

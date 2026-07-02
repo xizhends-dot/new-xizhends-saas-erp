@@ -9,6 +9,11 @@ final class MysqlStore implements StoreInterface
     private const STORE_ADD_FEE = 50;
     private const STORE_MONTHLY_FEE = 50;
     private const DEBT_SUSPEND_THRESHOLD = -300;
+    private const PURCHASE_EVENT_STATUSES = [
+        '国内采购-准备' => 'enter_prepare',
+        '国内采购-已采购' => 'complete_purchase',
+        '国内采购-TB/PDD已采购' => 'complete_purchase',
+    ];
     private const MAIL_TABLES = [
         'ph_mail_account',
         'ph_mail_folder',
@@ -1072,9 +1077,7 @@ SQL)->fetchAll();
             return;
         }
 
-        $stmt = $tenantPdo->prepare('SELECT id, order_id, source_type FROM order_items WHERE id = ?');
-        $stmt->execute([$itemId]);
-        $item = $stmt->fetch();
+        $item = $this->itemSnapshot($tenantPdo, $itemId);
         if (!$item || (string) $item['source_type'] === $source) {
             return;
         }
@@ -1110,6 +1113,12 @@ SQL)->fetchAll();
                 $source,
                 $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
             ]);
+            if ((string) ($item['purchase_status'] ?? '') !== $status) {
+                $oldStatus = (string) ($item['purchase_status'] ?? '');
+                $this->insertItemLog($tenantPdo, (int) $item['order_id'], $itemId, '货源改判', 'purchase_status', $oldStatus, $status);
+                $item['purchase_status'] = $status;
+                $this->recordPurchaseStatusEvent($tenantPdo, $item, $oldStatus, $status, '货源改判', '系统管理员');
+            }
 
             $tenantPdo->commit();
         } catch (\Throwable $error) {
@@ -1177,6 +1186,8 @@ SQL)->fetchAll();
                 }
 
                 $this->insertItemLog($tenantPdo, (int) $snapshot['order_id'], $itemId, $action, 'purchase_status', $fromStatus, $toStatus, $operator);
+                $snapshot['purchase_status'] = $toStatus;
+                $this->recordPurchaseStatusEvent($tenantPdo, $snapshot, $fromStatus, $toStatus, $action, $operator);
                 $updated++;
             }
             $tenantPdo->commit();
@@ -1453,6 +1464,60 @@ SQL)->fetchAll();
         }
 
         $this->updateOrderItemData($tenantPdo, $itemId, $data, $action, $operator);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function purchaseStatusEvents(string $tenantKey, string $date, ?array $user = null, string $platform = ''): array
+    {
+        $pdo = $this->tenantPdo($tenantKey);
+        if (!$pdo || !$this->tableExists($pdo, 'purchase_status_events')) {
+            return [];
+        }
+
+        $date = trim($date);
+        if ($date === '') {
+            return [];
+        }
+
+        $conditions = ['created_date <= ?'];
+        $params = [$date];
+        $platform = trim($platform);
+        if ($platform !== '') {
+            $conditions[] = 'platform = ?';
+            $params[] = $platform;
+        }
+
+        $stmt = $pdo->prepare('SELECT * FROM purchase_status_events WHERE ' . implode(' AND ', $conditions) . ' ORDER BY order_item_id, created_at, id');
+        $stmt->execute($params);
+
+        $rows = array_filter(
+            $stmt->fetchAll(),
+            fn (array $row): bool => $this->eventVisibleToUser($row, $user)
+        );
+
+        return array_values(array_map(fn (array $row): array => [
+            'id' => (int) ($row['id'] ?? 0),
+            'platform' => (string) ($row['platform'] ?? ''),
+            'order_id' => (int) ($row['order_id'] ?? 0),
+            'order_item_id' => (int) ($row['order_item_id'] ?? 0),
+            'platform_order_id' => (string) ($row['platform_order_id'] ?? ''),
+            'item_code' => (string) ($row['item_code'] ?? ''),
+            'store_name' => (string) ($row['store_name'] ?? ''),
+            'operator' => (string) ($row['operator'] ?? ''),
+            'user_type' => (string) ($row['user_type'] ?? ''),
+            'buyer' => (string) ($row['buyer'] ?? ''),
+            'action_type' => (string) ($row['action_type'] ?? ''),
+            'old_status' => (string) ($row['old_status'] ?? ''),
+            'new_status' => (string) ($row['new_status'] ?? ''),
+            'source' => (string) ($row['source'] ?? ''),
+            'tabaono' => (string) ($row['tabaono'] ?? ''),
+            'cn_amount' => (float) ($row['cn_amount'] ?? 0),
+            'caigou_time' => (string) ($row['caigou_time'] ?? ''),
+            'created_at' => (string) ($row['created_at'] ?? ''),
+            'created_date' => (string) ($row['created_date'] ?? ''),
+        ], $rows));
     }
 
     /**
@@ -2555,6 +2620,13 @@ SQL)->fetchAll();
         return $pdo;
     }
 
+    private function ensurePurchaseStatusEventTable(\PDO $pdo): void
+    {
+        if (!$this->tableExists($pdo, 'purchase_status_events')) {
+            throw new \RuntimeException('采购事件 MySQL 表未建：purchase_status_events。请先执行 migrations/tenant/0007_create_purchase_status_events.sql。');
+        }
+    }
+
     private function connect(string $dsn): \PDO
     {
         $pdo = new \PDO($dsn, $this->config->mysqlUser(), $this->config->mysqlPassword(), [
@@ -3499,7 +3571,8 @@ SQL);
     private function itemSnapshot(\PDO $pdo, int $itemId): ?array
     {
         $stmt = $pdo->prepare(<<<'SQL'
-SELECT i.id, i.order_id, i.source_type, i.purchase_status, i.jp_warehouse_id, i.amount,
+SELECT i.id, i.order_id, o.platform, o.platform_order_id, COALESCE(NULLIF(s.dpquancheng, ''), s.dpqz, '') AS store_name,
+       i.source_type, i.purchase_status, i.jp_warehouse_id, i.amount, i.item_code,
        i.material, i.weight, i.chinese_option, i.item_comment AS comment,
        p.tabaono, p.caigou_link AS purchase_link, p.buhuo_link, p.caigou_user AS buyer,
        p.caigou_time AS purchase_time, p.caigou_ordernums, p.cn_amount, p.com_amount, p.cn_ship_number,
@@ -3508,6 +3581,8 @@ SELECT i.id, i.order_id, i.source_type, i.purchase_status, i.jp_warehouse_id, i.
        d.ship_quantity, d.jpship_status AS logistics, d.logistic_trace,
        x.intl_number, x.intl_status, x.intl_fee, x.intl_qty, x.intl_weight, x.tranship_comment, x.comment AS intl_comment
 FROM order_items i
+JOIN orders o ON o.id = i.order_id
+LEFT JOIN stores s ON s.id = o.store_id
 LEFT JOIN purchases p ON p.order_item_id = i.id
 LEFT JOIN jp_shipments j ON j.order_item_id = i.id
 LEFT JOIN domestic_shipments d ON d.order_item_id = i.id
@@ -3564,6 +3639,7 @@ SQL);
 
         $pdo->beginTransaction();
         try {
+            $pendingPurchaseEvents = [];
             foreach ($allowed as $field) {
                 if (!array_key_exists($field, $changes)) {
                     continue;
@@ -3582,6 +3658,9 @@ SQL);
                 if (in_array($field, ['ship_quantity', 'intl_qty'], true)) {
                     $newValue = (int) $newValue;
                 }
+                if ($field === 'purchase_status') {
+                    $newValue = $this->normalizePurchaseStatus((string) $newValue);
+                }
 
                 $oldValue = $snapshot[$field] ?? ($field === 'ship_number' ? ($snapshot['cn_ship_number'] ?? '') : '');
                 if ((string) $oldValue === (string) $newValue) {
@@ -3591,15 +3670,31 @@ SQL);
                 $this->writeItemField($pdo, $itemId, $field, $newValue);
                 $this->insertItemLog($pdo, (int) $snapshot['order_id'], $itemId, $action, $field, (string) $oldValue, (string) $newValue, $operator);
                 $snapshot[$field] = $newValue;
+                if ($field === 'purchase_status') {
+                    $pendingPurchaseEvents[] = [(string) $oldValue, (string) $newValue, $action, $operator];
+                }
 
                 if ($field === 'source_type') {
+                    $statusOldValue = (string) ($snapshot['purchase_status'] ?? '');
                     $nextStatus = match ((string) $newValue) {
                         'cn_purchase' => '国内采购-准备',
                         'jp_stock' => '待分配',
                         default => '待处理',
                     };
-                    $this->writeItemField($pdo, $itemId, 'purchase_status', $nextStatus);
+                    if (array_key_exists('purchase_status', $changes)) {
+                        $nextStatus = $this->normalizePurchaseStatus((string) $changes['purchase_status']);
+                    }
+                    if ($statusOldValue !== $nextStatus) {
+                        $this->writeItemField($pdo, $itemId, 'purchase_status', $nextStatus);
+                        $this->insertItemLog($pdo, (int) $snapshot['order_id'], $itemId, $action, 'purchase_status', $statusOldValue, $nextStatus, $operator);
+                        $snapshot['purchase_status'] = $nextStatus;
+                        $pendingPurchaseEvents[] = [$statusOldValue, $nextStatus, $action, $operator];
+                    }
                 }
+            }
+
+            foreach ($pendingPurchaseEvents as [$oldStatus, $newStatus, $eventSource, $eventOperator]) {
+                $this->recordPurchaseStatusEvent($pdo, $snapshot, $oldStatus, $newStatus, $eventSource, $eventOperator);
             }
 
             $pdo->commit();
@@ -3698,6 +3793,46 @@ SQL);
             $newValue,
             $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
         ]);
+    }
+
+    private function recordPurchaseStatusEvent(\PDO $pdo, array $snapshot, string $oldStatus, string $newStatus, string $source, string $operator): void
+    {
+        $actionType = self::PURCHASE_EVENT_STATUSES[$newStatus] ?? null;
+        if ($actionType === null || $oldStatus === $newStatus) {
+            return;
+        }
+
+        $this->ensurePurchaseStatusEventTable($pdo);
+        $purchaseTime = trim((string) ($snapshot['purchase_time'] ?? ''));
+        $stmt = $pdo->prepare(<<<'SQL'
+INSERT INTO purchase_status_events
+(platform, order_id, order_item_id, platform_order_id, item_code, store_name, operator, user_type, buyer, action_type, old_status, new_status, source, tabaono, cn_amount, caigou_time, created_at, created_date)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), CURDATE())
+SQL);
+        $stmt->execute([
+            (string) ($snapshot['platform'] ?? ''),
+            (int) ($snapshot['order_id'] ?? 0),
+            (int) ($snapshot['id'] ?? 0),
+            (string) ($snapshot['platform_order_id'] ?? ''),
+            (string) ($snapshot['item_code'] ?? ''),
+            (string) ($snapshot['store_name'] ?? ''),
+            $operator,
+            '',
+            (string) ($snapshot['buyer'] ?? ''),
+            $actionType,
+            $oldStatus,
+            $newStatus,
+            $source,
+            (string) ($snapshot['tabaono'] ?? ''),
+            (float) ($snapshot['cn_amount'] ?? $snapshot['amount'] ?? 0),
+            $purchaseTime !== '' ? $purchaseTime : null,
+        ]);
+    }
+
+    /** @param array<string, mixed> $row @param array<string, mixed>|null $user */
+    private function eventVisibleToUser(array $row, ?array $user): bool
+    {
+        return $user === null || Permission::canAccessStore($user, (string) ($row['store_name'] ?? ''));
     }
 
     private function platformColor(string $code): string

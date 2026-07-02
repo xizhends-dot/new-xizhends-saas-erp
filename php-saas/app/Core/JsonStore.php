@@ -9,6 +9,11 @@ final class JsonStore implements StoreInterface
     private const STORE_ADD_FEE = 50;
     private const STORE_MONTHLY_FEE = 50;
     private const DEBT_SUSPEND_THRESHOLD = -300;
+    private const PURCHASE_EVENT_STATUSES = [
+        '国内采购-准备' => 'enter_prepare',
+        '国内采购-已采购' => 'complete_purchase',
+        '国内采购-TB/PDD已采购' => 'complete_purchase',
+    ];
 
     /** @var array<string, mixed>|null */
     private ?array $data = null;
@@ -868,6 +873,12 @@ final class JsonStore implements StoreInterface
                     continue;
                 }
 
+                $oldStatus = (string) ($item['purchase_status'] ?? '');
+                $status = match ($source) {
+                    'cn_purchase' => '国内采购-准备',
+                    'jp_stock' => '待分配',
+                    default => '待处理',
+                };
                 $item['source_type'] = $source;
                 $item['logs'][] = [
                     'time' => date('m-d H:i'),
@@ -878,6 +889,19 @@ final class JsonStore implements StoreInterface
                     'new' => $source,
                     'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
                 ];
+                if ($oldStatus !== $status) {
+                    $item['purchase_status'] = $status;
+                    $item['logs'][] = [
+                        'time' => date('m-d H:i'),
+                        'user' => '系统管理员',
+                        'action' => '货源改判',
+                        'field' => 'purchase_status',
+                        'old' => $oldStatus,
+                        'new' => $status,
+                        'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
+                    ];
+                    $this->recordJsonPurchaseStatusEvent($data, $tenantKey, $order, $item, $oldStatus, $status, '货源改判', '系统管理员');
+                }
             }
             unset($item);
         }
@@ -918,7 +942,9 @@ final class JsonStore implements StoreInterface
                     continue;
                 }
 
+                $oldStatus = (string) ($item['purchase_status'] ?? '');
                 $this->applyItemChanges($item, $changes, (int) ($order['id'] ?? 0), $action, $operator);
+                $this->recordJsonPurchaseStatusEvent($data, $tenantKey, $order, $item, $oldStatus, (string) ($item['purchase_status'] ?? ''), $action, $operator);
             }
             unset($item);
         }
@@ -964,6 +990,7 @@ final class JsonStore implements StoreInterface
                 }
 
                 $this->applyItemChanges($item, ['purchase_status' => $toStatus], (int) ($order['id'] ?? 0), $action, $operator);
+                $this->recordJsonPurchaseStatusEvent($data, $tenantKey, $order, $item, $fromStatus, (string) ($item['purchase_status'] ?? ''), $action, $operator);
                 if ((string) ($item['purchase_status'] ?? '') === $toStatus) {
                     $updated++;
                 }
@@ -1284,7 +1311,9 @@ final class JsonStore implements StoreInterface
                     continue;
                 }
 
+                $oldStatus = (string) ($item['purchase_status'] ?? '');
                 $this->applyItemChanges($item, $data, (int) ($order['id'] ?? 0), $action, $operator);
+                $this->recordJsonPurchaseStatusEvent($store, $tenantKey, $order, $item, $oldStatus, (string) ($item['purchase_status'] ?? ''), $action, $operator);
             }
             unset($item);
         }
@@ -1292,6 +1321,40 @@ final class JsonStore implements StoreInterface
 
         $this->data = $store;
         $this->save();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function purchaseStatusEvents(string $tenantKey, string $date, ?array $user = null, string $platform = ''): array
+    {
+        $date = trim($date);
+        if ($date === '') {
+            return [];
+        }
+
+        $rows = is_array($this->all()['purchase_status_events'][$tenantKey] ?? null)
+            ? $this->all()['purchase_status_events'][$tenantKey]
+            : [];
+        $platform = trim($platform);
+
+        $events = array_values(array_filter(
+            array_map(fn (array $row): array => $this->normalizePurchaseStatusEventRow($row), array_filter($rows, 'is_array')),
+            fn (array $row): bool => (string) ($row['created_date'] ?? '') <= $date
+                && ($platform === '' || (string) ($row['platform'] ?? '') === $platform)
+                && $this->eventVisibleToUser($row, $user)
+        ));
+        usort($events, static fn (array $a, array $b): int => [
+            (int) ($a['order_item_id'] ?? 0),
+            (string) ($a['created_at'] ?? ''),
+            (int) ($a['id'] ?? 0),
+        ] <=> [
+            (int) ($b['order_item_id'] ?? 0),
+            (string) ($b['created_at'] ?? ''),
+            (int) ($b['id'] ?? 0),
+        ]);
+
+        return $events;
     }
 
     /**
@@ -1379,6 +1442,7 @@ final class JsonStore implements StoreInterface
             }
             $changes['source_type'] = 'cn_purchase';
             $before = $data['orders'][$tenantKey][$orderIndex]['items'][$itemIndex];
+            $oldStatus = (string) ($before['purchase_status'] ?? '');
             $this->applyItemChanges(
                 $data['orders'][$tenantKey][$orderIndex]['items'][$itemIndex],
                 $changes,
@@ -1389,6 +1453,16 @@ final class JsonStore implements StoreInterface
             if ($before === $data['orders'][$tenantKey][$orderIndex]['items'][$itemIndex]) {
                 $report['skipped']++;
             } else {
+                $this->recordJsonPurchaseStatusEvent(
+                    $data,
+                    $tenantKey,
+                    $data['orders'][$tenantKey][$orderIndex],
+                    $data['orders'][$tenantKey][$orderIndex]['items'][$itemIndex],
+                    $oldStatus,
+                    (string) ($data['orders'][$tenantKey][$orderIndex]['items'][$itemIndex]['purchase_status'] ?? ''),
+                    '采购导入',
+                    $operator
+                );
                 $report['updated']++;
                 $changed = true;
             }
@@ -1433,8 +1507,19 @@ final class JsonStore implements StoreInterface
                 }
                 unset($changes['reset_tracking']);
                 $before = $item;
+                $oldStatus = (string) ($item['purchase_status'] ?? '');
                 $this->applyItemChanges($item, $changes, (int) ($data['orders'][$tenantKey][$orderIndex]['id'] ?? 0), '国际运单导入', $operator);
                 if ($before !== $item) {
+                    $this->recordJsonPurchaseStatusEvent(
+                        $data,
+                        $tenantKey,
+                        $data['orders'][$tenantKey][$orderIndex],
+                        $item,
+                        $oldStatus,
+                        (string) ($item['purchase_status'] ?? ''),
+                        '国际运单导入',
+                        $operator
+                    );
                     $rowUpdated++;
                 }
                 unset($item);
@@ -2671,6 +2756,14 @@ final class JsonStore implements StoreInterface
                 $this->data['import_export_logs'][$key] = [];
                 $changed = true;
             }
+            if (!isset($this->data['purchase_status_events']) || !is_array($this->data['purchase_status_events'])) {
+                $this->data['purchase_status_events'] = [];
+                $changed = true;
+            }
+            if (!isset($this->data['purchase_status_events'][$key]) || !is_array($this->data['purchase_status_events'][$key])) {
+                $this->data['purchase_status_events'][$key] = [];
+                $changed = true;
+            }
             if (!isset($this->data['mail']) || !is_array($this->data['mail'])) {
                 $this->data['mail'] = [];
                 $changed = true;
@@ -3502,6 +3595,9 @@ final class JsonStore implements StoreInterface
             if (in_array($field, ['ship_quantity', 'intl_qty'], true)) {
                 $newValue = (int) $newValue;
             }
+            if ($field === 'purchase_status') {
+                $newValue = $this->normalizePurchaseStatus((string) $newValue);
+            }
 
             $oldValue = $item[$field] ?? '';
             if ((string) $oldValue === (string) $newValue) {
@@ -3509,12 +3605,29 @@ final class JsonStore implements StoreInterface
             }
 
             $item[$field] = $newValue;
+            $statusLog = null;
             if ($field === 'source_type') {
-                $item['purchase_status'] = match ($newValue) {
+                $statusOldValue = (string) ($item['purchase_status'] ?? '');
+                $nextStatus = array_key_exists('purchase_status', $changes)
+                    ? $this->normalizePurchaseStatus((string) $changes['purchase_status'])
+                    : match ($newValue) {
                     'cn_purchase' => '国内采购-准备',
                     'jp_stock' => '待分配',
                     default => '待处理',
                 };
+                if ($statusOldValue !== $nextStatus) {
+                    $item['purchase_status'] = $nextStatus;
+                    $statusLog = [
+                        'time' => date('m-d H:i'),
+                        'user' => $operator,
+                        'action' => $action,
+                        'field' => 'purchase_status',
+                        'old' => $statusOldValue,
+                        'new' => $nextStatus,
+                        'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
+                        'order_id' => $orderId,
+                    ];
+                }
             }
 
             $item['logs'][] = [
@@ -3527,7 +3640,81 @@ final class JsonStore implements StoreInterface
                 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
                 'order_id' => $orderId,
             ];
+            if ($statusLog !== null) {
+                $item['logs'][] = $statusLog;
+            }
         }
+    }
+
+    /** @param array<string, mixed> $order @param array<string, mixed> $item */
+    private function recordJsonPurchaseStatusEvent(array &$data, string $tenantKey, array $order, array $item, string $oldStatus, string $newStatus, string $source, string $operator): void
+    {
+        $actionType = self::PURCHASE_EVENT_STATUSES[$newStatus] ?? null;
+        if ($actionType === null || $oldStatus === $newStatus) {
+            return;
+        }
+
+        if (!isset($data['purchase_status_events']) || !is_array($data['purchase_status_events'])) {
+            $data['purchase_status_events'] = [];
+        }
+        if (!isset($data['purchase_status_events'][$tenantKey]) || !is_array($data['purchase_status_events'][$tenantKey])) {
+            $data['purchase_status_events'][$tenantKey] = [];
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $data['purchase_status_events'][$tenantKey][] = [
+            'id' => $this->nextId($data['purchase_status_events'][$tenantKey]),
+            'platform' => (string) ($order['platform'] ?? ''),
+            'order_id' => (int) ($order['id'] ?? 0),
+            'order_item_id' => (int) ($item['id'] ?? 0),
+            'platform_order_id' => (string) ($order['platform_order_id'] ?? ''),
+            'item_code' => (string) (($item['item_code'] ?? '') ?: ($item['lot_number'] ?? '')),
+            'store_name' => (string) ($order['store'] ?? ''),
+            'operator' => $operator,
+            'user_type' => '',
+            'buyer' => (string) ($item['buyer'] ?? ''),
+            'action_type' => $actionType,
+            'old_status' => $oldStatus,
+            'new_status' => $newStatus,
+            'source' => $source,
+            'tabaono' => (string) ($item['tabaono'] ?? ''),
+            'cn_amount' => (float) ($item['cn_amount'] ?? $item['amount'] ?? 0),
+            'caigou_time' => (string) ($item['purchase_time'] ?? ''),
+            'created_at' => $now,
+            'created_date' => substr($now, 0, 10),
+        ];
+    }
+
+    /** @param array<string, mixed> $row @return array<string, mixed> */
+    private function normalizePurchaseStatusEventRow(array $row): array
+    {
+        return [
+            'id' => (int) ($row['id'] ?? 0),
+            'platform' => (string) ($row['platform'] ?? ''),
+            'order_id' => (int) ($row['order_id'] ?? 0),
+            'order_item_id' => (int) ($row['order_item_id'] ?? 0),
+            'platform_order_id' => (string) ($row['platform_order_id'] ?? ''),
+            'item_code' => (string) ($row['item_code'] ?? ''),
+            'store_name' => (string) ($row['store_name'] ?? ''),
+            'operator' => (string) ($row['operator'] ?? ''),
+            'user_type' => (string) ($row['user_type'] ?? ''),
+            'buyer' => (string) ($row['buyer'] ?? ''),
+            'action_type' => (string) ($row['action_type'] ?? ''),
+            'old_status' => (string) ($row['old_status'] ?? ''),
+            'new_status' => (string) ($row['new_status'] ?? ''),
+            'source' => (string) ($row['source'] ?? ''),
+            'tabaono' => (string) ($row['tabaono'] ?? ''),
+            'cn_amount' => (float) ($row['cn_amount'] ?? 0),
+            'caigou_time' => (string) ($row['caigou_time'] ?? ''),
+            'created_at' => (string) ($row['created_at'] ?? ''),
+            'created_date' => (string) ($row['created_date'] ?? ''),
+        ];
+    }
+
+    /** @param array<string, mixed> $row @param array<string, mixed>|null $user */
+    private function eventVisibleToUser(array $row, ?array $user): bool
+    {
+        return $user === null || Permission::canAccessStore($user, (string) ($row['store_name'] ?? ''));
     }
 
     /** @return array{inserted: int, updated: int, skipped: int, failed: int, messages: array<int, string>} */
@@ -3751,6 +3938,7 @@ final class JsonStore implements StoreInterface
                 'tenant' => [],
             ],
             'import_export_logs' => [],
+            'purchase_status_events' => [],
             'mail' => [
                 'accounts' => [],
                 'folders' => [],

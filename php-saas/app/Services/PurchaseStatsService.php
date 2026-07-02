@@ -324,6 +324,11 @@ final class PurchaseStatsService
      */
     private function statusSnapshot(string $tenantKey, ?array $user, string $date, string $platformFilter = ''): array
     {
+        $eventSnapshot = $this->statusSnapshotFromEvents($tenantKey, $user, $date, $platformFilter);
+        if ((int) ($eventSnapshot['total'] ?? 0) > 0) {
+            return $eventSnapshot;
+        }
+
         $platformNames = $this->tenantPlatformNames($tenantKey);
         $snapshot = ['platforms' => [], 'total' => 0];
         foreach ($this->ordersForUser($tenantKey, $user) as $order) {
@@ -348,6 +353,41 @@ final class PurchaseStatsService
                 $snapshot['platforms'][$platform]['total'] = ($snapshot['platforms'][$platform]['total'] ?? 0) + 1;
                 $snapshot['total']++;
             }
+        }
+
+        return $snapshot;
+    }
+
+    /**
+     * @return array{platforms: array<string, array{statuses: array<string, int>, total: int}>, total: int}
+     */
+    private function statusSnapshotFromEvents(string $tenantKey, ?array $user, string $date, string $platformFilter = ''): array
+    {
+        $platformNames = $this->tenantPlatformNames($tenantKey);
+        $latestByItem = [];
+        foreach ($this->store->purchaseStatusEvents($tenantKey, $date, $user, $platformFilter) as $event) {
+            $platform = (string) ($event['platform'] ?? '');
+            if (!isset($platformNames[$platform])) {
+                continue;
+            }
+            $itemId = (int) ($event['order_item_id'] ?? 0);
+            if ($itemId <= 0) {
+                continue;
+            }
+
+            $latestByItem[$itemId] = $event;
+        }
+
+        $snapshot = ['platforms' => [], 'total' => 0];
+        foreach ($latestByItem as $event) {
+            $platform = (string) ($event['platform'] ?? '');
+            $status = (string) (($event['new_status'] ?? '') ?: '未设置');
+            if ($status === '') {
+                $status = '未设置';
+            }
+            $snapshot['platforms'][$platform]['statuses'][$status] = ($snapshot['platforms'][$platform]['statuses'][$status] ?? 0) + 1;
+            $snapshot['platforms'][$platform]['total'] = ($snapshot['platforms'][$platform]['total'] ?? 0) + 1;
+            $snapshot['total']++;
         }
 
         return $snapshot;
