@@ -9,6 +9,14 @@ final class MysqlStore implements StoreInterface
     private const STORE_ADD_FEE = 50;
     private const STORE_MONTHLY_FEE = 50;
     private const DEBT_SUSPEND_THRESHOLD = -300;
+    private const MAIL_TABLES = [
+        'ph_mail_account',
+        'ph_mail_folder',
+        'ph_mail_message',
+        'ph_mail_reply',
+        'ph_mail_rule',
+        'ph_mail_rule_account',
+    ];
 
     private ?\PDO $master = null;
 
@@ -1865,8 +1873,8 @@ SQL)->fetchAll();
     /** @return array<int, array<string, mixed>> */
     public function mailAccounts(string $tenantKey): array
     {
-        $pdo = $this->tenantPdo($tenantKey);
-        if (!$pdo || !$this->tableExists($pdo, 'ph_mail_account')) {
+        $pdo = $this->mailPdo($tenantKey);
+        if (!$pdo) {
             return [];
         }
 
@@ -1878,8 +1886,11 @@ SQL)->fetchAll();
     /** @return array<string, mixed>|null */
     public function mailAccount(string $tenantKey, int $accountId): ?array
     {
-        $pdo = $this->tenantPdo($tenantKey);
-        if (!$pdo || $accountId <= 0 || !$this->tableExists($pdo, 'ph_mail_account')) {
+        if ($accountId <= 0) {
+            return null;
+        }
+        $pdo = $this->mailPdo($tenantKey);
+        if (!$pdo) {
             return null;
         }
 
@@ -1893,8 +1904,8 @@ SQL)->fetchAll();
     /** @param array<string, mixed> $data */
     public function saveMailAccount(string $tenantKey, array $data): int
     {
-        $pdo = $this->tenantPdo($tenantKey);
-        if (!$pdo || !$this->tableExists($pdo, 'ph_mail_account')) {
+        $pdo = $this->mailPdo($tenantKey);
+        if (!$pdo) {
             return 0;
         }
 
@@ -1948,8 +1959,11 @@ SQL)->fetchAll();
 
     public function deleteMailAccount(string $tenantKey, int $accountId): void
     {
-        $pdo = $this->tenantPdo($tenantKey);
-        if (!$pdo || $accountId <= 0 || !$this->tableExists($pdo, 'ph_mail_account')) {
+        if ($accountId <= 0) {
+            return;
+        }
+        $pdo = $this->mailPdo($tenantKey);
+        if (!$pdo) {
             return;
         }
 
@@ -1967,8 +1981,8 @@ SQL)->fetchAll();
     /** @return array<int, array<string, mixed>> */
     public function mailFolders(string $tenantKey, ?int $accountId = null, bool $onlySynced = false): array
     {
-        $pdo = $this->tenantPdo($tenantKey);
-        if (!$pdo || !$this->tableExists($pdo, 'ph_mail_folder')) {
+        $pdo = $this->mailPdo($tenantKey);
+        if (!$pdo) {
             return [];
         }
 
@@ -1991,8 +2005,11 @@ SQL)->fetchAll();
     /** @return array<string, mixed>|null */
     public function mailFolder(string $tenantKey, int $folderId): ?array
     {
-        $pdo = $this->tenantPdo($tenantKey);
-        if (!$pdo || $folderId <= 0 || !$this->tableExists($pdo, 'ph_mail_folder')) {
+        if ($folderId <= 0) {
+            return null;
+        }
+        $pdo = $this->mailPdo($tenantKey);
+        if (!$pdo) {
             return null;
         }
 
@@ -2006,9 +2023,9 @@ SQL)->fetchAll();
     /** @param array<int, string> $folders */
     public function upsertMailFolders(string $tenantKey, int $accountId, array $folders): void
     {
-        $pdo = $this->tenantPdo($tenantKey);
+        $pdo = $this->mailPdo($tenantKey);
         $account = $this->mailAccount($tenantKey, $accountId);
-        if (!$pdo || !$account || !$this->tableExists($pdo, 'ph_mail_folder')) {
+        if (!$pdo || !$account) {
             return;
         }
 
@@ -2035,8 +2052,11 @@ SQL)->fetchAll();
     /** @param array<string, mixed> $data */
     public function updateMailFolder(string $tenantKey, int $folderId, array $data): void
     {
-        $pdo = $this->tenantPdo($tenantKey);
-        if (!$pdo || $folderId <= 0 || !$this->tableExists($pdo, 'ph_mail_folder')) {
+        if ($folderId <= 0) {
+            return;
+        }
+        $pdo = $this->mailPdo($tenantKey);
+        if (!$pdo) {
             return;
         }
 
@@ -2059,8 +2079,8 @@ SQL)->fetchAll();
     /** @return array<string, mixed> */
     public function mailFolderCounts(string $tenantKey): array
     {
-        $pdo = $this->tenantPdo($tenantKey);
-        if (!$pdo || !$this->tableExists($pdo, 'ph_mail_message')) {
+        $pdo = $this->mailPdo($tenantKey);
+        if (!$pdo) {
             return ['unread_map' => [], 'total_map' => [], 'total_unread' => 0, 'total_all' => 0];
         }
 
@@ -2085,8 +2105,8 @@ SQL)->fetchAll();
      */
     public function mailMessages(string $tenantKey, array $filters, int $page, int $pageSize): array
     {
-        $pdo = $this->tenantPdo($tenantKey);
-        if (!$pdo || !$this->tableExists($pdo, 'ph_mail_message')) {
+        $pdo = $this->mailPdo($tenantKey);
+        if (!$pdo) {
             return ['rows' => [], 'total' => 0, 'page' => 1, 'page_size' => $pageSize, 'total_pages' => 1];
         }
 
@@ -2150,8 +2170,11 @@ SQL)->fetchAll();
     /** @return array<string, mixed>|null */
     public function mailMessage(string $tenantKey, int $messageId): ?array
     {
-        $pdo = $this->tenantPdo($tenantKey);
-        if (!$pdo || $messageId <= 0 || !$this->tableExists($pdo, 'ph_mail_message')) {
+        if ($messageId <= 0) {
+            return null;
+        }
+        $pdo = $this->mailPdo($tenantKey);
+        if (!$pdo) {
             return null;
         }
 
@@ -2168,9 +2191,9 @@ SQL)->fetchAll();
      */
     public function insertMailMessages(string $tenantKey, int $accountId, int $folderId, array $messages): array
     {
-        $pdo = $this->tenantPdo($tenantKey);
+        $pdo = $this->mailPdo($tenantKey);
         $account = $this->mailAccount($tenantKey, $accountId);
-        if (!$pdo || !$account || !$this->tableExists($pdo, 'ph_mail_message')) {
+        if (!$pdo || !$account) {
             return ['inserted' => 0, 'inserted_ids' => [], 'max_uid' => 0];
         }
 
@@ -2215,8 +2238,11 @@ SQL)->fetchAll();
     /** @param array<string, int> $status */
     public function updateMailFolderAfterSync(string $tenantKey, int $folderId, int $lastUid, int $messageCount, array $status = []): void
     {
-        $pdo = $this->tenantPdo($tenantKey);
-        if (!$pdo || $folderId <= 0 || !$this->tableExists($pdo, 'ph_mail_folder')) {
+        if ($folderId <= 0) {
+            return;
+        }
+        $pdo = $this->mailPdo($tenantKey);
+        if (!$pdo) {
             return;
         }
 
@@ -2234,8 +2260,11 @@ SQL)->fetchAll();
 
     public function updateMailAccountLastSync(string $tenantKey, int $accountId): void
     {
-        $pdo = $this->tenantPdo($tenantKey);
-        if (!$pdo || $accountId <= 0 || !$this->tableExists($pdo, 'ph_mail_account')) {
+        if ($accountId <= 0) {
+            return;
+        }
+        $pdo = $this->mailPdo($tenantKey);
+        if (!$pdo) {
             return;
         }
 
@@ -2261,9 +2290,12 @@ SQL)->fetchAll();
      */
     public function updateMailMessages(string $tenantKey, array $messageIds, array $changes): int
     {
-        $pdo = $this->tenantPdo($tenantKey);
         $ids = array_values(array_unique(array_filter(array_map('intval', $messageIds))));
-        if (!$pdo || !$ids || !$changes || !$this->tableExists($pdo, 'ph_mail_message')) {
+        if (!$ids || !$changes) {
+            return 0;
+        }
+        $pdo = $this->mailPdo($tenantKey);
+        if (!$pdo) {
             return 0;
         }
 
@@ -2289,8 +2321,8 @@ SQL)->fetchAll();
     /** @return array<int, array<string, mixed>> */
     public function mailRules(string $tenantKey): array
     {
-        $pdo = $this->tenantPdo($tenantKey);
-        if (!$pdo || !$this->tableExists($pdo, 'ph_mail_rule')) {
+        $pdo = $this->mailPdo($tenantKey);
+        if (!$pdo) {
             return [];
         }
 
@@ -2314,8 +2346,8 @@ SQL)->fetchAll();
     /** @param array<string, mixed> $data */
     public function saveMailRule(string $tenantKey, array $data): int
     {
-        $pdo = $this->tenantPdo($tenantKey);
-        if (!$pdo || !$this->tableExists($pdo, 'ph_mail_rule')) {
+        $pdo = $this->mailPdo($tenantKey);
+        if (!$pdo) {
             return 0;
         }
 
@@ -2380,8 +2412,11 @@ SQL)->fetchAll();
 
     public function deleteMailRule(string $tenantKey, int $ruleId): void
     {
-        $pdo = $this->tenantPdo($tenantKey);
-        if (!$pdo || $ruleId <= 0 || !$this->tableExists($pdo, 'ph_mail_rule')) {
+        if ($ruleId <= 0) {
+            return;
+        }
+        $pdo = $this->mailPdo($tenantKey);
+        if (!$pdo) {
             return;
         }
         if ($this->tableExists($pdo, 'ph_mail_rule_account')) {
@@ -2393,8 +2428,8 @@ SQL)->fetchAll();
     /** @param array<string, mixed> $data */
     public function addMailReply(string $tenantKey, array $data): void
     {
-        $pdo = $this->tenantPdo($tenantKey);
-        if (!$pdo || !$this->tableExists($pdo, 'ph_mail_reply')) {
+        $pdo = $this->mailPdo($tenantKey);
+        if (!$pdo) {
             return;
         }
 
@@ -2464,6 +2499,26 @@ SQL)->fetchAll();
 
         $this->tenantConnections[$tenantKey] = $this->connect($dsn);
         return $this->tenantConnections[$tenantKey];
+    }
+
+    private function mailPdo(string $tenantKey): ?\PDO
+    {
+        $pdo = $this->tenantPdo($tenantKey);
+        if (!$pdo) {
+            return null;
+        }
+
+        $missing = [];
+        foreach (self::MAIL_TABLES as $table) {
+            if (!$this->tableExists($pdo, $table)) {
+                $missing[] = $table;
+            }
+        }
+        if ($missing) {
+            throw new \RuntimeException('邮件中心 MySQL 表未建：' . implode(', ', $missing) . '。请先执行 migrations/tenant/0006_create_mail_tables.sql。');
+        }
+
+        return $pdo;
     }
 
     private function connect(string $dsn): \PDO
