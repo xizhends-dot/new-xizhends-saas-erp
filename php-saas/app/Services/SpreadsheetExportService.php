@@ -289,6 +289,7 @@ final class SpreadsheetExportService
                 if (in_array($key, $template['editable_columns'], true)) {
                     $sheet->getStyle($range)->getProtection()->setLocked(Protection::PROTECTION_UNPROTECTED);
                 } else {
+                    $sheet->getStyle($range)->getProtection()->setLocked(Protection::PROTECTION_PROTECTED);
                     $sheet->getStyle($range)->applyFromArray([
                         'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EBEBEB']],
                     ]);
