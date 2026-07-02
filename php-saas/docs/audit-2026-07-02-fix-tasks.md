@@ -68,7 +68,7 @@
 
 ---
 
-### ☐ 5. `ph_caigou_record` 结构化采购事件审计表未迁移
+### ✅ 5. `ph_caigou_record` 结构化采购事件审计表未迁移
 **现象**：老系统 `set_beizhustatus_log()` 在采购状态变为"国内采购-准备/已采购"时，把 `action_type`/`old_status`/`new_status`/`caigou_time`/`cnamount` 等写入 `ph_caigou_record` 表，可精确复原"某商品在某时刻的采购状态快照"。php-saas 目前只有泛化的 `order_logs` 文本历史（`MysqlStore::insertItemLog`）和 `PurchaseStatsService::statusSnapshot()`（这是"当日发生采购动作"的实时过滤，不是事件级历史表），无法做真正的历史时点状态分布回溯。
 
 **参考**：`old/inc/functions.php` 的 `set_beizhustatus_log()`；`php-saas/app/Core/MysqlStore.php`（`insertItemLog` 附近）；`php-saas/app/Services/PurchaseStatsService.php`（`statusSnapshot`）。
@@ -76,6 +76,8 @@
 **要求**：
 - 新增结构化表（如 `purchase_status_events`），在采购状态变更为"国内采购-准备/已采购"（或等价新状态值）时写入 action_type/old_status/new_status/caigou_time/cnamount 等快照字段。
 - `PurchaseStatsService` 增加基于该表的"任意历史日期的状态分布"查询能力，区别于现有"当日发生"过滤逻辑。
+
+完成提交：`6e06f0b`
 
 ---
 
