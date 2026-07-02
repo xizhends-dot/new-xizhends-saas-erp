@@ -44,7 +44,7 @@
 
 ---
 
-### ☐ 3. 采购表导入导出从"样式化 XLS + 嵌图 + 超链接 + 锁定"降级为纯 CSV
+### ✅ 3. 采购表导入导出从"样式化 XLS + 嵌图 + 超链接 + 锁定"降级为纯 CSV
 **现象**：老系统 `caigou_export.php`/`caigou_import.php` 是双向往返的 XLS 工作流：导出表格内嵌 1688 商品图片、商品链接做超链接、部分单元格锁定保护，采购员/品检靠图片和链接核对 1688 商品是否对应。php-saas 的 `CsvImportService::purchaseRecord`（字段列位置对应完整，约 192-199 行固定列映射）已降级为纯 CSV，没有图片、没有超链接、没有锁定保护。
 
 **参考**：`old/orderm/caigou_export.php`、`caigou_import.php`；`php-saas/app/Services/CsvImportService.php`；已有 PhpSpreadsheet 嵌图经验可参考 `php-saas/app/Services/SpreadsheetExportService.php` 的 `financeWorkbook`/`customerWorkbook`。
@@ -52,6 +52,8 @@
 **要求**：
 - 用 `SpreadsheetExportService` 同款 PhpSpreadsheet 方式重做采购表导出为 XLSX，嵌入商品图片、1688 链接做超链接、关键字段单元格保护/锁定。
 - 采购表导入端支持解析 XLSX（不只是 CSV）。如果业务方确认纯 CSV 可接受，则本项降级为文档说明，不用代码改造——**需先问用户**。
+
+完成提交：`c28e4e4`
 
 ---
 
