@@ -29,16 +29,17 @@ final class SpreadsheetExportService
      * @param array<int, array<string, mixed>> $orders
      * @return array{name: string, filename: string, path: string, rows: int, format: string}
      */
-    public function financeWorkbook(string $tenantKey, array $orders, string $operator = ''): array
+    public function financeWorkbook(string $tenantKey, array $orders, string $operator = '', string $variant = ''): array
     {
         $this->assertRuntime();
+        $template = $this->financeTemplate($orders, $variant);
 
         $spreadsheet = new Spreadsheet();
         $spreadsheet->getProperties()
             ->setCreator($operator !== '' ? $operator : 'Xizhen SaaS')
             ->setLastModifiedBy($operator !== '' ? $operator : 'Xizhen SaaS')
-            ->setTitle('财务图片核算表')
-            ->setSubject('财务图片核算表')
+            ->setTitle($template['name'])
+            ->setSubject($template['name'])
             ->setCategory('Finance');
 
         $sheet = $spreadsheet->getActiveSheet();
@@ -47,26 +48,8 @@ final class SpreadsheetExportService
         $sheet->getDefaultRowDimension()->setRowHeight(22);
         $sheet->freezePane('A2');
 
-        $headers = [
-            '订单号',
-            '产品编码',
-            '图片',
-            '数量',
-            '客户姓名',
-            '地址',
-            '国内单号',
-            '国内运费',
-            '国际单号',
-            '国际运费',
-            '采购价格',
-            '产品单价',
-            '产品运费',
-            '采购证据图片',
-            '采购状态',
-            '淘宝订单号',
-            '产品总价',
-        ];
-        $widths = [18, 18, 16, 8, 15, 42, 22, 12, 22, 12, 12, 12, 12, 16, 14, 20, 12];
+        $headers = $template['headers'];
+        $widths = $template['widths'];
 
         foreach ($headers as $index => $header) {
             $column = $index + 1;
@@ -74,7 +57,8 @@ final class SpreadsheetExportService
             $sheet->getColumnDimensionByColumn($column)->setWidth($widths[$index]);
         }
 
-        $sheet->getStyle('A1:Q1')->applyFromArray([
+        $lastColumn = count($headers);
+        $sheet->getStyle($this->range(1, 1, $lastColumn, 1))->applyFromArray([
             'font' => ['bold' => true],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EBEBEB']],
@@ -87,51 +71,62 @@ final class SpreadsheetExportService
             $attachments = is_array($order['_attachments'] ?? null) ? $order['_attachments'] : [];
             foreach (array_values(array_filter($order['items'] ?? [], 'is_array')) as $item) {
                 $quantity = max(1, (int) ($item['quantity'] ?? 1));
-                $unitPrice = $this->unitPrice($item, $quantity);
-                $productTotal = $unitPrice * $quantity;
-                $domesticTracking = trim(implode('', array_filter([
-                    (string) ($item['ship_company'] ?? ''),
-                    (string) ($item['ship_number'] ?? ''),
-                ], static fn (string $value): bool => $value !== '')));
-
-                $this->setText($sheet, "A{$row}", (string) ($order['platform_order_id'] ?? ''));
-                $this->setText($sheet, "B{$row}", (string) (($item['item_code'] ?? '') ?: ($item['lot_number'] ?? '')));
-                $sheet->setCellValue("D{$row}", $quantity);
-                $this->setText($sheet, "E{$row}", (string) ($customer['name'] ?? ''));
-                $this->setText($sheet, "F{$row}", (string) ($customer['address'] ?? ''));
-                $this->setText($sheet, "G{$row}", $domesticTracking);
-                $sheet->setCellValue("H{$row}", $this->money($item['cn_amount'] ?? ''));
-                $this->setText($sheet, "I{$row}", (string) (($item['intl_number'] ?? '') ?: ($item['ship_number'] ?? '')));
-                $sheet->setCellValue("J{$row}", $this->money(($item['intl_fee'] ?? '') ?: ($item['com_amount'] ?? '')));
-                $sheet->setCellValue("K{$row}", $this->money($item['amount'] ?? ''));
-                $sheet->setCellValue("L{$row}", $unitPrice);
-                $sheet->setCellValue("M{$row}", $this->money($item['postage_price'] ?? ''));
-                $this->setText($sheet, "O{$row}", (string) ($item['purchase_status'] ?? ''));
-                $this->setText($sheet, "P{$row}", (string) ($item['tabaono'] ?? ''));
-                $sheet->setCellValue("Q{$row}", $productTotal);
+                $rowValues = $this->financeRowValues($template['key'], $order, $item, $customer, $quantity);
+                foreach ($template['columns'] as $index => $key) {
+                    $column = $index + 1;
+                    $cell = $this->cell($column, $row);
+                    $value = $rowValues[$key] ?? '';
+                    if (in_array($key, ['image', 'purchase_evidence'], true)) {
+                        continue;
+                    }
+                    if (in_array($key, $template['text_columns'], true)) {
+                        $this->setText($sheet, $cell, (string) $value);
+                        continue;
+                    }
+                    $sheet->setCellValue($cell, $value);
+                }
 
                 $sheet->getRowDimension($row)->setRowHeight(78);
-                $this->embedImage($sheet, "C{$row}", $this->itemImagePath($item), 92, 92);
-                $this->embedImage($sheet, "N{$row}", $this->purchaseEvidencePath($item, $attachments), 92, 92);
+                foreach ($template['columns'] as $index => $key) {
+                    $cell = $this->cell($index + 1, $row);
+                    if ($key === 'image') {
+                        $this->embedImage($sheet, $cell, $this->itemImagePath($item), 92, 92);
+                    }
+                    if ($key === 'purchase_evidence') {
+                        $this->embedImage($sheet, $cell, $this->purchaseEvidencePath($item, $attachments), 92, 92);
+                    }
+                }
                 $row++;
             }
         }
 
         $lastRow = max(1, $row - 1);
-        $sheet->getStyle("A1:Q{$lastRow}")->applyFromArray([
+        $sheet->getStyle($this->range(1, 1, $lastColumn, $lastRow))->applyFromArray([
             'alignment' => [
                 'vertical' => Alignment::VERTICAL_CENTER,
                 'wrapText' => false,
             ],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'D9D9D9']]],
         ]);
-        $sheet->getStyle("H2:M{$lastRow}")->getNumberFormat()->setFormatCode('#,##0.00');
-        $sheet->getStyle("Q2:Q{$lastRow}")->getNumberFormat()->setFormatCode('#,##0.00');
-        $sheet->getStyle("D2:D{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle("H2:M{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-        $sheet->getStyle("Q2:Q{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        if ($lastRow >= 2) {
+            foreach ($template['numeric_columns'] as $key) {
+                $index = array_search($key, $template['columns'], true);
+                if ($index === false) {
+                    continue;
+                }
+                $range = $this->range((int) $index + 1, 2, (int) $index + 1, $lastRow);
+                $sheet->getStyle($range)->getNumberFormat()->setFormatCode('#,##0.00');
+                $sheet->getStyle($range)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+            }
+            $quantityIndex = array_search('quantity', $template['columns'], true);
+            if ($quantityIndex !== false) {
+                $sheet->getStyle($this->range((int) $quantityIndex + 1, 2, (int) $quantityIndex + 1, $lastRow))
+                    ->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            }
+        }
 
-        return $this->writeWorkbook($spreadsheet, '财务图片核算表', "finance-images-{$tenantKey}-" . date('Ymd-His') . '.xlsx', $lastRow - 1);
+        return $this->writeWorkbook($spreadsheet, $template['name'], $template['filename_prefix'] . "-{$tenantKey}-" . date('Ymd-His') . '.xlsx', $lastRow - 1);
     }
 
     /**
@@ -197,6 +192,121 @@ final class SpreadsheetExportService
         $sheet->setSelectedCell('H2');
 
         return $this->writeWorkbook($spreadsheet, '客户资料 Excel', "customers-legacy-{$tenantKey}-" . date('Ymd-His') . '.xlsx', count($dataset['rows']));
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $orders
+     * @return array{key: string, name: string, filename_prefix: string, headers: array<int, string>, columns: array<int, string>, widths: array<int, int>, numeric_columns: array<int, string>, text_columns: array<int, string>}
+     */
+    private function financeTemplate(array $orders, string $variant): array
+    {
+        $key = strtolower(trim($variant));
+        $key = str_replace('_', '-', $key);
+        if ($key === '') {
+            $platforms = array_values(array_unique(array_filter(array_map(
+                static fn (array $order): string => strtolower((string) ($order['platform'] ?? '')),
+                $orders
+            ))));
+            $key = count($platforms) === 1 ? $platforms[0] : 'default';
+        }
+        $key = match ($key) {
+            'y', 'ordery', 'yahoo', 'yahoo-shop', 'yahoo-shopping', 'yahooshop' => 'ordery',
+            'w', 'orderw', 'wowma' => 'orderw',
+            'orderr-weier', 'orderrweier', 'weier' => 'orderr-weier',
+            default => 'default',
+        };
+
+        $templates = [
+            'default' => [
+                'name' => '财务图片核算表',
+                'filename_prefix' => 'finance-images',
+                'headers' => ['订单号', '产品编码', '图片', '数量', '客户姓名', '地址', '国内单号', '国内运费', '国际单号', '国际运费', '采购价格', '产品单价', '产品运费', '采购证据图片', '采购状态', '淘宝订单号', '产品总价'],
+                'columns' => ['order_no', 'item_code', 'image', 'quantity', 'customer_name', 'address', 'domestic_tracking', 'domestic_fee', 'intl_number', 'intl_fee', 'purchase_price', 'unit_price', 'product_postage', 'purchase_evidence', 'purchase_status', 'taobao_order_no', 'product_total'],
+                'widths' => [18, 18, 16, 8, 15, 42, 22, 12, 22, 12, 12, 12, 12, 16, 14, 20, 12],
+                'numeric_columns' => ['domestic_fee', 'intl_fee', 'purchase_price', 'unit_price', 'product_postage', 'product_total'],
+                'text_columns' => ['order_no', 'item_code', 'customer_name', 'address', 'domestic_tracking', 'intl_number', 'purchase_status', 'taobao_order_no'],
+            ],
+            'ordery' => [
+                'name' => 'Yahoo购物财务核算表',
+                'filename_prefix' => 'finance-yahoo-shop',
+                'headers' => ['订单号', '产品编码', '图片', '数量', '客户姓名', '地址', '国际单号', '国际运费', '采购价格', '产品单价', '产品总价（单价*数量）', '产品运费', '利润', '采购状态'],
+                'columns' => ['order_no', 'item_code', 'image', 'quantity', 'customer_name', 'address', 'intl_number', 'intl_fee', 'purchase_price', 'unit_price', 'product_total', 'product_postage', 'profit', 'purchase_status'],
+                'widths' => [18, 18, 16, 8, 15, 42, 22, 12, 12, 12, 18, 12, 12, 14],
+                'numeric_columns' => ['intl_fee', 'purchase_price', 'unit_price', 'product_total', 'product_postage', 'profit'],
+                'text_columns' => ['order_no', 'item_code', 'customer_name', 'address', 'intl_number', 'purchase_status'],
+            ],
+            'orderw' => [
+                'name' => 'Wowma财务核算表',
+                'filename_prefix' => 'finance-wowma',
+                'headers' => ['订单号', '产品编码', '图片', '数量', '客户姓名', '地址', '国内单号', '国内运费', '国际单号', '国际运费', '采购价格', '单价', '产品单价', '产品运费', '采购证据图片', '采购状态', '淘宝订单号', '产品总价'],
+                'columns' => ['order_no', 'item_code', 'image', 'quantity', 'customer_name', 'address', 'domestic_tracking', 'domestic_fee', 'intl_number', 'intl_fee', 'purchase_price', 'item_price', 'unit_price', 'product_postage', 'purchase_evidence', 'purchase_status', 'taobao_order_no', 'product_total'],
+                'widths' => [18, 18, 16, 8, 15, 42, 22, 12, 22, 12, 12, 12, 12, 12, 16, 14, 20, 12],
+                'numeric_columns' => ['domestic_fee', 'intl_fee', 'purchase_price', 'item_price', 'unit_price', 'product_postage', 'product_total'],
+                'text_columns' => ['order_no', 'item_code', 'customer_name', 'address', 'domestic_tracking', 'intl_number', 'purchase_status', 'taobao_order_no'],
+            ],
+            'orderr-weier' => [
+                'name' => 'WEIER财务核算表',
+                'filename_prefix' => 'finance-weier',
+                'headers' => ['订单号', '产品编码', '店铺名称', '数量', '客户姓名', '地址', '国内单号', '国内运费', '国际单号', '国际运费', '采购价格', '产品单价', '产品运费', '采购证据图片', '采购状态', '淘宝订单号', '产品总价'],
+                'columns' => ['order_no', 'item_code', 'store_name', 'quantity', 'customer_name', 'address', 'domestic_tracking', 'domestic_fee', 'intl_number', 'intl_fee', 'purchase_price', 'unit_price', 'product_postage', 'purchase_evidence', 'purchase_status', 'taobao_order_no', 'product_total'],
+                'widths' => [18, 18, 22, 8, 15, 42, 22, 12, 22, 12, 12, 12, 12, 16, 14, 20, 12],
+                'numeric_columns' => ['domestic_fee', 'intl_fee', 'purchase_price', 'unit_price', 'product_postage', 'product_total'],
+                'text_columns' => ['order_no', 'item_code', 'store_name', 'customer_name', 'address', 'domestic_tracking', 'intl_number', 'purchase_status', 'taobao_order_no'],
+            ],
+        ];
+
+        return ['key' => $key] + $templates[$key];
+    }
+
+    /**
+     * @param array<string, mixed> $order
+     * @param array<string, mixed> $item
+     * @param array<string, mixed> $customer
+     * @return array<string, mixed>
+     */
+    private function financeRowValues(string $template, array $order, array $item, array $customer, int $quantity): array
+    {
+        $extra = is_array($item['platform_extra'] ?? null) ? $item['platform_extra'] : [];
+        $unitPrice = $this->unitPrice($item, $quantity);
+        $itemPrice = $this->money(($extra['itemPrice'] ?? $extra['UnitPrice'] ?? '') ?: ($item['unit_price'] ?? ''));
+        $productUnitPriceSource = $template === 'orderw'
+            ? (($extra['totalItemPrice'] ?? $extra['TotalPrice'] ?? '') ?: ($item['line_total'] ?? ''))
+            : (($item['line_total'] ?? '') ?: ($extra['totalItemPrice'] ?? $extra['TotalPrice'] ?? ''));
+        $productUnitPrice = $this->money($productUnitPriceSource);
+        if ($productUnitPrice <= 0) {
+            $productUnitPrice = $unitPrice;
+        }
+        $financeUnitPrice = $template === 'orderw' ? $productUnitPrice : $unitPrice;
+        if ($template === 'orderw') {
+            $productTotal = $productUnitPrice * $quantity;
+        } else {
+            $productTotal = $unitPrice * $quantity;
+        }
+        $domesticTracking = trim(implode('', array_filter([
+            (string) ($item['ship_company'] ?? ''),
+            (string) ($item['ship_number'] ?? ''),
+        ], static fn (string $value): bool => $value !== '')));
+
+        return [
+            'order_no' => (string) ($order['platform_order_id'] ?? ''),
+            'item_code' => (string) (($item['item_code'] ?? '') ?: ($item['lot_number'] ?? '')),
+            'quantity' => $quantity,
+            'store_name' => (string) ($order['store'] ?? ''),
+            'customer_name' => (string) ($customer['name'] ?? ''),
+            'address' => (string) ($customer['address'] ?? ''),
+            'domestic_tracking' => $domesticTracking,
+            'domestic_fee' => $this->money($item['cn_amount'] ?? ''),
+            'intl_number' => (string) (($item['intl_number'] ?? '') ?: ($item['ship_number'] ?? '')),
+            'intl_fee' => $this->money(($item['intl_fee'] ?? '') ?: ($item['com_amount'] ?? '')),
+            'purchase_price' => $this->money($item['amount'] ?? ''),
+            'item_price' => $itemPrice,
+            'unit_price' => $financeUnitPrice,
+            'product_postage' => $this->money($item['postage_price'] ?? ''),
+            'purchase_status' => (string) ($item['purchase_status'] ?? ''),
+            'taobao_order_no' => (string) ($item['tabaono'] ?? ''),
+            'product_total' => $productTotal,
+            'profit' => $this->money($item['cn_amount'] ?? ''),
+        ];
     }
 
     private function assertRuntime(): void

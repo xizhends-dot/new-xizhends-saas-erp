@@ -1411,7 +1411,7 @@ final class TenantController
         $this->auth->requireAnyTenantPermission($tenantKey, ['导入导出', '财务导出']);
         $orders = $this->service->ordersForExport($tenantKey, $this->auth->currentTenantUser($tenantKey), $this->exportCriteriaFrom($_GET));
         $orders = $this->withOrderAttachments($tenantKey, $orders);
-        $this->sendXlsxFile($tenantKey, $this->buildFinanceWorkbook($tenantKey, $orders));
+        $this->sendXlsxFile($tenantKey, $this->buildFinanceWorkbook($tenantKey, $orders, $this->financeExportVariantFrom($_GET)));
     }
 
     public function exportBrushOrders(): void
@@ -1957,7 +1957,11 @@ final class TenantController
 
         $orders = $this->service->ordersForExport($tenantKey, $this->auth->currentTenantUser($tenantKey), $this->exportCriteriaFrom($source));
         if ($type === 'finance') {
-            $this->sendXlsxFile($tenantKey, $this->buildFinanceWorkbook($tenantKey, $this->withOrderAttachments($tenantKey, $orders)));
+            $this->sendXlsxFile($tenantKey, $this->buildFinanceWorkbook(
+                $tenantKey,
+                $this->withOrderAttachments($tenantKey, $orders),
+                $this->financeExportVariantFrom($source)
+            ));
         }
 
         $dataset = $this->customerExportService->exportDataset($tenantKey, $orders, $source);
@@ -1968,13 +1972,24 @@ final class TenantController
      * @param array<int, array<string, mixed>> $orders
      * @return array{name: string, filename: string, path: string, rows: int, format: string}
      */
-    private function buildFinanceWorkbook(string $tenantKey, array $orders): array
+    private function buildFinanceWorkbook(string $tenantKey, array $orders, string $variant = ''): array
     {
         try {
-            return $this->spreadsheetExportService->financeWorkbook($tenantKey, $orders, $this->currentUserName($tenantKey));
+            return $this->spreadsheetExportService->financeWorkbook($tenantKey, $orders, $this->currentUserName($tenantKey), $variant);
         } catch (RuntimeException $exception) {
             $this->forbid($exception->getMessage());
         }
+    }
+
+    /** @param array<string, mixed> $source */
+    private function financeExportVariantFrom(array $source): string
+    {
+        $variant = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($source['variant'] ?? '')) ?: '';
+        if ($variant !== '') {
+            return $variant;
+        }
+
+        return preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($source['platform'] ?? '')) ?: '';
     }
 
     /**
