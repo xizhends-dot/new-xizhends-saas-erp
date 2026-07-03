@@ -1692,6 +1692,9 @@ final class JsonStore implements StoreInterface
         $all = $this->all();
         $current = $this->tenantSettings($tenantKey);
         $settings = array_replace_recursive($current, $data);
+        if (array_key_exists('export_templates', $data)) {
+            $settings['export_templates'] = $data['export_templates'];
+        }
         $settings['updated_at'] = date('Y-m-d H:i:s');
         $all['settings']['tenant'][$tenantKey] = $settings;
 

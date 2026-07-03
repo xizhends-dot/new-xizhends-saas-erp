@@ -1811,6 +1811,9 @@ SQL)->fetchAll();
     public function saveTenantSettings(string $tenantKey, array $data): void
     {
         $settings = array_replace_recursive($this->tenantSettings($tenantKey), $data);
+        if (array_key_exists('export_templates', $data)) {
+            $settings['export_templates'] = $data['export_templates'];
+        }
         $settings['updated_at'] = date('Y-m-d H:i:s');
 
         $tenantPdo = $this->tenantPdo($tenantKey);
@@ -1818,7 +1821,7 @@ SQL)->fetchAll();
             $stmt = $tenantPdo->prepare(
                 'INSERT INTO tenant_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()'
             );
-            foreach (['company', 'orders', 'profit', 'logistics', 'api_1688', 'notices'] as $section) {
+            foreach (['company', 'orders', 'profit', 'logistics', 'api_1688', 'notices', 'export_templates'] as $section) {
                 $stmt->execute([
                     $section,
                     json_encode($settings[$section] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),

@@ -399,7 +399,7 @@ git commit -m "feat: 发货单导出字段注册表 ExportFieldRegistry"
 
 **背景(为什么要改 Store):** 两个 Store 的 `saveTenantSettings` 都用 `array_replace_recursive` 合并——对列表(数字索引数组)会按索引合并,删除模板后旧列表尾部元素会残留。因此 `export_templates` 键必须**整体替换**。另外 `MysqlStore::saveTenantSettings` 只持久化固定 section 白名单 `['company','orders','profit','logistics','api_1688','notices']`,不加白名单该键在 MySQL 驱动下会**静默丢失**。
 
-- [ ] **Step 1: 修改 JsonStore::saveTenantSettings(整体替换语义)**
+- [x] **Step 1: 修改 JsonStore::saveTenantSettings(整体替换语义)**
 
 在 `php-saas/app/Core/JsonStore.php` 的 `saveTenantSettings` 中,`$settings = array_replace_recursive($current, $data);` 之后紧接着加:
 
@@ -409,7 +409,7 @@ git commit -m "feat: 发货单导出字段注册表 ExportFieldRegistry"
         }
 ```
 
-- [ ] **Step 2: 修改 MysqlStore::saveTenantSettings(同语义 + section 白名单)**
+- [x] **Step 2: 修改 MysqlStore::saveTenantSettings(同语义 + section 白名单)**
 
 在 `php-saas/app/Core/MysqlStore.php` 的 `saveTenantSettings` 中:
 1. `$settings = array_replace_recursive(...)` 后加与 Step 1 完全相同的 3 行;
@@ -417,7 +417,7 @@ git commit -m "feat: 发货单导出字段注册表 ExportFieldRegistry"
 
 注意:该方法内 section 值以 `json_encode($settings[$section] ?? [])` 写入 `tenant_settings` 表(key-value 结构),`export_templates` 是数组,无需建表迁移。
 
-- [ ] **Step 3: 写失败测试**
+- [x] **Step 3: 写失败测试**
 
 创建 `php-saas/tests/export_template_service_test.php`:
 
@@ -511,14 +511,14 @@ if ($failures !== []) {
 echo "ExportTemplateService test OK\n";
 ```
 
-- [ ] **Step 4: 运行测试确认失败**
+- [x] **Step 4: 运行测试确认失败**
 
 ```bash
 cd php-saas && php tests/export_template_service_test.php
 ```
 预期:FAIL(ExportTemplateService 不存在)。
 
-- [ ] **Step 5: 实现 ExportTemplateService**
+- [x] **Step 5: 实现 ExportTemplateService**
 
 创建 `php-saas/app/Services/ExportTemplateService.php`:
 
@@ -835,7 +835,7 @@ final class ExportTemplateService
 
 注意 `validateColumns` 中 const 的 value 判断:意图是"必须存在 value 键且为标量(空字符串允许)"。实现为 `!array_key_exists('value', $column) || !is_scalar($column['value'])` 时报错——上面代码里的复合条件按此意图写,若测试跑不过按此意图修正优先级括号。
 
-- [ ] **Step 6: 运行测试确认通过**
+- [x] **Step 6: 运行测试确认通过**
 
 ```bash
 cd php-saas && php tests/export_template_service_test.php
@@ -843,7 +843,7 @@ php tests/export_field_registry_test.php
 ```
 预期:两个测试都 OK。若 JsonStore 对 fixture 结构有额外要求(如缺 `users` 键报 warning),按报错补齐 fixture 顶层键,断言不变。
 
-- [ ] **Step 7: 提交**
+- [x] **Step 7: 提交**
 
 ```bash
 git add php-saas/app/Services/ExportTemplateService.php php-saas/tests/export_template_service_test.php php-saas/app/Core/JsonStore.php php-saas/app/Core/MysqlStore.php
