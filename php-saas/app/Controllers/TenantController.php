@@ -16,6 +16,8 @@ use Xizhen\Services\CustomerServiceDeductionService;
 use Xizhen\Services\ExpressLogisticsService;
 use Xizhen\Services\FinanceExportRequirementService;
 use Xizhen\Services\FinanceImportMatcherService;
+use Xizhen\Services\ExportFieldRegistry;
+use Xizhen\Services\ExportTemplateService;
 use Xizhen\Services\JapanWarehouseImportService;
 use Xizhen\Services\JapanLogisticsService;
 use Xizhen\Services\LegacySettingsService;
@@ -56,6 +58,7 @@ final class TenantController
     private PurchaseStatsService $purchaseStatsService;
     private PriceCalculatorService $priceCalculatorService;
     private PlatformExportService $platformExportService;
+    private ExportTemplateService $exportTemplateService;
     private FinanceImportMatcherService $financeImportMatcherService;
     private ShippingImportModeService $shippingImportModeService;
     private JapanWarehouseImportService $japanWarehouseImportService;
@@ -87,6 +90,7 @@ final class TenantController
         $this->purchaseStatsService = new PurchaseStatsService($store);
         $this->priceCalculatorService = new PriceCalculatorService($store);
         $this->platformExportService = new PlatformExportService();
+        $this->exportTemplateService = new ExportTemplateService($store);
         $this->financeImportMatcherService = new FinanceImportMatcherService();
         $this->shippingImportModeService = new ShippingImportModeService();
         $this->japanWarehouseImportService = new JapanWarehouseImportService();
@@ -1357,19 +1361,13 @@ final class TenantController
         $tenantKey = current_tenant_key();
         $this->requireTenantFeature($tenantKey, 'import_export.center');
         $this->auth->requireAnyTenantPermission($tenantKey, ['导入导出', '采购导入导出']);
-        $orders = $this->service->ordersForExport($tenantKey, $this->auth->currentTenantUser($tenantKey), $this->exportCriteriaFrom($_GET));
-        $previewDatasets = [];
-        foreach (array_slice(array_keys($this->platformExportService->variants()), 0, 3) as $variant) {
-            $dataset = $this->platformExportService->exportDataset($tenantKey, $variant, $orders, ['strict_platform' => false]);
-            $dataset['rows'] = array_slice($dataset['rows'], 0, 3);
-            $previewDatasets[] = $dataset;
-        }
 
         $this->renderTenant('tenant/import_export_non_excel', $tenantKey, [
             'title' => '非 Excel 导入导出',
             'active' => 'import_export',
-            'platformVariants' => $this->platformExportService->variants(),
-            'previewDatasets' => $previewDatasets,
+            'exportTemplates' => $this->exportTemplateService->templatesForTenant($tenantKey),
+            'canManageTemplates' => $this->auth->tenantCan($tenantKey, '公司设置'),
+            'message' => (string) ($_GET['message'] ?? ''),
             'importPreviews' => [],
             'stores' => $this->accessibleStoresForCurrentUser($tenantKey),
             'excelRequirements' => array_merge(
@@ -1382,15 +1380,120 @@ final class TenantController
         ]);
     }
 
+    public function exportTemplateEdit(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'import_export.center');
+        $this->auth->requireTenantPermission($tenantKey, '公司设置');
+        $id = trim((string) ($_GET['id'] ?? ''));
+        $template = null;
+        if ($id !== '') {
+            $template = $this->exportTemplateService->find($tenantKey, $id);
+            if ($template === null) {
+                $this->forbid('导出模板不存在。');
+            }
+            if (str_starts_with((string) ($template['id'] ?? ''), 'builtin_')) {
+                $template['id'] = '';
+                $template['name'] = (string) $template['name'] . '（副本）';
+            }
+        }
+
+        $this->renderTenant('tenant/export_template_edit', $tenantKey, [
+            'title' => $template === null ? '新建导出模板' : '编辑导出模板',
+            'active' => 'import_export',
+            'template' => $template,
+            'fieldGroups' => ExportFieldRegistry::groups(),
+            'errors' => [],
+        ]);
+    }
+
+    public function saveExportTemplate(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'import_export.center');
+        $this->auth->requireTenantPermission($tenantKey, '公司设置');
+        $columns = json_decode((string) ($_POST['columns_json'] ?? '[]'), true);
+        $input = [
+            'id' => trim((string) ($_POST['id'] ?? '')),
+            'name' => trim((string) ($_POST['name'] ?? '')),
+            'format' => (string) ($_POST['format'] ?? 'xlsx'),
+            'columns' => is_array($columns) ? $columns : [],
+        ];
+        $result = $this->exportTemplateService->save($tenantKey, $input);
+        if ($result['errors'] !== []) {
+            $this->renderTenant('tenant/export_template_edit', $tenantKey, [
+                'title' => '编辑导出模板',
+                'active' => 'import_export',
+                'template' => $input + ['id' => $input['id']],
+                'fieldGroups' => ExportFieldRegistry::groups(),
+                'errors' => $result['errors'],
+            ]);
+            return;
+        }
+
+        header('Location: /import-export/non-excel?tenant=' . urlencode($tenantKey) . '&message=' . urlencode('模板已保存。'));
+        exit;
+    }
+
+    public function deleteExportTemplate(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'import_export.center');
+        $this->auth->requireTenantPermission($tenantKey, '公司设置');
+        $id = trim((string) ($_POST['id'] ?? ''));
+        $message = $this->exportTemplateService->delete($tenantKey, $id) ? '模板已删除。' : '模板不存在或为系统预置,无法删除。';
+        header('Location: /import-export/non-excel?tenant=' . urlencode($tenantKey) . '&message=' . urlencode($message));
+        exit;
+    }
+
+    public function previewExportTemplate(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'import_export.center');
+        $this->auth->requireTenantPermission($tenantKey, '公司设置');
+        header('Content-Type: application/json; charset=UTF-8');
+        $columns = json_decode((string) ($_POST['columns_json'] ?? '[]'), true);
+        $errors = $this->exportTemplateService->validateColumns(is_array($columns) ? $columns : []);
+        if ($errors !== []) {
+            echo json_encode(['ok' => false, 'errors' => $errors], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        $orders = array_slice(
+            $this->service->ordersForExport($tenantKey, $this->auth->currentTenantUser($tenantKey), $this->exportCriteriaFrom($_POST)),
+            0,
+            3
+        );
+        $dataset = $this->platformExportService->render(
+            ['id' => 'preview', 'name' => '预览', 'format' => 'csv', 'columns' => $columns],
+            $orders
+        );
+        echo json_encode(['ok' => true, 'headers' => $dataset['headers'], 'rows' => $dataset['rows']], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     public function exportPlatformSpecial(): void
     {
         $tenantKey = current_tenant_key();
         $this->requireTenantFeature($tenantKey, 'import_export.center');
         $this->requireTenantFeature($tenantKey, 'import_export.platform_special');
         $this->auth->requireTenantPermission($tenantKey, '导入导出');
-        $variant = preg_replace('/[^a-z0-9_]/', '', (string) ($_GET['variant'] ?? 'riya')) ?: 'riya';
+        $templateId = trim((string) ($_GET['template_id'] ?? ''));
+        if ($templateId === '') {
+            $legacy = preg_replace('/[^a-z0-9_]/', '', (string) ($_GET['variant'] ?? 'riya')) ?: 'riya';
+            $templateId = $this->exportTemplateService->fromLegacyVariant($legacy) ?? 'builtin_riya';
+        }
+        $template = $this->exportTemplateService->find($tenantKey, $templateId);
+        if ($template === null) {
+            $this->forbid('导出模板不存在。');
+        }
+
         $orders = $this->service->ordersForExport($tenantKey, $this->auth->currentTenantUser($tenantKey), $this->exportCriteriaFrom($_GET));
-        $dataset = $this->platformExportService->exportDataset($tenantKey, $variant, $orders, ['strict_platform' => !empty($_GET['strict_platform'])]);
+        $dataset = $this->platformExportService->render($template, $orders);
+        if ($dataset['format'] === 'xlsx') {
+            $this->sendXlsxFile($tenantKey, $this->spreadsheetExportService->shippingWorkbook($tenantKey, $dataset, $this->currentUserName($tenantKey)));
+        }
+
         $this->sendCsvDataset($tenantKey, $dataset);
     }
 
