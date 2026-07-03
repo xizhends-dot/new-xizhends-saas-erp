@@ -107,12 +107,16 @@
 
 ---
 
-### ☐ 7. `outexcel` 平台专用发货单导出格式覆盖不全
+### ✅ 7. `outexcel` 平台专用发货单导出格式覆盖不全
 **现象**：`php-saas/app/Services/PlatformExportService.php` 只做了 riya/sx/wd/qoo10/wowma 5 个变体，老系统实际还有默认版 `outexcel.php`、`outexcel2.php`、`outexcel3.php`（EDM 变量表，orderr 独有）、`outexcel4.php`（佐川 EDI，orderr 独有）、`outexcel_shipment.php`（orderm+orderyp 独有）等至少 5 类未迁移。
 
 **参考**：先用 Grep 在 `old/` 全库搜索 `outexcel` 确认完整清单（分布在 `old/{orderm,orderq,orderr,orderw,ordery,orderyp}/` 下）；`php-saas/app/Services/PlatformExportService.php`。
 
 **要求**：为遗漏的每种格式在 `PlatformExportService` 增加对应导出方法，字段与老版逐列核对。
+
+**方案变更(2026-07-03,业务方决定)**:不再逐个复刻老 outexcel 变体,改为"字段注册表 + 租户自定义导出模板"统一机制(自选列/排序/固定值列/CSV·XLSX 嵌图),5 个已迁移模板转为预置模板。设计见 `docs/specs/2026-07-03-custom-export-templates-design.md`。老系统剩余变体(EDM/佐川 EDI 等)由各公司管理员用该机制自行配置,配不出来的再评估。
+
+完成提交:`e309a78`
 
 ---
 

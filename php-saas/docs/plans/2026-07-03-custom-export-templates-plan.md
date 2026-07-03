@@ -1823,7 +1823,7 @@ git commit -m "feat: 发货单导出模板管理界面与列编辑器"
 - Modify: `php-saas/docs/audit-2026-07-02-fix-tasks.md`(第 7 项)
 - Modify: `php-saas/docs/specs/2026-07-03-custom-export-templates-design.md`(状态行)
 
-- [ ] **Step 1: 更新审计任务清单第 7 项**
+- [x] **Step 1: 更新审计任务清单第 7 项**
 
 把第 7 项标题的 ☐ 改为 ✅,并在正文追加一段:
 
@@ -1833,11 +1833,11 @@ git commit -m "feat: 发货单导出模板管理界面与列编辑器"
 完成提交:`<实施完成后的 commit hash>`
 ```
 
-- [ ] **Step 2: 更新设计文档状态**
+- [x] **Step 2: 更新设计文档状态**
 
 `docs/specs/2026-07-03-custom-export-templates-design.md` 开头"状态"行改为:`状态:已实施(2026-07-0X,commit <hash>)`。
 
-- [ ] **Step 3: 全量回归 + 提交**
+- [x] **Step 3: 全量回归 + 提交**
 
 ```bash
 cd php-saas && php tests/export_field_registry_test.php && php tests/export_template_service_test.php && php tests/platform_export_render_test.php && php tests/shipping_xlsx_workflow_test.php && php tests/purchase_xlsx_workflow_test.php && php tests/rakuten_order_mapping_test.php
