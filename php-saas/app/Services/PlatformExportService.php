@@ -4,412 +4,90 @@ declare(strict_types=1);
 
 namespace Xizhen\Services;
 
+use Xizhen\Core\StoreInterface;
+
+/**
+ * 发货单导出统一渲染引擎:模板(预置或租户自定义) + 订单集 → headers/rows。
+ * 字段取值逻辑全部在 ExportFieldRegistry;本类只做列遍历、raw 路径、CSV 防注入。
+ */
 final class PlatformExportService
 {
-    /** @var array<string, array{name: string, source: string, platform: string, note: string}> */
-    private const VARIANTS = [
-        'riya' => [
-            'name' => '日亚发货单 CSV',
-            'source' => 'old/*/outexcel-riya.php',
-            'platform' => 'y',
-            'note' => '保留旧表头和字段顺序；图片列输出图片 URL/路径，不嵌入图片。',
-        ],
-        'sx' => [
-            'name' => '盛欣发货单 CSV',
-            'source' => 'old/ordery/outexcel-sx.php',
-            'platform' => 'y',
-            'note' => '旧版 HTML Excel 的合并单元格改为每行重复订单号。',
-        ],
-        'wd' => [
-            'name' => '万达发货单 CSV',
-            'source' => 'old/ordery/outexcel-wd.php',
-            'platform' => 'y',
-            'note' => '字段与盛欣模板一致，CSV 不保留单元格颜色。',
-        ],
-        'qoo10' => [
-            'name' => 'Qoo10 出荷表 CSV',
-            'source' => 'old/orderq/outexcel_qoo10.php',
-            'platform' => 'q',
-            'note' => '按 Qoo10 订购号码、配送会社、送り状番号、国家列输出。',
-        ],
-        'wowma' => [
-            'name' => 'Wowma 出荷表 CSV',
-            'source' => 'old/orderw/outexcel_wowma.php',
-            'platform' => 'w',
-            'note' => '保留 Wowma 更新列；shippingCarrier 使用现有物流公司或运单前缀推断值。',
-        ],
-    ];
-
-    /** @return array<string, array{name: string, source: string, platform: string, note: string}> */
-    public function variants(): array
-    {
-        return self::VARIANTS;
-    }
-
     /**
+     * @param array<string, mixed> $template
      * @param array<int, array<string, mixed>> $orders
-     * @param array<string, mixed> $options
-     * @return array{name: string, filename: string, headers: array<int, string>, rows: array<int, array<int, mixed>>, source: string, note: string}
+     * @return array{name: string, filename: string, format: string, headers: array<int, string>, rows: array<int, array<int, mixed>>, imageColumns: array<int, int>}
      */
-    public function exportDataset(string $tenantKey, string $variant, array $orders, array $options = []): array
+    public function render(array $template, array $orders): array
     {
-        $variant = strtolower(trim($variant));
-        if (!isset(self::VARIANTS[$variant])) {
-            $variant = 'riya';
+        $columns = array_values(array_filter((array) ($template['columns'] ?? []), 'is_array'));
+        $format = strtolower((string) ($template['format'] ?? 'csv')) === 'xlsx' ? 'xlsx' : 'csv';
+        $fields = ExportFieldRegistry::fields();
+
+        $headers = [];
+        $imageColumns = [];
+        foreach ($columns as $index => $column) {
+            $headers[] = (string) ($column['label'] ?? '');
+            if (($column['type'] ?? '') === 'field' && ($fields[(string) ($column['key'] ?? '')]['type'] ?? '') === 'image') {
+                $imageColumns[] = $index;
+            }
         }
 
-        $meta = self::VARIANTS[$variant];
-        $today = date('Ymd-His');
-        $orders = $this->filterOrdersByVariantPlatform($orders, $meta['platform'], (bool) ($options['strict_platform'] ?? false));
-        [$headers, $rows] = match ($variant) {
-            'sx', 'wd' => $this->sxRows($orders),
-            'qoo10' => $this->qoo10Rows($orders),
-            'wowma' => $this->wowmaRows($orders),
-            default => $this->riyaRows($orders),
-        };
+        $rows = [];
+        foreach ($orders as $order) {
+            if (!is_array($order)) {
+                continue;
+            }
+            foreach (array_filter((array) ($order['items'] ?? []), 'is_array') as $item) {
+                $row = [];
+                foreach ($columns as $column) {
+                    $row[] = $this->cellValue($column, $order, $item);
+                }
+                $rows[] = $row;
+            }
+        }
 
         return [
-            'name' => $meta['name'],
-            'filename' => "{$variant}-{$tenantKey}-{$today}.csv",
+            'name' => (string) ($template['name'] ?? '发货单导出'),
+            'filename' => 'shipping-' . date('Ymd-His') . '.' . $format,
+            'format' => $format,
             'headers' => $headers,
             'rows' => $this->safeRows($rows),
-            'source' => $meta['source'],
-            'note' => $meta['note'],
+            'imageColumns' => $imageColumns,
         ];
     }
 
     /**
-     * @param array<int, array<string, mixed>> $orders
-     * @return array{0: array<int, string>, 1: array<int, array<int, mixed>>}
+     * @param array<string, mixed> $column
+     * @param array<string, mixed> $order
+     * @param array<string, mixed> $item
      */
-    private function riyaRows(array $orders): array
+    private function cellValue(array $column, array $order, array $item): mixed
     {
-        $headers = [
-            '日期',
-            '国内单号',
-            '产品图片',
-            '渠道名称（普货/带电）',
-            '备注1',
-            '备注2',
-            '订单号',
-            '佐川单号',
-            '发件公司名英文',
-            '发件公司电话',
-            '发件公司地址',
-            '收件电话',
-            '收件人',
-            '收件人2',
-            '收件人邮编',
-            '收件人地址',
-            '重量',
-            '长（CM）',
-            '宽（CM）',
-            '高（CM）',
-            '申报商品数量',
-            '申报币种',
-            '第一品名（英文）',
-            '材质（英文）',
-            '数量',
-            '单价（USD）',
-        ];
-
-        $rows = [];
-        foreach ($orders as $order) {
-            $customer = $this->customer($order);
-            foreach ($this->items($order) as $item) {
-                $rows[] = [
-                    date('m-d'),
-                    $this->domesticTracking($item),
-                    $this->image($item),
-                    '',
-                    (string) ($item['option'] ?? ''),
-                    (string) ($item['comment'] ?? ''),
-                    (string) ($order['platform_order_id'] ?? ''),
-                    '',
-                    '',
-                    '',
-                    '',
-                    $this->phone((string) ($customer['phone'] ?? '')),
-                    (string) ($customer['name'] ?? ''),
-                    '',
-                    $this->zip((string) ($customer['zip'] ?? '')),
-                    $this->address($customer),
-                    '',
-                    '',
-                    '',
-                    '',
-                    '',
-                    '',
-                    '',
-                    '',
-                    $this->quantity($item),
-                    $this->usdUnitPrice($item),
-                ];
-            }
-        }
-
-        return [$headers, $rows];
+        return match ((string) ($column['type'] ?? '')) {
+            'field' => ExportFieldRegistry::resolve((string) ($column['key'] ?? ''), $order, $item),
+            'const' => (string) ($column['value'] ?? ''),
+            'raw' => $this->rawValue((string) ($column['path'] ?? ''), $order, $item),
+            default => '',
+        };
     }
 
     /**
-     * @param array<int, array<string, mixed>> $orders
-     * @return array{0: array<int, string>, 1: array<int, array<int, mixed>>}
+     * @param array<string, mixed> $order
+     * @param array<string, mixed> $item
      */
-    private function sxRows(array $orders): array
+    private function rawValue(string $path, array $order, array $item): string
     {
-        $headers = [
-            '日期',
-            '订单号',
-            '派送单号',
-            '重量',
-            '收货人',
-            '收货人电话',
-            '收货人地址',
-            '收货人邮编',
-            '国内快递单号',
-            '图片',
-            '数量',
-            '品名',
-            '颜色',
-            '备注',
-            '西阵电商公司备注',
-        ];
-
-        $rows = [];
-        foreach ($orders as $order) {
-            $customer = $this->customer($order);
-            foreach ($this->items($order) as $item) {
-                $rows[] = [
-                    '',
-                    (string) ($order['platform_order_id'] ?? ''),
-                    '',
-                    (string) ($item['weight'] ?? ''),
-                    (string) ($customer['name'] ?? ''),
-                    $this->phone((string) ($customer['phone'] ?? '')),
-                    $this->address($customer),
-                    $this->zip((string) ($customer['zip'] ?? '')),
-                    $this->domesticTracking($item),
-                    $this->image($item),
-                    $this->quantity($item),
-                    (string) ($item['title'] ?? ''),
-                    (string) (($item['chinese_option'] ?? '') ?: ($item['option'] ?? '')),
-                    (string) ($item['tranship_comment'] ?? ''),
-                    (string) ($item['comment'] ?? ''),
-                ];
-            }
+        $value = null;
+        if (str_starts_with($path, 'order.')) {
+            $value = $order[substr($path, 6)] ?? null;
+        } elseif (str_starts_with($path, 'item.')) {
+            $value = $item[substr($path, 5)] ?? null;
+        } elseif (str_starts_with($path, 'customer.')) {
+            $customer = is_array($order['customer'] ?? null) ? $order['customer'] : [];
+            $value = $customer[substr($path, 9)] ?? null;
         }
 
-        return [$headers, $rows];
-    }
-
-    /**
-     * @param array<int, array<string, mixed>> $orders
-     * @return array{0: array<int, string>, 1: array<int, array<int, mixed>>}
-     */
-    private function qoo10Rows(array $orders): array
-    {
-        $headers = ['订购号码', '运送公司', '运送单号', '订购国家'];
-        $rows = [];
-        foreach ($orders as $order) {
-            foreach ($this->items($order) as $item) {
-                $rows[] = [
-                    (string) (($item['order_detail_id'] ?? '') ?: ($order['platform_order_id'] ?? '')),
-                    (string) (($item['ship_company'] ?? '') ?: ($order['ship_method'] ?? '')),
-                    $this->internationalTracking($item),
-                    'JP',
-                ];
-            }
-        }
-
-        return [$headers, $rows];
-    }
-
-    /**
-     * @param array<int, array<string, mixed>> $orders
-     * @return array{0: array<int, string>, 1: array<int, array<int, mixed>>}
-     */
-    private function wowmaRows(array $orders): array
-    {
-        $headers = [
-            'controlType',
-            'orderId',
-            'orderStatus',
-            'printStatus',
-            'shipStatus',
-            'shippingDate',
-            'shippingCarrier',
-            'shippingNumber',
-            '国际运单状态（需删除）',
-            '店铺名（需删除）',
-            '订单时间',
-        ];
-
-        $rows = [];
-        foreach ($orders as $order) {
-            foreach ($this->items($order) as $item) {
-                $tracking = $this->internationalTracking($item);
-                $rows[] = [
-                    'U',
-                    (string) ($order['platform_order_id'] ?? ''),
-                    'Finish_send',
-                    'Y',
-                    'Y',
-                    date('Y/m/d'),
-                    $this->carrierCode($tracking, (string) ($item['ship_company'] ?? '')),
-                    $tracking,
-                    (string) (($item['intl_status'] ?? '') ?: ($item['logistics'] ?? '')),
-                    (string) ($order['store'] ?? ''),
-                    (string) ($order['order_date'] ?? ''),
-                ];
-            }
-        }
-
-        return [$headers, $rows];
-    }
-
-    /**
-     * @param array<int, array<string, mixed>> $orders
-     * @return array<int, array<string, mixed>>
-     */
-    private function filterOrdersByVariantPlatform(array $orders, string $platform, bool $strict): array
-    {
-        if (!$strict || $platform === '') {
-            return $orders;
-        }
-
-        return array_values(array_filter(
-            $orders,
-            static fn (array $order): bool => (string) ($order['platform'] ?? '') === $platform
-        ));
-    }
-
-    /** @param array<string, mixed> $order @return array<string, mixed> */
-    private function customer(array $order): array
-    {
-        return is_array($order['customer'] ?? null) ? $order['customer'] : [];
-    }
-
-    /** @param array<string, mixed> $order @return array<int, array<string, mixed>> */
-    private function items(array $order): array
-    {
-        return array_values(array_filter($order['items'] ?? [], 'is_array'));
-    }
-
-    /** @param array<string, mixed> $customer */
-    private function address(array $customer): string
-    {
-        $parts = array_filter([
-            (string) ($customer['prefecture'] ?? ''),
-            (string) ($customer['city'] ?? ''),
-            (string) ($customer['address1'] ?? ''),
-            (string) ($customer['address2'] ?? ''),
-        ], static fn (string $value): bool => trim($value) !== '');
-
-        return $parts ? implode('', $parts) : (string) ($customer['address'] ?? '');
-    }
-
-    private function phone(string $value): string
-    {
-        $value = trim($value);
-        if ($value !== '' && !str_contains($value, '-') && !str_starts_with($value, '0')) {
-            return '0' . $value;
-        }
-
-        return $value;
-    }
-
-    private function zip(string $value): string
-    {
-        $value = trim($value);
-        if ($value !== '' && !str_contains($value, '-') && strlen($value) !== 7) {
-            return str_pad($value, 7, '0', STR_PAD_LEFT);
-        }
-
-        return $value;
-    }
-
-    /** @param array<string, mixed> $item */
-    private function domesticTracking(array $item): string
-    {
-        return trim(implode(' ', array_filter([
-            (string) ($item['ship_company'] ?? ''),
-            (string) ($item['ship_number'] ?? ''),
-        ], static fn (string $value): bool => trim($value) !== '')));
-    }
-
-    /** @param array<string, mixed> $item */
-    private function internationalTracking(array $item): string
-    {
-        return trim((string) (($item['intl_number'] ?? '') ?: ($item['ship_number'] ?? '')));
-    }
-
-    /** @param array<string, mixed> $item */
-    private function image(array $item): string
-    {
-        return (string) (($item['sku_image'] ?? '') ?: (($item['main_image'] ?? '') ?: ($item['image'] ?? '')));
-    }
-
-    /** @param array<string, mixed> $item */
-    private function quantity(array $item): int
-    {
-        return max(1, (int) ($item['quantity'] ?? 1));
-    }
-
-    /** @param array<string, mixed> $item */
-    private function usdUnitPrice(array $item): string
-    {
-        $price = $this->money((string) ($item['unit_price'] ?? '0'));
-        if ($price <= 0) {
-            return '';
-        }
-
-        return (string) round($price / 2 / 145, 2);
-    }
-
-    private function carrierCode(string $tracking, string $fallback): string
-    {
-        $tracking = trim($tracking);
-        if ($tracking === '') {
-            return $fallback;
-        }
-
-        $prefixMap = [
-            '368' => '1',
-            '28' => '1',
-            '654' => '1',
-            '597' => '1',
-            '763' => '1',
-            '766' => '1',
-            '281' => '1',
-            '44' => '1',
-            '47' => '1',
-            '361' => '2',
-            '35' => '2',
-            '01' => '2',
-            '51' => '2',
-            '56' => '2',
-            '32' => '6',
-            '42' => '6',
-            '52' => '6',
-            '82' => '6',
-            '48' => '1',
-            '37' => '1',
-            '36' => '2',
-            '39' => '1',
-        ];
-        foreach ($prefixMap as $prefix => $code) {
-            if (str_starts_with($tracking, (string) $prefix)) {
-                return $code;
-            }
-        }
-
-        return $fallback;
-    }
-
-    private function money(string $value): float
-    {
-        $value = str_replace([',', '¥', '￥', '円', ' '], '', trim($value));
-        return is_numeric($value) ? (float) $value : 0.0;
+        return is_scalar($value) ? (string) $value : '';
     }
 
     /** @param array<int, array<int, mixed>> $rows @return array<int, array<int, mixed>> */
@@ -428,5 +106,495 @@ final class PlatformExportService
         }
 
         return preg_match('/^[=+\-@]/', $value) === 1 ? "'" . $value : $value;
+    }
+
+    /** @deprecated Task 5 切换到模板机制后删除。 @return array<string, array{name: string, source: string, platform: string, note: string}> */
+    public function variants(): array
+    {
+        $meta = [];
+        foreach ($this->templateService()->builtinTemplates() as $template) {
+            $key = substr((string) $template['id'], strlen('builtin_'));
+            $meta[$key] = ['name' => (string) $template['name'], 'source' => 'builtin', 'platform' => '', 'note' => '预置模板(过渡兼容)'];
+        }
+
+        return $meta;
+    }
+
+    /** @deprecated Task 5 切换到模板机制后删除。 */
+    public function exportDataset(string $tenantKey, string $variant, array $orders, array $options = []): array
+    {
+        $service = $this->templateService();
+        $template = $service->find($tenantKey, $service->fromLegacyVariant(strtolower(trim($variant))) ?? 'builtin_riya')
+            ?? $service->builtinTemplates()[0];
+        $template['format'] = 'csv';
+        $dataset = $this->render($template, $orders);
+        $dataset['source'] = 'builtin';
+        $dataset['note'] = '预置模板(过渡兼容)';
+
+        return $dataset;
+    }
+
+    private function templateService(): ExportTemplateService
+    {
+        return new ExportTemplateService(new class implements StoreInterface {
+            /** @return array<string, mixed> */
+            public function all(): array
+            {
+                return [];
+            }
+
+            /** @return array<int, array<string, mixed>> */
+            public function tenants(): array
+            {
+                return [];
+            }
+
+            /** @return array<string, mixed>|null */
+            public function adminByUsername(string $username): ?array
+            {
+                return null;
+            }
+
+            public function touchAdminLogin(int $adminId): void
+            {
+            }
+
+            /** @return array<string, mixed> */
+            public function tenant(string $key): array
+            {
+                return ['key' => $key];
+            }
+
+            /** @return array<int, array<string, mixed>> */
+            public function platforms(): array
+            {
+                return [];
+            }
+
+            /** @return array<int, array<string, mixed>> */
+            public function orders(string $tenantKey): array
+            {
+                return [];
+            }
+
+            /** @param array<int, string> $stores @return array<int, array<string, mixed>> */
+            public function ordersForStores(string $tenantKey, array $stores): array
+            {
+                return [];
+            }
+
+            /** @return array<string, mixed>|null */
+            public function order(string $tenantKey, int $orderId): ?array
+            {
+                return null;
+            }
+
+            /** @return array<int, array<string, mixed>> */
+            public function announcements(): array
+            {
+                return [];
+            }
+
+            /** @return array<int, array<string, mixed>> */
+            public function tenantPlatforms(string $tenantKey): array
+            {
+                return [];
+            }
+
+            /** @return array<int, array<string, mixed>> */
+            public function tenantFeatures(string $tenantKey): array
+            {
+                return [];
+            }
+
+            /** @return array<string, mixed> */
+            public function tenantBillingAccount(string $tenantKey): array
+            {
+                return [];
+            }
+
+            /** @return array<int, array<string, mixed>> */
+            public function tenantBillingLedger(string $tenantKey, int $limit = 50): array
+            {
+                return [];
+            }
+
+            /** @return array<int, array<string, mixed>> */
+            public function tenantBillingSubscriptions(string $tenantKey): array
+            {
+                return [];
+            }
+
+            public function adjustTenantPoints(string $tenantKey, int $amount, string $type, string $note, string $operator): void
+            {
+            }
+
+            public function chargeTenantPoints(string $tenantKey, int $amount, string $note, string $operator): bool
+            {
+                return false;
+            }
+
+            /** @return array<string, mixed> */
+            public function processDueTenantBilling(string $tenantKey, string $operator = 'system'): array
+            {
+                return [];
+            }
+
+            /** @return array<int, array<string, mixed>> */
+            public function stores(string $tenantKey): array
+            {
+                return [];
+            }
+
+            /** @return array<string, mixed>|null */
+            public function store(string $tenantKey, int $storeId): ?array
+            {
+                return null;
+            }
+
+            /** @param array<string, mixed> $data */
+            public function addStore(string $tenantKey, array $data): bool
+            {
+                return false;
+            }
+
+            /** @param array<string, mixed> $data */
+            public function updateStore(string $tenantKey, int $storeId, array $data): void
+            {
+            }
+
+            /** @param array<string, mixed> $patch */
+            public function mergeStoreApiConfig(string $tenantKey, int $storeId, array $patch, string $apiStatus = '已配置'): void
+            {
+            }
+
+            /** @return array<int, array<string, mixed>> */
+            public function users(string $tenantKey): array
+            {
+                return [];
+            }
+
+            /** @return array<string, mixed>|null */
+            public function user(string $tenantKey, int $userId): ?array
+            {
+                return null;
+            }
+
+            /** @return array<string, mixed>|null */
+            public function tenantUserByUsername(string $tenantKey, string $username): ?array
+            {
+                return null;
+            }
+
+            public function updateTenantUserPassword(string $tenantKey, int $userId, string $passwordHash): void
+            {
+            }
+
+            public function touchTenantUserLogin(string $tenantKey, int $userId): void
+            {
+            }
+
+            /** @param array<string, mixed> $data */
+            public function addUser(string $tenantKey, array $data): void
+            {
+            }
+
+            /** @param array<string, mixed> $data */
+            public function updateUser(string $tenantKey, int $userId, array $data): void
+            {
+            }
+
+            /** @param array{allow?: array<int, string>, deny?: array<int, string>} $overrides */
+            public function updateUserPermissionOverrides(string $tenantKey, int $userId, array $overrides, string $operator): void
+            {
+            }
+
+            /** @return array<int, array<string, mixed>> */
+            public function assignments(string $tenantKey): array
+            {
+                return [];
+            }
+
+            /** @param array<int, int> $supportUserIds */
+            public function saveAssignmentByBuyer(string $tenantKey, int $buyerUserId, array $supportUserIds): void
+            {
+            }
+
+            /** @param array<int, int> $buyerUserIds */
+            public function saveAssignmentBySupport(string $tenantKey, int $supportUserId, array $buyerUserIds): void
+            {
+            }
+
+            public function togglePlatform(string $tenantKey, string $platformCode, string $field): void
+            {
+            }
+
+            public function toggleTenantFeature(string $tenantKey, string $featureKey): void
+            {
+            }
+
+            public function changeItemSource(string $tenantKey, int $itemId, string $source): void
+            {
+            }
+
+            /** @param array<int, int> $itemIds @param array<int, int> $orderIds @param array<string, mixed> $changes */
+            public function batchUpdateItems(string $tenantKey, array $itemIds, array $orderIds, array $changes, string $operator = '系统管理员', string $action = '批量更新'): void
+            {
+            }
+
+            /** @param array<int, int> $itemIds */
+            public function transitionItemPurchaseStatus(string $tenantKey, array $itemIds, string $fromStatus, string $toStatus, string $operator = '系统管理员', string $action = '状态流转'): int
+            {
+                return 0;
+            }
+
+            /** @param array<int, int> $itemIds */
+            public function updateItemsLogistics(string $tenantKey, array $itemIds, string $status, string $action, string $operator): int
+            {
+                return 0;
+            }
+
+            /** @param array<int, int> $orderIds */
+            public function deleteOrders(string $tenantKey, array $orderIds): void
+            {
+            }
+
+            /** @param array<string, bool> $flags */
+            public function updateOrderFlags(string $tenantKey, int $orderId, array $flags, string $operator): void
+            {
+            }
+
+            /** @param array<string, mixed> $data */
+            public function insertExternalOrder(string $tenantKey, array $data, string $operator): int
+            {
+                return 0;
+            }
+
+            /** @param array<int, array<string, mixed>> $orders @return array{inserted: int, updated: int, skipped: int, items_inserted: int, items_updated: int} */
+            public function upsertPlatformOrders(string $tenantKey, array $orders, string $operator): array
+            {
+                return ['inserted' => 0, 'updated' => 0, 'skipped' => 0, 'items_inserted' => 0, 'items_updated' => 0];
+            }
+
+            public function markStoreSync(string $tenantKey, int $storeId, string $status, string $message): void
+            {
+            }
+
+            /** @param array<string, mixed> $data */
+            public function updateOrderItem(string $tenantKey, int $itemId, array $data, string $operator = '系统管理员', string $action = '保存明细'): void
+            {
+            }
+
+            /** @return array<int, array<string, mixed>> */
+            public function purchaseStatusEvents(string $tenantKey, string $date, ?array $user = null, string $platform = ''): array
+            {
+                return [];
+            }
+
+            /** @param array<int, array<string, mixed>> $records @return array{inserted: int, updated: int, skipped: int, failed: int, messages: array<int, string>} */
+            public function importPlatformOrders(string $tenantKey, array $records, string $operator): array
+            {
+                return ['inserted' => 0, 'updated' => 0, 'skipped' => 0, 'failed' => 0, 'messages' => []];
+            }
+
+            /** @param array<int, array<string, mixed>> $records @return array{inserted: int, updated: int, skipped: int, failed: int, messages: array<int, string>} */
+            public function importPurchaseRows(string $tenantKey, array $records, string $operator): array
+            {
+                return ['inserted' => 0, 'updated' => 0, 'skipped' => 0, 'failed' => 0, 'messages' => []];
+            }
+
+            /** @param array<int, array<string, mixed>> $records @return array{inserted: int, updated: int, skipped: int, failed: int, messages: array<int, string>} */
+            public function importShippingRows(string $tenantKey, array $records, string $operator): array
+            {
+                return ['inserted' => 0, 'updated' => 0, 'skipped' => 0, 'failed' => 0, 'messages' => []];
+            }
+
+            public function updateOrderItemImage(string $tenantKey, int $itemId, string $kind, string $path): void
+            {
+            }
+
+            /** @return array<int, array<string, mixed>> */
+            public function orderAttachments(string $tenantKey, int $orderId): array
+            {
+                return [];
+            }
+
+            /** @param array<string, mixed> $data */
+            public function addOrderAttachment(string $tenantKey, int $orderId, array $data): void
+            {
+            }
+
+            public function deleteOrderAttachment(string $tenantKey, int $orderId, int $attachmentId): void
+            {
+            }
+
+            /** @return array<string, mixed> */
+            public function globalSettings(): array
+            {
+                return [];
+            }
+
+            /** @param array<string, mixed> $data */
+            public function saveGlobalSettings(array $data): void
+            {
+            }
+
+            /** @return array<string, mixed> */
+            public function tenantSettings(string $tenantKey): array
+            {
+                return ['export_templates' => []];
+            }
+
+            /** @param array<string, mixed> $data */
+            public function saveTenantSettings(string $tenantKey, array $data): void
+            {
+            }
+
+            /** @return array<int, array<string, mixed>> */
+            public function tenantNotices(string $tenantKey): array
+            {
+                return [];
+            }
+
+            /** @return array<string, mixed>|null */
+            public function tenantNotice(string $tenantKey, int $noticeId): ?array
+            {
+                return null;
+            }
+
+            /** @param array<string, mixed> $data */
+            public function saveTenantNotice(string $tenantKey, array $data): int
+            {
+                return 0;
+            }
+
+            public function deleteTenantNotice(string $tenantKey, int $noticeId): void
+            {
+            }
+
+            public function toggleTenantNoticePinned(string $tenantKey, int $noticeId, bool $pinned): void
+            {
+            }
+
+            /** @return array<int, array<string, mixed>> */
+            public function importExportLogs(string $tenantKey): array
+            {
+                return [];
+            }
+
+            /** @param array<string, mixed> $data */
+            public function addImportExportLog(string $tenantKey, array $data): void
+            {
+            }
+
+            /** @return array<int, array<string, mixed>> */
+            public function mailAccounts(string $tenantKey): array
+            {
+                return [];
+            }
+
+            /** @return array<string, mixed>|null */
+            public function mailAccount(string $tenantKey, int $accountId): ?array
+            {
+                return null;
+            }
+
+            /** @param array<string, mixed> $data */
+            public function saveMailAccount(string $tenantKey, array $data): int
+            {
+                return 0;
+            }
+
+            public function deleteMailAccount(string $tenantKey, int $accountId): void
+            {
+            }
+
+            /** @return array<int, array<string, mixed>> */
+            public function mailFolders(string $tenantKey, ?int $accountId = null, bool $onlySynced = false): array
+            {
+                return [];
+            }
+
+            /** @return array<string, mixed>|null */
+            public function mailFolder(string $tenantKey, int $folderId): ?array
+            {
+                return null;
+            }
+
+            /** @param array<int, string> $folders */
+            public function upsertMailFolders(string $tenantKey, int $accountId, array $folders): void
+            {
+            }
+
+            /** @param array<string, mixed> $data */
+            public function updateMailFolder(string $tenantKey, int $folderId, array $data): void
+            {
+            }
+
+            /** @return array<string, mixed> */
+            public function mailFolderCounts(string $tenantKey): array
+            {
+                return [];
+            }
+
+            /** @param array<string, mixed> $filters @return array{rows: array<int, array<string, mixed>>, total: int, page: int, page_size: int, total_pages: int} */
+            public function mailMessages(string $tenantKey, array $filters, int $page, int $pageSize): array
+            {
+                return ['rows' => [], 'total' => 0, 'page' => $page, 'page_size' => $pageSize, 'total_pages' => 0];
+            }
+
+            /** @return array<string, mixed>|null */
+            public function mailMessage(string $tenantKey, int $messageId): ?array
+            {
+                return null;
+            }
+
+            /** @param array<int, array<string, mixed>> $messages @return array{inserted: int, inserted_ids: array<int, int>, max_uid: int} */
+            public function insertMailMessages(string $tenantKey, int $accountId, int $folderId, array $messages): array
+            {
+                return ['inserted' => 0, 'inserted_ids' => [], 'max_uid' => 0];
+            }
+
+            /** @param array<string, int> $status */
+            public function updateMailFolderAfterSync(string $tenantKey, int $folderId, int $lastUid, int $messageCount, array $status = []): void
+            {
+            }
+
+            public function updateMailAccountLastSync(string $tenantKey, int $accountId): void
+            {
+            }
+
+            /** @param array<string, mixed> $body */
+            public function saveMailMessageBody(string $tenantKey, int $messageId, array $body): void
+            {
+            }
+
+            /** @param array<int, int> $messageIds @param array<string, mixed> $changes */
+            public function updateMailMessages(string $tenantKey, array $messageIds, array $changes): int
+            {
+                return 0;
+            }
+
+            /** @return array<int, array<string, mixed>> */
+            public function mailRules(string $tenantKey): array
+            {
+                return [];
+            }
+
+            /** @param array<string, mixed> $data */
+            public function saveMailRule(string $tenantKey, array $data): int
+            {
+                return 0;
+            }
+
+            public function deleteMailRule(string $tenantKey, int $ruleId): void
+            {
+            }
+
+            /** @param array<string, mixed> $data */
+            public function addMailReply(string $tenantKey, array $data): void
+            {
+            }
+        });
     }
 }
