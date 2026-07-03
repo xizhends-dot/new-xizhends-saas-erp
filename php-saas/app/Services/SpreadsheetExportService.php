@@ -319,6 +319,78 @@ final class SpreadsheetExportService
     }
 
     /**
+     * 发货单自定义模板 XLSX 导出:表头样式 + 图片列嵌图(失败降级为文本)。
+     * @param array{name: string, filename: string, headers: array<int, string>, rows: array<int, array<int, mixed>>, imageColumns: array<int, int>} $dataset
+     * @return array{name: string, filename: string, path: string, rows: int, format: string}
+     */
+    public function shippingWorkbook(string $tenantKey, array $dataset, string $operator = ''): array
+    {
+        $this->assertRuntime();
+
+        $name = (string) ($dataset['name'] ?? '发货单导出');
+        $spreadsheet = new Spreadsheet();
+        $spreadsheet->getProperties()
+            ->setCreator($operator !== '' ? $operator : 'Xizhen SaaS')
+            ->setLastModifiedBy($operator !== '' ? $operator : 'Xizhen SaaS')
+            ->setTitle($name)
+            ->setSubject($name)
+            ->setCategory('Shipping');
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('发货单');
+        $spreadsheet->getDefaultStyle()->getFont()->setName('微软雅黑')->setSize(11);
+        $sheet->getDefaultColumnDimension()->setWidth(18);
+        $sheet->getDefaultRowDimension()->setRowHeight(20);
+        $sheet->freezePane('A2');
+
+        $headers = array_values((array) ($dataset['headers'] ?? []));
+        $imageColumns = array_map('intval', (array) ($dataset['imageColumns'] ?? []));
+        foreach ($headers as $index => $header) {
+            $column = $index + 1;
+            $cell = $this->cell($column, 1);
+            $sheet->setCellValue($cell, (string) $header);
+            $sheet->getColumnDimensionByColumn($column)->setWidth(in_array($index, $imageColumns, true) ? 14 : 18);
+        }
+
+        $lastColumn = max(1, count($headers));
+        $sheet->getStyle($this->range(1, 1, $lastColumn, 1))->applyFromArray([
+            'font' => ['bold' => true],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EBEBEB']],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'A9A9A9']]],
+        ]);
+
+        $rowNumber = 2;
+        foreach ((array) ($dataset['rows'] ?? []) as $row) {
+            $hasImage = false;
+            foreach (array_values((array) $row) as $index => $value) {
+                $cell = $this->cell($index + 1, $rowNumber);
+                $sheet->setCellValueExplicit($cell, (string) $value, DataType::TYPE_STRING);
+                if (in_array($index, $imageColumns, true) && trim((string) $value) !== '') {
+                    $this->embedImage($sheet, $cell, (string) $value, 90, 90);
+                    $hasImage = true;
+                }
+            }
+            if ($hasImage) {
+                $sheet->getRowDimension($rowNumber)->setRowHeight(72);
+            }
+            $rowNumber++;
+        }
+
+        $lastRow = max(1, $rowNumber - 1);
+        $sheet->getStyle($this->range(1, 1, $lastColumn, $lastRow))->applyFromArray([
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => false],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'D9D9D9']]],
+        ]);
+
+        $filename = (string) ($dataset['filename'] ?? 'shipping.xlsx');
+        if (!str_ends_with($filename, '.xlsx')) {
+            $filename = preg_replace('/\.csv$/', '', $filename) . '.xlsx';
+        }
+
+        return $this->writeWorkbook($spreadsheet, $name, $filename, count((array) ($dataset['rows'] ?? [])));
+    }
+
+    /**
      * @param array<int, array<string, mixed>> $orders
      * @return array{key: string, name: string, filename_prefix: string, headers: array<int, string>, columns: array<int, string>, widths: array<int, int>, numeric_columns: array<int, string>, text_columns: array<int, string>}
      */
