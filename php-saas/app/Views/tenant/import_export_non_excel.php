@@ -1,6 +1,7 @@
 <?php
-$platformVariants = is_array($platformVariants ?? null) ? $platformVariants : [];
-$previewDatasets = is_array($previewDatasets ?? null) ? $previewDatasets : [];
+$exportTemplates = is_array($exportTemplates ?? null) ? $exportTemplates : [];
+$canManageTemplates = (bool) ($canManageTemplates ?? false);
+$message = (string) ($message ?? '');
 $importPreviews = is_array($importPreviews ?? null) ? $importPreviews : [];
 $excelRequirements = is_array($excelRequirements ?? null) ? $excelRequirements : [];
 $stores = is_array($stores ?? null) ? $stores : [];
@@ -12,60 +13,56 @@ $json = static fn (mixed $value): string => json_encode($value, JSON_UNESCAPED_U
     </div>
 </div>
 
+<?php if ($message !== ''): ?>
+    <div class="panel"><div class="panel-body"><?= e($message) ?></div></div>
+<?php endif; ?>
+
 <div class="panel">
-    <div class="panel-head"><span>平台专用 CSV</span><span class="sub">旧 HTML Excel 模板的字段迁移</span></div>
+    <div class="panel-head">
+        <span>发货单导出模板</span>
+        <span class="sub">自定义列/排序/固定值列;预置模板只读,可复制后修改</span>
+    </div>
     <div class="panel-body">
+        <?php if ($canManageTemplates): ?>
+            <div class="head-actions" style="justify-content:flex-start; margin-bottom:8px;">
+                <a class="btn primary" href="/import-export/export-templates/edit?tenant=<?= e($tenantKey) ?>">新建模板</a>
+            </div>
+        <?php endif; ?>
         <table class="table">
-            <thead><tr><th>类型</th><th>来源</th><th>平台</th><th>说明</th></tr></thead>
+            <thead><tr><th>名称</th><th>格式</th><th>列数</th><th>类型</th><th>操作</th></tr></thead>
             <tbody>
-            <?php foreach ($platformVariants as $key => $variant): ?>
+            <?php foreach ($exportTemplates as $template): ?>
+                <?php $isBuiltin = !empty($template['builtin']); ?>
                 <tr>
-                    <td><?= e($key) ?> / <?= e($variant['name'] ?? '') ?></td>
-                    <td><?= e($variant['source'] ?? '') ?></td>
-                    <td><?= e($variant['platform'] ?? '') ?></td>
-                    <td><?= e($variant['note'] ?? '') ?></td>
+                    <td><?= e($template['name'] ?? '') ?></td>
+                    <td><?= e(strtoupper((string) ($template['format'] ?? 'csv'))) ?></td>
+                    <td><?= e(count((array) ($template['columns'] ?? []))) ?></td>
+                    <td><?= $isBuiltin ? '系统预置' : '自定义' ?></td>
+                    <td>
+                        <div class="head-actions" style="justify-content:flex-start;">
+                            <a class="btn" href="/import-export/platform-special/export?tenant=<?= e($tenantKey) ?>&template_id=<?= e($template['id'] ?? '') ?>">导出</a>
+                            <?php if ($canManageTemplates): ?>
+                                <a class="btn" href="/import-export/export-templates/edit?tenant=<?= e($tenantKey) ?>&id=<?= e($template['id'] ?? '') ?>"><?= $isBuiltin ? '复制' : '编辑' ?></a>
+                                <?php if (!$isBuiltin): ?>
+                                    <form method="post" action="/import-export/export-templates/delete" onsubmit="return confirm('确定删除模板「<?= e($template['name'] ?? '') ?>」?');" style="display:inline;">
+                                        <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
+                                        <input type="hidden" name="id" value="<?= e($template['id'] ?? '') ?>">
+                                        <button class="btn" type="submit">删除</button>
+                                    </form>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        </div>
+                    </td>
                 </tr>
             <?php endforeach; ?>
-            <?php if (!$platformVariants): ?>
-                <tr><td colspan="4" class="sub">暂无平台专用 CSV 任务。</td></tr>
+            <?php if (!$exportTemplates): ?>
+                <tr><td colspan="5" class="sub">暂无导出模板。</td></tr>
             <?php endif; ?>
             </tbody>
         </table>
+        <div class="setting-muted">导出使用当前登录账号可见的订单;可在链接上追加平台/店铺/日期等筛选参数(与旧导出参数一致)。</div>
     </div>
 </div>
-
-<?php foreach ($previewDatasets as $dataset): ?>
-    <div class="panel">
-        <div class="panel-head">
-            <span><?= e($dataset['name'] ?? 'CSV 预览') ?></span>
-            <span class="sub"><?= e($dataset['filename'] ?? '') ?></span>
-        </div>
-        <div class="panel-body">
-            <div class="setting-muted"><?= e($dataset['note'] ?? '') ?></div>
-            <table class="table">
-                <thead>
-                <tr>
-                    <?php foreach (($dataset['headers'] ?? []) as $header): ?>
-                        <th><?= e($header) ?></th>
-                    <?php endforeach; ?>
-                </tr>
-                </thead>
-                <tbody>
-                <?php foreach (array_slice((array) ($dataset['rows'] ?? []), 0, 5) as $row): ?>
-                    <tr>
-                        <?php foreach ((array) $row as $cell): ?>
-                            <td><?= e($cell) ?></td>
-                        <?php endforeach; ?>
-                    </tr>
-                <?php endforeach; ?>
-                <?php if (empty($dataset['rows'])): ?>
-                    <tr><td colspan="<?= e(max(1, count((array) ($dataset['headers'] ?? [])))) ?>" class="sub">没有可预览的数据。</td></tr>
-                <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-<?php endforeach; ?>
 
 <div class="panel">
     <div class="panel-head"><span>导入解析预览</span><span class="sub">服务输出结构，落库由主控接 Store</span></div>
