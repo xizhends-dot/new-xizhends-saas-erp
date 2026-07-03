@@ -36,7 +36,7 @@
   - `ExportFieldRegistry::has(string $key): bool`
   - `ExportFieldRegistry::resolve(string $key, array $order, array $item): mixed` — 未知 key 返回 `''`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 创建 `php-saas/tests/export_field_registry_test.php`:
 
@@ -141,14 +141,14 @@ if ($failures !== []) {
 echo "ExportFieldRegistry test OK (" . count(ExportFieldRegistry::fields()) . " fields)\n";
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 ```bash
 cd php-saas && php tests/export_field_registry_test.php
 ```
 预期:FAIL(文件不存在的 require 报错)。
 
-- [ ] **Step 3: 实现 ExportFieldRegistry**
+- [x] **Step 3: 实现 ExportFieldRegistry**
 
 创建 `php-saas/app/Services/ExportFieldRegistry.php`(完整实现):
 
@@ -361,14 +361,14 @@ final class ExportFieldRegistry
 }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 ```bash
 cd php-saas && php tests/export_field_registry_test.php
 ```
 预期:`ExportFieldRegistry test OK (36 fields)`。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add php-saas/app/Services/ExportFieldRegistry.php php-saas/tests/export_field_registry_test.php
