@@ -159,7 +159,7 @@ final class ExportTemplateService
         $format = strtolower(trim((string) ($input['format'] ?? 'xlsx')));
         $columns = is_array($input['columns'] ?? null) ? array_values($input['columns']) : [];
 
-        if ($name === '' || mb_strlen($name) > self::MAX_LABEL_LENGTH) {
+        if ($name === '' || self::textLength($name) > self::MAX_LABEL_LENGTH) {
             $errors['name'] = '模板名称必填且不超过 ' . self::MAX_LABEL_LENGTH . ' 个字符。';
         }
         if (!in_array($format, ['csv', 'xlsx'], true)) {
@@ -254,7 +254,7 @@ final class ExportTemplateService
             }
             $type = (string) ($column['type'] ?? '');
             $display = trim((string) ($column['label'] ?? ''));
-            if ($display === '' || mb_strlen($display) > self::MAX_LABEL_LENGTH) {
+            if ($display === '' || self::textLength($display) > self::MAX_LABEL_LENGTH) {
                 $errors[] = $label . ':显示名必填且不超过 ' . self::MAX_LABEL_LENGTH . ' 个字符。';
             }
             if ($type === 'field') {
@@ -304,5 +304,10 @@ final class ExportTemplateService
 
             return $normalized;
         }, $columns));
+    }
+
+    private static function textLength(string $value): int
+    {
+        return \function_exists('mb_strlen') ? \mb_strlen($value) : strlen($value);
     }
 }
