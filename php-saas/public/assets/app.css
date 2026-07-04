@@ -1888,6 +1888,28 @@ label.ck.warn { color: #475569; }
   flex-wrap: wrap;
 }
 
+.store-row-actions,
+.store-sync-form {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.store-sync-form select {
+  min-height: 32px;
+  width: 68px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 6px;
+  background: #fff;
+}
+
+.store-row-actions .btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
 .admin-settings-stats {
   grid-template-columns: repeat(4, minmax(150px, 1fr));
   margin-bottom: 12px;

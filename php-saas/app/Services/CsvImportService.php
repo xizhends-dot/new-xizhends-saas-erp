@@ -77,7 +77,7 @@ final class CsvImportService
 
     /**
      * @param array<string, mixed> $context
-     * @return array{row_count: int, preview: array<int, array<string, string>>, records: array<int, array<string, mixed>>, errors: array<int, string>}
+     * @return array{row_count: int, preview: array<int, array<string, string>>, records: array<int, array<string, mixed>>, errors: array<int, string>, store_mismatch_count: int}
      */
     public function parseFile(string $file, string $job, array $context = []): array
     {
@@ -92,10 +92,12 @@ final class CsvImportService
                 'preview' => [],
                 'records' => [],
                 'errors' => [$exception->getMessage()],
+                'store_mismatch_count' => 0,
             ];
         }
         $errors = [];
         $records = [];
+        $storeMismatchCount = 0;
 
         foreach ($rows as $row) {
             $record = match ($job) {
@@ -105,6 +107,9 @@ final class CsvImportService
             };
 
             if (!$record['ok']) {
+                if (($record['code'] ?? '') === 'store_mismatch') {
+                    $storeMismatchCount++;
+                }
                 $errors[] = '第 ' . $row['_row'] . ' 行：' . $record['message'];
                 continue;
             }
@@ -117,6 +122,7 @@ final class CsvImportService
             'preview' => $preview,
             'records' => $records,
             'errors' => array_slice($errors, 0, 20),
+            'store_mismatch_count' => $storeMismatchCount,
         ];
     }
 
@@ -401,6 +407,9 @@ final class CsvImportService
         }
 
         $store = $this->storeInfo($row, $context, $platform);
+        if (!empty($store['restricted_mismatch'])) {
+            return ['ok' => false, 'code' => 'store_mismatch', 'message' => '店铺列与所选店铺不符，已跳过。'];
+        }
         $customerName = $this->combinedValue($row, ['customer_name', 'customer_name1', 'customer_name2']);
         $customerKana = $this->combinedValue($row, ['customer_kana', 'customer_kana1', 'customer_kana2']);
         $customerZip = $this->combinedValue($row, ['customer_zip', 'customer_zip1', 'customer_zip2'], '-');
@@ -741,11 +750,30 @@ final class CsvImportService
         };
     }
 
-    /** @param array<string, mixed> $row @param array<string, mixed> $context @return array{id: int, name: string} */
+    /** @param array<string, mixed> $row @param array<string, mixed> $context @return array{id: int, name: string, restricted_mismatch?: bool} */
     private function storeInfo(array $row, array $context, string $platform): array
     {
         $selectedId = (int) ($context['store_id'] ?? 0);
         $storeValue = $this->value($row, 'store');
+        if (!empty($context['restrict_to_store_id']) && $selectedId > 0) {
+            foreach ((array) ($context['stores'] ?? []) as $store) {
+                $storeId = (int) ($store['id'] ?? 0);
+                if ($storeId !== $selectedId) {
+                    continue;
+                }
+
+                $name = (string) (($store['name'] ?? '') ?: ($store['short'] ?? ''));
+                if ($storeValue === '' || in_array($this->normalizeKey($storeValue), [
+                    $this->normalizeKey((string) ($store['name'] ?? '')),
+                    $this->normalizeKey((string) ($store['short'] ?? '')),
+                ], true)) {
+                    return ['id' => $storeId, 'name' => $name];
+                }
+
+                return ['id' => 0, 'name' => '', 'restricted_mismatch' => true];
+            }
+        }
+
         foreach ((array) ($context['stores'] ?? []) as $store) {
             $storeId = (int) ($store['id'] ?? 0);
             $name = (string) (($store['name'] ?? '') ?: ($store['short'] ?? ''));

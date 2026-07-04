@@ -58,9 +58,11 @@ final class StoreController extends TenantBaseController
             'tenantFeatures' => $this->service->tenantFeatureMap($tenantKey),
             'active' => 'stores',
             'platformNames' => $this->service->tenantPlatformNames($tenantKey),
+            'platformSyncServices' => $this->platformOrderSyncRegistry->names(),
             'stores' => $this->service->storesForTenant($tenantKey),
             'billingAccount' => $this->store->tenantBillingAccount($tenantKey),
             'currentUser' => $this->auth->currentTenantUser($tenantKey),
+            'message' => (string) ($_GET['message'] ?? ''),
         ]);
     }
 
@@ -157,6 +159,101 @@ final class StoreController extends TenantBaseController
         redirect_to('/stores?tenant=' . rawurlencode($tenantKey));
     }
 
+    public function importOrdersForm(): void
+    {
+        $tenantKey = current_tenant_key();
+        $store = $this->storeForOrderOperation($tenantKey, (int) ($_GET['id'] ?? 0));
+        $platformNames = $this->service->tenantPlatformNames($tenantKey);
+
+        $this->renderTenant('tenant/store_import', $tenantKey, [
+            'title' => '店铺订单导入',
+            'active' => 'stores',
+            'store' => $store,
+            'platformName' => $platformNames[$store['platform'] ?? ''] ?? ($store['platform'] ?? ''),
+            'message' => (string) ($_GET['message'] ?? ''),
+        ]);
+    }
+
+    public function importOrders(): void
+    {
+        $tenantKey = current_tenant_key();
+        $store = $this->storeForOrderOperation($tenantKey, (int) ($_POST['id'] ?? $_POST['store_id'] ?? 0));
+        $storeId = (int) ($store['id'] ?? 0);
+        $storeName = (string) (($store['name'] ?? '') ?: ($store['short'] ?? ''));
+        $platform = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($store['platform'] ?? '')) ?: '';
+        $message = '未收到可解析的 CSV/XLSX 文件。';
+        $preview = [];
+        $rowCount = 0;
+        $fileName = '';
+        $status = '解析失败';
+        $operator = $this->currentUserName($tenantKey);
+        $parseErrors = [];
+        $writeReport = ['inserted' => 0, 'updated' => 0, 'skipped' => 0, 'failed' => 0, 'messages' => []];
+
+        if (isset($_FILES['csv_file']) && is_array($_FILES['csv_file']) && (int) ($_FILES['csv_file']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+            $fileName = (string) ($_FILES['csv_file']['name'] ?? '');
+            $tmpName = (string) ($_FILES['csv_file']['tmp_name'] ?? '');
+            if ($tmpName !== '' && is_uploaded_file($tmpName) && (int) ($_FILES['csv_file']['size'] ?? 0) <= 10 * 1024 * 1024) {
+                $parsed = $this->csvImportService->parseFile($tmpName, 'platform_orders_import', [
+                    'platform' => $platform,
+                    'store_id' => $storeId,
+                    'platform_names' => $this->service->platformNames(),
+                    'stores' => [$store],
+                    'user' => $this->auth->currentTenantUser($tenantKey),
+                    'restrict_to_store_id' => true,
+                ]);
+                $rowCount = (int) $parsed['row_count'];
+                $preview = $parsed['preview'];
+                $parseErrors = $parsed['errors'];
+                $storeMismatchCount = (int) ($parsed['store_mismatch_count'] ?? 0);
+                $records = $parsed['records'];
+
+                if ($rowCount <= 0) {
+                    $status = '空文件';
+                    $message = '导入文件没有数据行。';
+                } elseif (!$records && $storeMismatchCount > 0) {
+                    $status = '无可导入记录';
+                    $message = "店铺订单导入：成功 0，更新 0，跳过 {$storeMismatchCount}。 {$storeMismatchCount} 行店铺列与所选店铺不符，已跳过。";
+                } elseif (!$records) {
+                    $status = '解析失败';
+                    $message = '已读取导入文件，但没有可写入的数据。' . ($parseErrors ? ' ' . implode('；', array_slice($parseErrors, 0, 3)) : '');
+                } else {
+                    $writeReport = $this->store->importPlatformOrders($tenantKey, $records, $operator);
+                    $skipped = (int) $writeReport['skipped'] + $storeMismatchCount;
+                    $failed = (int) $writeReport['failed'] + max(0, count($parseErrors) - $storeMismatchCount);
+                    $status = ($failed > 0 || $skipped > 0) ? '部分导入' : '已导入';
+                    $message = sprintf(
+                        '店铺订单导入：成功 %d，更新 %d，跳过 %d。',
+                        (int) $writeReport['inserted'],
+                        (int) $writeReport['updated'],
+                        $skipped
+                    );
+                    if ($storeMismatchCount > 0) {
+                        $message .= " {$storeMismatchCount} 行店铺列与所选店铺不符，已跳过。";
+                    }
+                    if ($failed > 0) {
+                        $message .= " 失败 {$failed}。";
+                    }
+                }
+            } else {
+                $message = '文件超过 10MB 或上传临时文件不可读。';
+            }
+        }
+
+        $this->store->addImportExportLog($tenantKey, [
+            'type' => 'import',
+            'name' => 'store_orders_import：' . $storeName,
+            'status' => $status,
+            'file_name' => $fileName,
+            'rows' => $rowCount,
+            'message' => $message,
+            'preview' => $preview,
+            'created_by' => $operator,
+        ]);
+
+        redirect_to('/stores?tenant=' . rawurlencode($tenantKey) . '&message=' . rawurlencode($message));
+    }
+
     public function authorizeYahooShop(): void
     {
         $tenantKey = current_tenant_key();
@@ -197,5 +294,24 @@ final class StoreController extends TenantBaseController
         $host = (string) ($_SERVER['HTTP_HOST'] ?? '127.0.0.1');
 
         return $scheme . '://' . $host . $path;
+    }
+
+    /** @return array<string, mixed> */
+    private function storeForOrderOperation(string $tenantKey, int $storeId): array
+    {
+        $this->requireTenantFeature($tenantKey, 'orders.platform');
+        $this->auth->requireAnyTenantPermission($tenantKey, ['导入导出', '订单编辑']);
+        $store = $this->store->store($tenantKey, $storeId);
+        if (!$store) {
+            http_response_code(404);
+            echo '店铺不存在';
+            exit;
+        }
+
+        if (!Permission::canAccessStore($this->auth->currentTenantUser($tenantKey), (string) (($store['name'] ?? '') ?: ($store['short'] ?? '')))) {
+            $this->forbid('当前账号没有该店铺的订单导入权限。');
+        }
+
+        return $store;
     }
 }

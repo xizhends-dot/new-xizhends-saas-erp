@@ -125,6 +125,8 @@ return static function (Container $container, Router $router): void {
         $router->post('/settings/purchase-statuses/save', [SettingsController::class, 'savePurchaseStatuses']);
         $router->get('/stores', [StoreController::class, 'stores']);
         $router->post('/stores/add', [StoreController::class, 'addStore']);
+        $router->get('/stores/import', [StoreController::class, 'importOrdersForm']);
+        $router->post('/stores/import', [StoreController::class, 'importOrders']);
         $router->get('/stores/edit', [StoreController::class, 'editStore']);
         $router->post('/stores/update', [StoreController::class, 'updateStore']);
         $router->get('/stores/yahoo/authorize', [StoreController::class, 'authorizeYahooShop']);

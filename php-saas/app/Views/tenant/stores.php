@@ -12,7 +12,15 @@ $billingBalance = (int) ($billingAccount['balance'] ?? 0);
 $storeAddFee = (int) ($billingAccount['store_add_fee'] ?? 50);
 $storeMonthlyFee = (int) ($billingAccount['store_monthly_fee'] ?? 50);
 $debtSuspendThreshold = (int) ($billingAccount['debt_suspend_threshold'] ?? -300);
+$platformSyncServices = is_array($platformSyncServices ?? null) ? $platformSyncServices : [];
+$currentUser = is_array($currentUser ?? null) ? $currentUser : [];
+$canOperateOrders = \Xizhen\Core\Permission::hasAny($currentUser, ['导入导出', '订单编辑']);
+$message = trim((string) ($message ?? ''));
 ?>
+<?php if ($message !== ''): ?>
+    <div class="notice ok slim"><?= e($message) ?></div>
+<?php endif; ?>
+
 <div class="notice store-billing-notice">
     <strong>积分余额：<?= e(number_format($billingBalance)) ?>pt</strong>
     <span>新增店铺立即扣除 <?= e($storeAddFee) ?>pt；下个月同日开始每月扣除 <?= e($storeMonthlyFee) ?>pt。</span>
@@ -60,7 +68,34 @@ $debtSuspendThreshold = (int) ($billingAccount['debt_suspend_threshold'] ?? -300
                     <td><span class="tag <?= ($store['status'] ?? '') === 'visible' ? 'green' : 'gray' ?>"><?= ($store['status'] ?? '') === 'visible' ? '可见' : '隐藏' ?></span></td>
                     <td><?= e($store['hidden_reason'] ?? '-') ?></td>
                     <td><?= e($store['created_by'] ?? '-') ?></td>
-                    <td><a class="btn" href="/stores/edit?tenant=<?= e($tenantKey) ?>&id=<?= e($store['id']) ?>">编辑</a></td>
+                    <td>
+                        <?php
+                        $storeId = (int) ($store['id'] ?? 0);
+                        $platform = (string) ($store['platform'] ?? '');
+                        $apiConfigured = (string) ($store['api_status'] ?? '') === '已配置';
+                        ?>
+                        <div class="store-row-actions">
+                            <a class="btn" href="/stores/edit?tenant=<?= e($tenantKey) ?>&id=<?= e($storeId) ?>">编辑</a>
+                            <?php if ($canOperateOrders && isset($platformSyncServices[$platform])): ?>
+                                <form class="store-sync-form" method="post" action="/orders/platform/sync">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
+                                    <input type="hidden" name="platform" value="<?= e($platform) ?>">
+                                    <input type="hidden" name="store_id" value="<?= e($storeId) ?>">
+                                    <input type="hidden" name="return" value="/stores?tenant=<?= e(rawurlencode($tenantKey)) ?>">
+                                    <select name="days" aria-label="同步天数">
+                                        <?php foreach ([1, 3, 7, 15, 30] as $days): ?>
+                                            <option value="<?= e($days) ?>" <?= $days === 7 ? 'selected' : '' ?>><?= e($days) ?>天</option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <button class="btn" type="submit" <?= $apiConfigured ? '' : 'disabled title="请先在编辑页配置 API"' ?>>同步订单</button>
+                                </form>
+                            <?php endif; ?>
+                            <?php if ($canOperateOrders): ?>
+                                <a class="btn" href="/stores/import?tenant=<?= e($tenantKey) ?>&id=<?= e($storeId) ?>">导入订单</a>
+                            <?php endif; ?>
+                        </div>
+                    </td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
