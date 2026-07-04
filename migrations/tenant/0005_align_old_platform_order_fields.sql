@@ -1,17 +1,12 @@
 -- ============================================================================
 -- Align platform order fields with /old ph_order* tables.
+--
+-- 2026-07-04 修订：本迁移原为老库补列脚本（MariaDB 的 ADD COLUMN IF NOT EXISTS
+-- 语法，MySQL 5.7/8.0 均不支持）。经与 0001_init_tenant_schema.sql 逐列核对，
+-- 本文件涉及的全部字段（orders.pay_charge 及 order_items 的 order_detail_id /
+-- line_id / lot_number / item_management_id / unit_price / postage_price /
+-- pay_charge / line_total / item_comment）均已并入 0001 基础建表语句，
+-- 新建租户库时无需再执行任何语句。保留本文件仅为维持迁移编号连续。
 -- ============================================================================
 
-ALTER TABLE `orders`
-    ADD COLUMN IF NOT EXISTS `pay_charge` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT 'PayCharge 手续费' AFTER `postage_price`;
-
-ALTER TABLE `order_items`
-    ADD COLUMN IF NOT EXISTS `order_detail_id` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'orderDetailId' AFTER `order_id`,
-    ADD COLUMN IF NOT EXISTS `line_id` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'LineId' AFTER `order_detail_id`,
-    ADD COLUMN IF NOT EXISTS `lot_number` VARCHAR(255) NOT NULL DEFAULT '' COMMENT 'lotnumber' AFTER `item_code`,
-    ADD COLUMN IF NOT EXISTS `item_management_id` VARCHAR(255) NOT NULL DEFAULT '' COMMENT 'ItemManagerId/itemManagementId' AFTER `lot_number`,
-    ADD COLUMN IF NOT EXISTS `unit_price` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT 'UnitPrice/itemPrice' AFTER `material`,
-    ADD COLUMN IF NOT EXISTS `postage_price` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT 'postagePrice/ShipCharge' AFTER `unit_price`,
-    ADD COLUMN IF NOT EXISTS `pay_charge` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT 'PayCharge' AFTER `postage_price`,
-    ADD COLUMN IF NOT EXISTS `line_total` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT 'totalItemPrice/TotalPrice' AFTER `pay_charge`,
-    ADD COLUMN IF NOT EXISTS `item_comment` VARCHAR(1024) NOT NULL DEFAULT '' COMMENT 'comment' AFTER `amount`;
+DO 0;

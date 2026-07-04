@@ -20,6 +20,15 @@ SET
     `balance_after_points` = FLOOR(`balance_after_cents` / 100)
 WHERE `amount_points` = 0 AND (`amount_cents` <> 0 OR `balance_after_cents` <> 0);
 
+-- 兼容列补默认值：pt 体系上线后代码只写 *_points 列，
+-- 旧 cents 列若无默认值会在严格模式（5.7/8.0 默认）下报 1364 拒绝插入。
+ALTER TABLE `tenant_billing_accounts`
+    MODIFY `balance_cents` BIGINT NOT NULL DEFAULT 0 COMMENT '兼容旧字段：余额 x100';
+
+ALTER TABLE `tenant_billing_ledger`
+    MODIFY `amount_cents` BIGINT NOT NULL DEFAULT 0 COMMENT '兼容旧字段：积分变动 x100',
+    MODIFY `balance_after_cents` BIGINT NOT NULL DEFAULT 0 COMMENT '兼容旧字段：入账后余额 x100';
+
 CREATE TABLE IF NOT EXISTS `billing_charge_rules` (
     `rule_key` VARCHAR(64) NOT NULL,
     `title` VARCHAR(120) NOT NULL,

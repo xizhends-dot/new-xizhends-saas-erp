@@ -3,17 +3,17 @@
 -- ============================================================================
 
 ALTER TABLE `stores`
-    ADD COLUMN IF NOT EXISTS `legacy_dpid` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '旧系统 dpid',
-    ADD COLUMN IF NOT EXISTS `api_config` JSON NULL COMMENT '店铺级 API 配置，承接 dpapi_config',
-    ADD COLUMN IF NOT EXISTS `profit_deduction` DECIMAL(5,2) NOT NULL DEFAULT 70.00 COMMENT '店铺利润扣点百分比',
-    ADD COLUMN IF NOT EXISTS `hidden_reason` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '隐藏店铺原因';
+    ADD COLUMN `legacy_dpid` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '旧系统 dpid',
+    ADD COLUMN `api_config` JSON NULL COMMENT '店铺级 API 配置，承接 dpapi_config',
+    ADD COLUMN `profit_deduction` DECIMAL(5,2) NOT NULL DEFAULT 70.00 COMMENT '店铺利润扣点百分比',
+    ADD COLUMN `hidden_reason` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '隐藏店铺原因';
 
 ALTER TABLE `users`
-    ADD COLUMN IF NOT EXISTS `display_name` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '员工显示名',
-    ADD COLUMN IF NOT EXISTS `preference_module` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '首选入口页',
-    ADD COLUMN IF NOT EXISTS `api_1688_config` JSON NULL COMMENT '采购账号 1688 API 配置',
-    ADD COLUMN IF NOT EXISTS `password_reset_at` DATETIME NULL COMMENT '最近重置密码时间',
-    ADD COLUMN IF NOT EXISTS `last_login_at` DATETIME NULL COMMENT '最近登录时间';
+    ADD COLUMN `display_name` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '员工显示名',
+    ADD COLUMN `preference_module` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '首选入口页',
+    ADD COLUMN `api_1688_config` JSON NULL COMMENT '采购账号 1688 API 配置',
+    ADD COLUMN `password_reset_at` DATETIME NULL COMMENT '最近重置密码时间',
+    ADD COLUMN `last_login_at` DATETIME NULL COMMENT '最近登录时间';
 
 CREATE TABLE IF NOT EXISTS `buyer_support_assignments` (
     `id`              BIGINT      NOT NULL AUTO_INCREMENT,
