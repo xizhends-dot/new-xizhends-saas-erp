@@ -34,3 +34,7 @@ old/**/logs/
 old/**/tmp/
 old/**/temp/
 old/**/runtime/
+
+# 工具与会话产物
+.codegraph/
+generated-images/
