@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Xizhen\Controllers;
+namespace Xizhen\Http\Controllers\Admin;
 
 use Xizhen\Core\Config;
 use Xizhen\Core\StoreInterface;
