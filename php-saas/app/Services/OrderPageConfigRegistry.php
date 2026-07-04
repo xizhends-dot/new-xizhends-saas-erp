@@ -13,7 +13,8 @@ final class OrderPageConfigRegistry
      */
     public function filterFieldsFor(string $platform): array
     {
-        return [
+        $platform = $this->normalizePlatform($platform);
+        $fields = [
             ['key' => 'order_no', 'label' => '订单号', 'type' => 'text', 'section' => 'basic', 'views' => ['platform', 'purchase', 'jp']],
             ['key' => 'tabaono', 'label' => '1688订单号', 'type' => 'text', 'section' => 'basic', 'views' => ['platform', 'purchase']],
             ['key' => 'customer_name', 'label' => '收件人姓名', 'type' => 'text', 'section' => 'basic', 'views' => ['platform']],
@@ -56,12 +57,140 @@ final class OrderPageConfigRegistry
             ['key' => 'purchase_link', 'label' => '采购链接', 'type' => 'text', 'section' => 'advanced', 'views' => ['platform', 'purchase']],
             ['key' => 'comment', 'label' => '订单备注', 'type' => 'text', 'section' => 'advanced', 'views' => ['platform', 'purchase']],
             ['key' => 'purchase_comment', 'label' => '采购备注', 'type' => 'text', 'section' => 'advanced', 'views' => ['platform']],
-            ['key' => 'intl_ship_empty', 'label' => '国际单号为空', 'type' => 'checkbox', 'section' => 'advanced', 'views' => ['platform']],
+            ['key' => 'intl_ship_empty', 'label' => '国际运单状态', 'type' => 'select', 'section' => 'advanced', 'views' => ['platform'], 'options' => [
+                ['value' => 'no', 'label' => '未出国际单号'],
+                ['value' => 'yes', 'label' => '已有国际单号'],
+            ]],
+            ['key' => 'frb_push', 'label' => '飞兔推送', 'type' => 'select', 'section' => 'advanced', 'views' => ['platform'], 'options' => [
+                ['value' => 'no', 'label' => '未推送'],
+                ['value' => 'yes', 'label' => '已推送'],
+            ]],
             ['key' => 'date_range', 'label' => '日期范围', 'type' => 'date_range', 'from' => 'date_from', 'to' => 'date_to', 'section' => 'advanced', 'views' => ['platform', 'purchase', 'jp']],
+            ['key' => 'review_invited', 'label' => '邀评状态', 'type' => 'select', 'section' => 'advanced', 'views' => ['platform'], 'options' => [
+                ['value' => '1', 'label' => '已邀评'],
+                ['value' => '0', 'label' => '未邀评'],
+            ]],
+            ['key' => 'reviewed', 'label' => '评价状态', 'type' => 'select', 'section' => 'advanced', 'views' => ['platform'], 'options' => [
+                ['value' => '1', 'label' => '已评价'],
+                ['value' => '0', 'label' => '未评价'],
+            ]],
             ['key' => 'late_ship', 'label' => '超时发货', 'type' => 'checkbox', 'section' => 'flags', 'views' => ['platform', 'purchase']],
             ['key' => 'in_delivery', 'label' => '配達中', 'type' => 'checkbox', 'section' => 'flags', 'views' => ['platform', 'jp']],
             ['key' => 'delivered', 'label' => '配達完了', 'type' => 'checkbox', 'section' => 'flags', 'views' => ['platform', 'jp']],
         ];
+
+        $fields = array_values(array_filter($fields, fn (array $field): bool => $this->fieldVisibleForPlatform((string) $field['key'], $platform)));
+        foreach ($fields as &$field) {
+            $key = (string) ($field['key'] ?? '');
+            $field['name'] = $this->fieldNameFor($key, $platform);
+            if ($key === 'date_range') {
+                $field['from'] = $this->dateFromNameFor($platform);
+                $field['to'] = $this->dateToNameFor($platform);
+            }
+            if ($key === 'ship_method' && $platform === 'y') {
+                $field['label'] = '运送方式';
+                $field['name'] = 'PayStatus';
+            }
+        }
+        unset($field);
+
+        return $fields;
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
+    public function normalizeFilterInput(string $platform, array $input): array
+    {
+        $platform = $this->normalizePlatform($platform);
+        $result = $input;
+        foreach ($this->filterFieldsFor($platform) as $field) {
+            $key = (string) ($field['key'] ?? '');
+            if ($key === '' || $key === 'date_range') {
+                continue;
+            }
+            $name = (string) ($field['name'] ?? $key);
+            if ($name !== $key && array_key_exists($name, $input) && !array_key_exists($key, $result)) {
+                $result[$key] = $input[$name];
+            }
+        }
+
+        return $result;
+    }
+
+    public function fieldNameFor(string $key, string $platform): string
+    {
+        $platform = $this->normalizePlatform($platform);
+        return match ($key) {
+            'order_no' => in_array($platform, ['r', 'y'], true) ? 'orderId' : 'ziid',
+            'item_id' => match ($platform) {
+                'r', 'y' => 'ItemId',
+                'w', 'm', 'q' => 'itemManagementId',
+                default => 'item_id',
+            },
+            'ship_method' => match ($platform) {
+                'r' => 'yunshu',
+                'y' => 'PayStatus',
+                'w', 'm', 'q' => 'deliveryName',
+                default => 'ship_method',
+            },
+            'kana' => $platform === 'r' ? 'pianjiaming' : ($platform === 'yp' ? 'kana' : 'senderKana'),
+            'purchase_link' => $platform === 'y' ? 'caigoulink' : 'purchase_link',
+            'product_name' => $platform === 'yp' ? 'product_title' : 'product_name',
+            'pay_method' => $platform === 'w' ? 'settlementName' : 'pay_method',
+            'lot_number' => 'lotnumber',
+            'lot_number_empty' => 'lot_number_empty',
+            'intl_ship_empty' => $platform === 'q' ? 'intl_ship_empty' : 'kong',
+            'frb_push' => 'frb_push',
+            'review_invited' => 'invite_review',
+            'in_delivery' => 'haitatsuchuu',
+            'delivered' => 'haitatsukanryo',
+            default => $key,
+        };
+    }
+
+    public function orderDateFieldFor(string $platform): string
+    {
+        $platform = $this->normalizePlatform($platform);
+        return in_array($platform, ['r', 'y'], true) ? 'OrderTime' : 'orderDate';
+    }
+
+    private function dateFromNameFor(string $platform): string
+    {
+        $field = $this->orderDateFieldFor($platform);
+
+        return $field === 'OrderTime' ? 'OrderTime' : 'orderDate';
+    }
+
+    private function dateToNameFor(string $platform): string
+    {
+        $field = $this->orderDateFieldFor($platform);
+
+        return $field === 'OrderTime' ? 'OrderTime2' : 'orderDate2';
+    }
+
+    private function normalizePlatform(string $platform): string
+    {
+        $platform = strtolower(trim($platform));
+
+        return $platform !== '' ? $platform : 'r';
+    }
+
+    private function fieldVisibleForPlatform(string $key, string $platform): bool
+    {
+        return match ($key) {
+            'lot_number' => in_array($platform, ['m', 'yp'], true),
+            'lot_number_empty' => $platform === 'yp',
+            'review_invited', 'reviewed' => in_array($platform, ['r', 'y'], true),
+            'purchase_link' => $platform === 'y',
+            'product_name' => $platform === 'yp',
+            'pay_method' => $platform === 'w',
+            'in_delivery', 'delivered' => $platform === 'r',
+            'intl_ship_empty', 'frb_push' => $platform !== 'q',
+            'item_id', 'ship_method', 'kana' => $platform !== 'yp',
+            default => true,
+        };
     }
 
     /**

@@ -363,6 +363,7 @@ abstract class TenantBaseController
             'cn_ship_no' => $first(['cn_ship_no', 'shipno']),
             'intl_ship_no' => $first(['intl_ship_no', 'shipnumber']),
             'intl_ship_empty' => $first(['intl_ship_empty', 'kong']),
+            'frb_push' => $first(['frb_push']),
             'carrier' => $first(['carrier']),
             'location' => $first(['location']),
             'receipt_city' => $first(['receipt_city']),

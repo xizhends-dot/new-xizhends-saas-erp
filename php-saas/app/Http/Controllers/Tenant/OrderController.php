@@ -67,8 +67,10 @@ final class OrderController extends TenantBaseController
         $platform = trim((string) ($_GET['platform'] ?? ''));
         $this->ensurePlatformFeatureAccess($tenantKey, $platform !== '' ? $platform : null);
         $source = $_GET['source'] ?? 'all';
-        $keyword = $this->keywordFrom($_GET);
-        $filters = $this->orderFiltersFrom($_GET, $keyword);
+        $orderPageConfigRegistry = new OrderPageConfigRegistry();
+        $query = $orderPageConfigRegistry->normalizeFilterInput($platform, $_GET);
+        $keyword = $this->keywordFrom($query);
+        $filters = $this->orderFiltersFrom($query, $keyword);
         $filters['date_scope'] = $this->orderDateScope($view);
         $filters['default_pending'] = '1';
         $canEditFeature = $this->service->tenantFeatureEnabled($tenantKey, 'orders.edit');
@@ -81,7 +83,6 @@ final class OrderController extends TenantBaseController
         $canFinanceExport = $this->service->tenantFeatureEnabled($tenantKey, 'import_export.center')
             && $this->service->tenantFeatureEnabled($tenantKey, 'import_export.finance')
             && Permission::has($currentUser, '导入导出');
-        $orderPageConfigRegistry = new OrderPageConfigRegistry();
 
         $orders = $this->service->filterOrdersForView(
             $this->service->ordersForUser($tenantKey, $currentUser),
@@ -157,7 +158,7 @@ final class OrderController extends TenantBaseController
         $action = (string) ($_POST['batch_action'] ?? '');
         $this->requireTenantFeature($tenantKey, 'orders.edit');
         $this->requireTenantFeature($tenantKey, match ($action) {
-            'delete_orders' => 'orders.platform',
+            'delete_orders', 'set_source' => 'orders.platform',
             'assign_jp', 'mark_out' => 'orders.jp',
             default => 'orders.purchase',
         });
@@ -175,6 +176,16 @@ final class OrderController extends TenantBaseController
                 $orderIds = $this->orderIdsForItems($tenantKey, $itemIds);
             }
             $this->store->deleteOrders($tenantKey, $orderIds);
+            redirect_to($return);
+        }
+
+        if ($action === 'set_source') {
+            $source = (string) ($_POST['source'] ?? '');
+            if (in_array($source, ['cn_purchase', 'jp_stock', 'pending'], true)) {
+                foreach ($itemIds as $itemId) {
+                    $this->store->changeItemSource($tenantKey, $itemId, $source);
+                }
+            }
             redirect_to($return);
         }
 
@@ -351,6 +362,7 @@ final class OrderController extends TenantBaseController
         return match ($action) {
             'set_purchase_status' => '批量修改采购状态',
             'assign_buyer' => '批量分配采购人',
+            'set_source' => '批量改货源地',
             'assign_jp' => '批量分配日本仓',
             'mark_out' => '批量标记出库',
             default => '批量更新',
@@ -410,6 +422,7 @@ final class OrderController extends TenantBaseController
     {
         match ($action) {
             'delete_orders' => $this->auth->requireTenantPermission($tenantKey, '批量操作'),
+            'set_source' => $this->auth->requireTenantPermission($tenantKey, '货源改判'),
             'set_purchase_status', 'assign_buyer' => $this->auth->requireAnyTenantPermission($tenantKey, ['批量操作', '采购状态', '订单编辑']),
             'assign_jp', 'mark_out' => $this->auth->requireAnyTenantPermission($tenantKey, ['批量操作', '日本仓发货', '订单编辑']),
             default => $this->auth->requireTenantPermission($tenantKey, '批量操作'),

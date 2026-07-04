@@ -117,7 +117,7 @@ $fieldOptions = static function (array $field) use ($statusOptions, $orderView, 
     if (($field['optionsKey'] ?? '') === 'storeNames') {
         return array_map(static fn (string $name): array => ['value' => $name, 'label' => $name], $storeNames);
     }
-    if (in_array($key, ['page_size', 'source', 'buyer'], true)) {
+    if (is_array($field['options'] ?? null)) {
         return is_array($field['options'] ?? null) ? $field['options'] : [];
     }
 
@@ -137,6 +137,7 @@ $fieldCurrentValue = static function (array $field) use ($filterValue, $keyword,
 };
 $renderFilterField = static function (array $field, string $extraClass = '') use ($fieldOptions, $fieldCurrentValue, $orderView, $checkedFilter): void {
     $key = (string) ($field['key'] ?? '');
+    $name = (string) ($field['name'] ?? $key);
     $label = (string) ($field['label'] ?? $key);
     $type = (string) ($field['type'] ?? 'text');
     $value = $fieldCurrentValue($field);
@@ -151,13 +152,15 @@ $renderFilterField = static function (array $field, string $extraClass = '') use
     <label class="<?= e($class) ?>">
         <span class="lb"><?= e($label) ?></span>
         <?php if ($type === 'select'): ?>
-            <select name="<?= e($key) ?>">
+            <select name="<?= e($name) ?>">
                 <?php if ($key === 'status'): ?>
                     <option value=""><?= e($orderView === 'jp' ? '全部状态' : '— 待处理订单 —') ?></option>
                     <?php if ($orderView !== 'jp'): ?>
                         <option value="__ALL__" <?= e($value === '__ALL__' ? 'selected' : '') ?>>全部订单</option>
                     <?php endif; ?>
                 <?php elseif (in_array($key, ['store', 'buyer'], true)): ?>
+                    <option value="">全部</option>
+                <?php elseif (!in_array($key, ['page_size', 'source'], true)): ?>
                     <option value="">全部</option>
                 <?php endif; ?>
                 <?php foreach ($fieldOptions($field) as $option): ?>
@@ -169,15 +172,21 @@ $renderFilterField = static function (array $field, string $extraClass = '') use
                 <?php endforeach; ?>
             </select>
         <?php elseif ($type === 'checkbox'): ?>
-            <span class="ck"><input type="checkbox" name="<?= e($key) ?>" value="1" <?= e($checkedFilter($key)) ?>> <?= e($label === '超时发货' ? '勾选' : '空') ?></span>
+            <span class="ck"><input type="checkbox" name="<?= e($name) ?>" value="<?= e($name === 'kong' ? 'no' : '1') ?>" <?= e($checkedFilter($key)) ?>> <?= e($label === '超时发货' ? '勾选' : '空') ?></span>
         <?php elseif ($type === 'date_range'): ?>
+            <?php
+            $fromName = $orderView === 'platform' ? (string) ($field['from'] ?? 'date_from') : 'date_from';
+            $toName = $orderView === 'platform' ? (string) ($field['to'] ?? 'date_to') : 'date_to';
+            $fromValueKey = $orderView === 'platform' ? 'order_date_from' : 'date_from';
+            $toValueKey = $orderView === 'platform' ? 'order_date_to' : 'date_to';
+            ?>
             <span class="dwrap">
-                <input type="date" name="<?= e((string) ($field['from'] ?? 'date_from')) ?>" value="<?= e($fieldCurrentValue(['key' => (string) ($field['from'] ?? 'date_from')])) ?>">
+                <input type="date" name="<?= e($fromName) ?>" value="<?= e($fieldCurrentValue(['key' => $fromValueKey])) ?>">
                 <span>至</span>
-                <input type="date" name="<?= e((string) ($field['to'] ?? 'date_to')) ?>" value="<?= e($fieldCurrentValue(['key' => (string) ($field['to'] ?? 'date_to')])) ?>">
+                <input type="date" name="<?= e($toName) ?>" value="<?= e($fieldCurrentValue(['key' => $toValueKey])) ?>">
             </span>
         <?php else: ?>
-            <input type="<?= e($type === 'date' ? 'date' : 'text') ?>" name="<?= e($key) ?>" value="<?= e($value) ?>" placeholder="<?= e($label) ?>">
+            <input type="<?= e($type === 'date' ? 'date' : 'text') ?>" name="<?= e($name) ?>" value="<?= e($value) ?>" placeholder="<?= e($label) ?>">
         <?php endif; ?>
     </label>
     <?php
@@ -259,7 +268,7 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
 
                 <div class="order-search-grid">
                     <?php foreach ($basicFields as $field): ?>
-                        <?php $renderFilterField($field); ?>
+                        <?php $renderFilterField($field, ((string) ($field['key'] ?? '') === 'status') ? 'order-status-filter-row' : ''); ?>
                     <?php endforeach; ?>
                 </div>
 
@@ -281,7 +290,7 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
                                         $key = (string) ($field['key'] ?? '');
                                         $label = (string) ($field['label'] ?? $key);
                                         ?>
-                                        <label class="ck <?= $key === 'late_ship' ? 'warn' : '' ?>"><input type="checkbox" name="<?= e($key) ?>" value="1" <?= e($checkedFilter($key)) ?>> <?= e($label) ?></label>
+                                        <label class="ck <?= $key === 'late_ship' ? 'warn' : '' ?>"><input type="checkbox" name="<?= e((string) ($field['name'] ?? $key)) ?>" value="1" <?= e($checkedFilter($key)) ?>> <?= e($label) ?></label>
                                     <?php endforeach; ?>
                                 </div>
                             </div>
@@ -418,6 +427,16 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
                     <?php endforeach; ?>
                 </select>
                 <button class="btn-xs" type="submit" name="batch_action" value="set_purchase_status" form="<?= e($batchFormId) ?>">批量改状态</button>
+                <?php if ($orderView === 'platform' && $canChangeSource): ?>
+                    <span class="batch-label">货源地</span>
+                    <select class="assign-sel" name="source" form="<?= e($batchFormId) ?>">
+                        <option value="">选择货源</option>
+                        <option value="cn_purchase">国内采购</option>
+                        <option value="jp_stock">日本仓</option>
+                        <option value="pending">待定</option>
+                    </select>
+                    <button class="btn-xs" type="submit" name="batch_action" value="set_source" form="<?= e($batchFormId) ?>">批量改货源地</button>
+                <?php endif; ?>
                 <span class="batch-label">采购人</span>
                 <select class="assign-sel" name="buyer" form="<?= e($batchFormId) ?>"><option value="">选择人员</option><option>王五</option><option>李四</option><option>赵六</option></select>
                 <button class="btn-xs" type="submit" name="batch_action" value="assign_buyer" form="<?= e($batchFormId) ?>">批量分配</button>

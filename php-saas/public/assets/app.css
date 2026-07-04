@@ -1175,6 +1175,26 @@ button.order-tool-button:disabled {
   grid-column: span 2;
 }
 
+.order-filter-modern .order-status-filter-row {
+  grid-column: 1 / -1;
+  grid-template-columns: 92px minmax(220px, 360px) auto;
+  padding: 8px 10px;
+  border: 1px solid #fed7aa;
+  background: #fff7ed;
+}
+
+.order-filter-modern .order-status-filter-row > .lb {
+  color: #c2410c;
+  font-weight: 850;
+}
+
+.order-filter-modern .order-status-filter-row select {
+  border-color: #fb923c;
+  background: #fff;
+  color: #7c2d12;
+  font-weight: 700;
+}
+
 .dwrap {
   display: flex;
   align-items: center;

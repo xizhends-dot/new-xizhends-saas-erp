@@ -292,8 +292,15 @@ final class OrderFilterService
         if (!empty($filters['lot_number_empty']) && trim((string) ($item['lot_number'] ?? '')) !== '') {
             return false;
         }
-        if (!empty($filters['intl_ship_empty']) && trim((string) ($item['intl_number'] ?? '')) !== '') {
-            return false;
+        $intlShipState = trim((string) ($filters['intl_ship_empty'] ?? ''));
+        if ($intlShipState !== '') {
+            $hasIntlNumber = trim((string) ($item['intl_number'] ?? '')) !== '';
+            if (($intlShipState === 'no' && $hasIntlNumber) || ($intlShipState === 'yes' && !$hasIntlNumber)) {
+                return false;
+            }
+            if (!in_array($intlShipState, ['no', 'yes'], true) && $hasIntlNumber) {
+                return false;
+            }
         }
         if (!$this->dateInRange($item['purchase_time'] ?? '', (string) ($filters['purchase_date_from'] ?? ''), (string) ($filters['purchase_date_to'] ?? ''))) {
             return false;
@@ -304,6 +311,14 @@ final class OrderFilterService
         }
         if (($filters['date_scope'] ?? '') === 'purchase' && !$this->dateInRange($item['purchase_time'] ?? '', (string) ($filters['date_from'] ?? ''), (string) ($filters['date_to'] ?? ''))) {
             return false;
+        }
+
+        $frbPush = trim((string) ($filters['frb_push'] ?? ''));
+        if ($frbPush !== '') {
+            $hasFrbPush = $this->hasFlyRabbitPush($order, $item);
+            if (($frbPush === 'yes' && !$hasFrbPush) || ($frbPush === 'no' && $hasFrbPush)) {
+                return false;
+            }
         }
 
         if (!empty($filters['late_ship']) && !$this->isLateShipItem($item)) {
@@ -318,6 +333,29 @@ final class OrderFilterService
         }
 
         return true;
+    }
+
+    /** @param array<string, mixed> $order @param array<string, mixed> $item */
+    private function hasFlyRabbitPush(array $order, array $item): bool
+    {
+        $orderExtra = is_array($order['platform_extra'] ?? null) ? $order['platform_extra'] : [];
+        $itemExtra = is_array($item['platform_extra'] ?? null) ? $item['platform_extra'] : [];
+        foreach ([
+            $order['frb_pushed_at'] ?? '',
+            $order['frb_order_no'] ?? '',
+            $item['frb_pushed_at'] ?? '',
+            $item['frb_order_no'] ?? '',
+            $orderExtra['frb_pushed_at'] ?? '',
+            $orderExtra['frb_order_no'] ?? '',
+            $itemExtra['frb_pushed_at'] ?? '',
+            $itemExtra['frb_order_no'] ?? '',
+        ] as $value) {
+            if (trim((string) $value) !== '') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
 

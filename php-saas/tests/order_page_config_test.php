@@ -23,10 +23,19 @@ $checkFalse = static function (string $name, bool $actual) use (&$failures): voi
         $failures[] = $name . ': expected false, got true';
     }
 };
+$fieldKeys = static fn (string $platform): array => array_column($registry->filterFieldsFor($platform), 'key');
+$fieldByKey = static function (string $platform) use ($registry): array {
+    $result = [];
+    foreach ($registry->filterFieldsFor($platform) as $field) {
+        $result[(string) $field['key']] = $field;
+    }
 
-$fields = $registry->filterFieldsFor('r');
-$fieldKeys = array_column($fields, 'key');
-$expectedKeys = [
+    return $result;
+};
+$has = static fn (string $platform, string $key): bool => in_array($key, $fieldKeys($platform), true);
+
+$rakutenFields = $fieldByKey('r');
+foreach ([
     'order_no',
     'tabaono',
     'customer_name',
@@ -42,33 +51,113 @@ $expectedKeys = [
     'item_id',
     'item_management_id',
     'order_detail_id',
-    'lot_number',
-    'lot_number_empty',
     'kana',
-    'product_name',
-    'pay_method',
     'ship_method',
     'material',
     'carrier',
     'date_range',
     'late_ship',
     'intl_ship_empty',
-];
-foreach ($expectedKeys as $key) {
-    $checkTrue("D1筛选字段包含 {$key}", in_array($key, $fieldKeys, true));
+    'frb_push',
+    'review_invited',
+    'reviewed',
+    'in_delivery',
+    'delivered',
+] as $key) {
+    $checkTrue("乐天筛选字段包含 {$key}", $has('r', $key));
 }
-$fieldByKey = [];
-foreach ($fields as $field) {
-    $fieldByKey[(string) $field['key']] = $field;
+$checkFalse('乐天不显示 lotNumber', $has('r', 'lot_number'));
+$checkFalse('乐天不显示 lotNumber 为空', $has('r', 'lot_number_empty'));
+$checkFalse('乐天不显示采购链接', $has('r', 'purchase_link'));
+$checkFalse('乐天不显示支付方式', $has('r', 'pay_method'));
+$check('采购状态字段类型', $rakutenFields['status']['type'] ?? null, 'select');
+$check('采购状态字段选项来源', $rakutenFields['status']['optionsKey'] ?? null, 'statusOptions');
+$check('店铺字段选项来源', $rakutenFields['store']['optionsKey'] ?? null, 'storeNames');
+$check('采购状态字段位于基础区', $rakutenFields['status']['section'] ?? null, 'basic');
+$check('超时发货字段位于标记区', $rakutenFields['late_ship']['section'] ?? null, 'flags');
+$check('国际运单状态字段类型', $rakutenFields['intl_ship_empty']['type'] ?? null, 'select');
+$check('国际运单状态字段名', $rakutenFields['intl_ship_empty']['name'] ?? null, 'kong');
+$check('飞兔推送字段类型', $rakutenFields['frb_push']['type'] ?? null, 'select');
+$check('乐天配達中字段名', $rakutenFields['in_delivery']['name'] ?? null, 'haitatsuchuu');
+$check('乐天配達完了字段名', $rakutenFields['delivered']['name'] ?? null, 'haitatsukanryo');
+$check('日期范围字段类型', $rakutenFields['date_range']['type'] ?? null, 'date_range');
+$check('乐天日期开始字段名', $rakutenFields['date_range']['from'] ?? null, 'OrderTime');
+$check('乐天日期结束字段名', $rakutenFields['date_range']['to'] ?? null, 'OrderTime2');
+$check('每页显示字段类型', $rakutenFields['page_size']['type'] ?? null, 'select');
+$check('每页显示选项数', count($rakutenFields['page_size']['options'] ?? []), 4);
+
+$checkTrue('Yahoo购物显示邀评', $has('y', 'review_invited'));
+$checkTrue('Yahoo购物显示评价', $has('y', 'reviewed'));
+$checkTrue('Yahoo购物显示采购链接', $has('y', 'purchase_link'));
+$checkFalse('Yahoo购物不显示 lotNumber', $has('y', 'lot_number'));
+$check('Yahoo购物采购链接字段名', ($fieldByKey('y')['purchase_link']['name'] ?? null), 'caigoulink');
+$check('Yahoo购物运送方式字段名', ($fieldByKey('y')['ship_method']['name'] ?? null), 'PayStatus');
+
+$checkTrue('Mercari 显示 lotNumber', $has('m', 'lot_number'));
+$checkFalse('Mercari 不显示 lotNumber 为空', $has('m', 'lot_number_empty'));
+$checkFalse('Mercari 不显示邀评', $has('m', 'review_invited'));
+$checkFalse('Mercari 不显示评价', $has('m', 'reviewed'));
+$checkTrue('Mercari 显示飞兔推送', $has('m', 'frb_push'));
+$checkTrue('Mercari 显示国际运单状态', $has('m', 'intl_ship_empty'));
+
+$checkTrue('雅拍显示 lotNumber', $has('yp', 'lot_number'));
+$checkTrue('雅拍显示 lotNumber 为空', $has('yp', 'lot_number_empty'));
+$checkTrue('雅拍显示商品标题', $has('yp', 'product_name'));
+$checkFalse('雅拍不显示 ItemId', $has('yp', 'item_id'));
+$checkFalse('雅拍不显示运送方式', $has('yp', 'ship_method'));
+$checkFalse('雅拍不显示片假名', $has('yp', 'kana'));
+$check('雅拍商品标题字段名', ($fieldByKey('yp')['product_name']['name'] ?? null), 'product_title');
+
+$checkTrue('Wowma 显示支付方式', $has('w', 'pay_method'));
+$checkFalse('Wowma 不显示 lotNumber', $has('w', 'lot_number'));
+$check('Wowma 支付方式字段名', ($fieldByKey('w')['pay_method']['name'] ?? null), 'settlementName');
+
+$checkFalse('Qoo10 不显示邀评', $has('q', 'review_invited'));
+$checkFalse('Qoo10 不显示评价', $has('q', 'reviewed'));
+$checkFalse('Qoo10 不显示国际运单状态', $has('q', 'intl_ship_empty'));
+$checkFalse('Qoo10 不显示飞兔推送', $has('q', 'frb_push'));
+$checkFalse('Qoo10 不显示 lotNumber', $has('q', 'lot_number'));
+
+$check('乐天订单号字段名', $registry->fieldNameFor('order_no', 'r'), 'orderId');
+$check('Yahoo购物订单号字段名', $registry->fieldNameFor('order_no', 'y'), 'orderId');
+foreach (['yp', 'w', 'm', 'q'] as $platform) {
+    $check("{$platform} 订单号字段名", $registry->fieldNameFor('order_no', $platform), 'ziid');
 }
-$check('采购状态字段类型', $fieldByKey['status']['type'] ?? null, 'select');
-$check('采购状态字段选项来源', $fieldByKey['status']['optionsKey'] ?? null, 'statusOptions');
-$check('店铺字段选项来源', $fieldByKey['store']['optionsKey'] ?? null, 'storeNames');
-$check('lotNumber字段位于更多筛选', $fieldByKey['lot_number']['section'] ?? null, 'advanced');
-$check('超时发货字段位于标记区', $fieldByKey['late_ship']['section'] ?? null, 'flags');
-$check('日期范围字段类型', $fieldByKey['date_range']['type'] ?? null, 'date_range');
-$check('每页显示字段类型', $fieldByKey['page_size']['type'] ?? null, 'select');
-$check('每页显示选项数', count($fieldByKey['page_size']['options'] ?? []), 4);
+$check('乐天 ItemId 字段名', $registry->fieldNameFor('item_id', 'r'), 'ItemId');
+$check('Yahoo购物 ItemId 字段名', $registry->fieldNameFor('item_id', 'y'), 'ItemId');
+foreach (['w', 'm', 'q'] as $platform) {
+    $check("{$platform} ItemId 字段名", $registry->fieldNameFor('item_id', $platform), 'itemManagementId');
+}
+$check('乐天运送方式字段名', $registry->fieldNameFor('ship_method', 'r'), 'yunshu');
+$check('Yahoo购物运送方式字段名', $registry->fieldNameFor('ship_method', 'y'), 'PayStatus');
+$check('Wowma 运送方式字段名', $registry->fieldNameFor('ship_method', 'w'), 'deliveryName');
+$check('Mercari 运送方式字段名', $registry->fieldNameFor('ship_method', 'm'), 'deliveryName');
+$check('Qoo10 运送方式字段名', $registry->fieldNameFor('ship_method', 'q'), 'deliveryName');
+$check('乐天片假名字段名', $registry->fieldNameFor('kana', 'r'), 'pianjiaming');
+foreach (['y', 'w', 'm', 'q'] as $platform) {
+    $check("{$platform} 片假名字段名", $registry->fieldNameFor('kana', $platform), 'senderKana');
+}
+$check('乐天订单时间字段名', $registry->orderDateFieldFor('r'), 'OrderTime');
+$check('Yahoo购物订单时间字段名', $registry->orderDateFieldFor('y'), 'OrderTime');
+foreach (['yp', 'w', 'm', 'q'] as $platform) {
+    $check("{$platform} 订单时间字段名", $registry->orderDateFieldFor($platform), 'orderDate');
+}
+
+$normalized = $registry->normalizeFilterInput('y', [
+    'orderId' => 'Y-100',
+    'ItemId' => 'ITEM-1',
+    'PayStatus' => '配送中',
+    'pianjiaming' => '旧字段不应优先',
+    'senderKana' => 'ヤマダ',
+    'caigoulink' => 'https://example.test/item',
+    'OrderTime' => '2026-07-01',
+    'OrderTime2' => '2026-07-02',
+]);
+$check('normalize 订单号', $normalized['order_no'] ?? null, 'Y-100');
+$check('normalize ItemId', $normalized['item_id'] ?? null, 'ITEM-1');
+$check('normalize Yahoo PayStatus 特判', $normalized['ship_method'] ?? null, '配送中');
+$check('normalize 片假名', $normalized['kana'] ?? null, 'ヤマダ');
+$check('normalize 采购链接', $normalized['purchase_link'] ?? null, 'https://example.test/item');
 
 $toolMap = static function (array $tools): array {
     $result = [];
