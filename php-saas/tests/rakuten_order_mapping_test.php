@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/../app/Core/StoreInterface.php';
 require __DIR__ . '/../app/Services/PlatformOrderSyncInterface.php';
+require __DIR__ . '/../app/Services/RakutenUrlHelper.php';
 require __DIR__ . '/../app/Services/RakutenOrderService.php';
 
 use Xizhen\Services\RakutenOrderService;

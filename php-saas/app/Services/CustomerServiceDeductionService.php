@@ -150,17 +150,6 @@ final class CustomerServiceDeductionService
         return round($number, 2);
     }
 
-    /** @return array<int, string> */
-    public function persistenceRequirements(): array
-    {
-        return [
-            '当前服务可先把扣点保存到 tenant_settings.profit.customer_service_deductions。',
-            '如需完全贴合 old 的 ph_user.profit_deduction 语义，需 users 增加 profit_deduction 字段并让 StoreInterface::users() 返回该字段。',
-            '建议新增 StoreInterface::updateUserProfitDeduction(string $tenantKey, int $userId, float $deduction, string $operator): void。',
-            '利润计算要接入客服扣点时，AppService 需按订单客服/店铺账号读取该映射或新用户字段。',
-        ];
-    }
-
     /** @return array<string, float> */
     private function settingsMap(string $tenantKey): array
     {

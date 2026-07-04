@@ -152,50 +152,6 @@ final class UserPermissionOverrideService
     }
 
     /**
-     * @param array<string, mixed> $states
-     * @return array{ok: bool, message: string, errors: array<string, string>, payload?: array<string, mixed>, needs_store_support?: bool}
-     */
-    public function prepareSave(string $tenantKey, int $userId, array $states, array $operator = []): array
-    {
-        $user = $this->store->user($tenantKey, $userId);
-        if (!$user) {
-            return [
-                'ok' => false,
-                'message' => '员工不存在。',
-                'errors' => ['user' => '员工不存在。'],
-            ];
-        }
-
-        $overrides = $this->normalizeSubmittedStates($states);
-        $flatPermissions = $this->flatPermissions((string) ($user['role'] ?? '客服'), $overrides);
-
-        return [
-            'ok' => false,
-            'message' => '权限覆盖持久化接口尚未接入 Store，请主控统一添加后调用保存。',
-            'errors' => [],
-            'needs_store_support' => true,
-            'payload' => [
-                'tenant_key' => $tenantKey,
-                'user_id' => $userId,
-                'permission_overrides' => $overrides,
-                'flat_permissions' => $flatPermissions,
-                'operator_id' => (int) ($operator['id'] ?? 0),
-                'operator_name' => (string) (($operator['name'] ?? '') ?: ($operator['username'] ?? '')),
-            ],
-        ];
-    }
-
-    /** @return array<int, string> */
-    public function persistenceRequirements(): array
-    {
-        return [
-            'users.permission_overrides JSON 字段，结构为 {"allow": ["权限名"], "deny": ["权限名"]}',
-            'StoreInterface::updateUserPermissionOverrides(string $tenantKey, int $userId, array $overrides, string $operator): void',
-            'AuthService::currentTenantUser() 合并返回 permission_overrides，Permission 判定入口按 deny 优先、allow 次之、role 默认兜底。',
-        ];
-    }
-
-    /**
      * @param array<int, array<string, mixed>> $matrix
      * @return array<string, array<int, array<string, mixed>>>
      */
@@ -223,18 +179,6 @@ final class UserPermissionOverrideService
             'allow' => array_values(array_filter(array_map('trim', (array) ($raw['allow'] ?? [])))),
             'deny' => array_values(array_filter(array_map('trim', (array) ($raw['deny'] ?? [])))),
         ];
-    }
-
-    /**
-     * @param array{allow: array<int, string>, deny: array<int, string>} $overrides
-     * @return array<int, string>
-     */
-    private function flatPermissions(string $role, array $overrides): array
-    {
-        $permissions = Permission::roleDefaults()[Permission::normalizeRole($role)] ?? Permission::roleDefaults()['客服'];
-        $permissions = array_values(array_unique(array_merge($permissions, $overrides['allow'])));
-
-        return array_values(array_diff($permissions, $overrides['deny']));
     }
 
     private function groupForPermission(string $permission): string

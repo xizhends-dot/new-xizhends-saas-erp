@@ -248,7 +248,7 @@ final class RakutenOrderService implements PlatformOrderSyncInterface
             'myid' => (string) ($model['orderNumber'] ?? ''),
             'OrderTime' => $orderTime,
             'OrderStatus' => (string) ($model['orderProgress'] ?? ''),
-            'EntryPoint' => $this->rakutenItemUrl($store, $firstItemId),
+            'EntryPoint' => RakutenUrlHelper::rakutenItemUrl($store, $firstItemId),
             'ShipName' => $this->personName($sender),
             'senderKana' => $this->personKana($sender),
             'ShipAddress1' => (string) ($sender['subAddress'] ?? ''),
@@ -317,8 +317,8 @@ final class RakutenOrderService implements PlatformOrderSyncInterface
         $quantity = (int) ($item['units'] ?? 0);
         $itemId = (string) ($item['manageNumber'] ?? '');
         $itemCode = (string) ($item['manageNumber'] ?? $item['itemNumber'] ?? $item['itemId'] ?? '');
-        $entryPoint = $this->rakutenItemUrl($store, $itemId !== '' ? $itemId : $itemCode);
-        $mainImage = $this->rakutenMainImageUrl($store, $itemId !== '' ? $itemId : $itemCode);
+        $entryPoint = RakutenUrlHelper::rakutenItemUrl($store, $itemId !== '' ? $itemId : $itemCode);
+        $mainImage = RakutenUrlHelper::rakutenMainImageUrl($store, $itemId !== '' ? $itemId : $itemCode);
 
         return [
             'order_detail_id' => (string) ($item['itemDetailId'] ?? ''),
@@ -392,49 +392,6 @@ final class RakutenOrderService implements PlatformOrderSyncInterface
     private function address(array $person): string
     {
         return trim((string) ($person['prefecture'] ?? '') . (string) ($person['city'] ?? '') . (string) ($person['subAddress'] ?? ''));
-    }
-
-    /** @param array<string, mixed> $store */
-    private function rakutenItemUrl(array $store, string $itemId): string
-    {
-        $dpid = $this->rakutenDpid($store);
-        $itemId = trim($itemId);
-        if ($dpid === '' || $itemId === '') {
-            return '';
-        }
-
-        return 'https://item.rakuten.co.jp/' . rawurlencode($dpid) . '/' . rawurlencode(strtolower($itemId)) . '/';
-    }
-
-    /** @param array<string, mixed> $store */
-    private function rakutenMainImageUrl(array $store, string $itemId): string
-    {
-        $dpid = $this->rakutenDpid($store);
-        $itemId = trim($itemId);
-        if ($dpid === '' || $itemId === '') {
-            return '';
-        }
-
-        return 'https://image.rakuten.co.jp/' . rawurlencode($dpid) . '/cabinet/main/' . rawurlencode(strtolower($itemId)) . '.jpg';
-    }
-
-    /** @param array<string, mixed> $store */
-    private function rakutenDpid(array $store): string
-    {
-        $dpid = trim((string) ($store['legacy_dpid'] ?? ''));
-        if ($dpid === '') {
-            $config = json_decode((string) ($store['api_config'] ?? ''), true);
-            if (is_array($config)) {
-                foreach (['dpid', 'shopId', 'shop_id', 'shopCode', 'shop_code'] as $key) {
-                    if (trim((string) ($config[$key] ?? '')) !== '') {
-                        $dpid = trim((string) $config[$key]);
-                        break;
-                    }
-                }
-            }
-        }
-
-        return (string) (preg_replace('/[^a-zA-Z0-9_-]/', '', $dpid) ?? '');
     }
 
     private function formatDate(mixed $value, string $format = 'Y-m-d H:i:s'): string

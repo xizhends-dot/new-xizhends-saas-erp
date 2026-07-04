@@ -81,32 +81,6 @@ final class TenantNoticeService
     /**
      * @param array<string, mixed> $input
      * @param array<string, mixed> $operator
-     * @return array{ok: bool, message: string, errors: array<string, string>, payload?: array<string, mixed>, needs_store_support?: bool}
-     */
-    public function prepareSave(string $tenantKey, array $input, array $operator, ?int $noticeId = null): array
-    {
-        $payload = $this->payloadFromInput($tenantKey, $input, $operator, $noticeId);
-        $errors = $this->validatePayload($payload);
-        if ($errors !== []) {
-            return [
-                'ok' => false,
-                'message' => '请修正公告内容后再提交。',
-                'errors' => $errors,
-            ];
-        }
-
-        return [
-            'ok' => false,
-            'message' => '公告持久化接口尚未接入 Store，请主控统一添加后调用保存。',
-            'errors' => [],
-            'payload' => $payload,
-            'needs_store_support' => true,
-        ];
-    }
-
-    /**
-     * @param array<string, mixed> $input
-     * @param array<string, mixed> $operator
      * @return array<string, mixed>
      */
     public function payloadFromInput(string $tenantKey, array $input, array $operator, ?int $noticeId = null): array
@@ -146,18 +120,6 @@ final class TenantNoticeService
     public function targetRoles(): array
     {
         return ['公司管理员', '采购', '客服'];
-    }
-
-    /** @return array<int, string> */
-    public function persistenceRequirements(): array
-    {
-        return [
-            'StoreInterface::tenantNotices(string $tenantKey): array',
-            'StoreInterface::tenantNotice(string $tenantKey, int $noticeId): ?array',
-            'StoreInterface::saveTenantNotice(string $tenantKey, array $data): int',
-            'StoreInterface::deleteTenantNotice(string $tenantKey, int $noticeId): void',
-            'StoreInterface::toggleTenantNoticePinned(string $tenantKey, int $noticeId, bool $pinned): void',
-        ];
     }
 
     /**

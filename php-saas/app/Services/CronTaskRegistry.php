@@ -18,6 +18,10 @@ final class CronTaskRegistry
     {
         $this->registerIfExists(Sync1688LogisticsTask::class);
         $this->registerIfExists(SyncJapanLogisticsTask::class);
+        $this->registerIfExists(OrderMonitorTask::class);
+        $this->registerIfExists(OrderArchiveTask::class);
+        $this->registerIfExists(ProductImageDownloadTask::class);
+        $this->registerIfExists(ImageCleanupTask::class);
     }
 
     /** @return array<string, CronTaskInterface> */
