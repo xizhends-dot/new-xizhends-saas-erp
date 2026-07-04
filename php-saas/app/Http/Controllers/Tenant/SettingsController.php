@@ -207,6 +207,7 @@ final class SettingsController extends TenantBaseController
                 'default_query_days' => $this->boundedInt($_POST['default_query_days'] ?? 30, 1, 365),
                 'archive_days' => $this->boundedInt($_POST['archive_days'] ?? 180, 30, 3650),
                 'price_warning_index' => $this->boundedFloat($_POST['price_warning_index'] ?? 0, 0, 999999),
+                'platform_sync_default_days' => $this->boundedInt($_POST['platform_sync_default_days'] ?? 7, 1, 30),
             ],
             'profit' => [
                 'exchange_rate' => $this->boundedFloat($_POST['exchange_rate'] ?? 0.046, 0.0001, 100),

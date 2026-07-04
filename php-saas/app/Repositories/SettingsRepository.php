@@ -292,6 +292,7 @@ final class SettingsRepository extends BaseRepository
                 'default_query_days' => 30,
                 'archive_days' => 180,
                 'price_warning_index' => 0,
+                'platform_sync_default_days' => 7,
             ],
             'profit' => [
                 'exchange_rate' => 0.046,

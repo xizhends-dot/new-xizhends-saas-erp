@@ -112,7 +112,6 @@ final class OrderController extends TenantBaseController
             'statusOptions' => $this->service->purchaseStatuses($tenantKey),
             'filterFields' => $orderPageConfigRegistry->filterFieldsFor($platform),
             'exportTools' => $orderPageConfigRegistry->exportToolsFor($platform, $currentUser ?? []),
-            'priceDefaults' => $this->priceCalculatorService->defaults($tenantKey),
             'canEditOrders' => $canEditFeature && $this->auth->tenantCan($tenantKey, '订单编辑'),
             'canEditSource' => $canEditFeature && $this->service->tenantFeatureEnabled($tenantKey, 'orders.platform') && Permission::hasAny($currentUser, ['订单编辑', '货源改判']),
             'canEditPurchase' => $canEditFeature && $this->service->tenantFeatureEnabled($tenantKey, 'orders.purchase') && Permission::hasAny($currentUser, ['订单编辑', '采购状态']),

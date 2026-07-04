@@ -57,6 +57,7 @@ final class DashboardController extends TenantBaseController
             'menu' => $this->service->platformMenu($tenantKey),
             'tenantFeatures' => $this->service->tenantFeatureMap($tenantKey),
             'stats' => $this->service->dashboard($tenantKey, $currentUser),
+            'priceDefaults' => $this->priceCalculatorService->defaults($tenantKey),
             'announcements' => $this->store->announcements(),
             'tenantNotices' => $this->tenantNoticeService->dashboardNotices($tenantKey, $currentUser),
             'groups' => $this->service->featureGroups($tenantKey),

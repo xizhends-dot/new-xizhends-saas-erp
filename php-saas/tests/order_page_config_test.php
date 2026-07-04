@@ -35,19 +35,38 @@ $expectedKeys = [
     'cn_ship_no',
     'intl_ship_no',
     'status',
+    'store',
+    'source',
     'receipt_city',
     'page_size',
+    'item_id',
+    'item_management_id',
+    'order_detail_id',
+    'lot_number',
+    'lot_number_empty',
+    'kana',
+    'product_name',
+    'pay_method',
+    'ship_method',
+    'material',
+    'carrier',
+    'date_range',
+    'late_ship',
+    'intl_ship_empty',
 ];
 foreach ($expectedKeys as $key) {
-    $checkTrue("通用筛选字段包含 {$key}", in_array($key, $fieldKeys, true));
+    $checkTrue("D1筛选字段包含 {$key}", in_array($key, $fieldKeys, true));
 }
-$checkFalse('通用筛选字段不包含店铺', in_array('store', $fieldKeys, true));
 $fieldByKey = [];
 foreach ($fields as $field) {
     $fieldByKey[(string) $field['key']] = $field;
 }
 $check('采购状态字段类型', $fieldByKey['status']['type'] ?? null, 'select');
 $check('采购状态字段选项来源', $fieldByKey['status']['optionsKey'] ?? null, 'statusOptions');
+$check('店铺字段选项来源', $fieldByKey['store']['optionsKey'] ?? null, 'storeNames');
+$check('lotNumber字段位于更多筛选', $fieldByKey['lot_number']['section'] ?? null, 'advanced');
+$check('超时发货字段位于标记区', $fieldByKey['late_ship']['section'] ?? null, 'flags');
+$check('日期范围字段类型', $fieldByKey['date_range']['type'] ?? null, 'date_range');
 $check('每页显示字段类型', $fieldByKey['page_size']['type'] ?? null, 'select');
 $check('每页显示选项数', count($fieldByKey['page_size']['options'] ?? []), 4);
 
@@ -61,9 +80,22 @@ $toolMap = static function (array $tools): array {
 };
 
 $adminTools = $toolMap($registry->exportToolsFor('r', ['role' => '公司管理员']));
-foreach (['sync_orders', 'platform_orders_import', 'shipping_import', 'shipment_export', 'finance_export', 'customers_export'] as $key) {
+foreach (['sync_orders', 'platform_orders_import', 'shipping_import', 'shipment_export', 'platform_export', 'finance_export', 'customers_export', 'delivery_notice_export', 'xizhen_delivery_export'] as $key) {
     $checkTrue("公司管理员可见 {$key}", $adminTools[$key] ?? false);
 }
+
+$toolKeys = array_column($registry->exportToolsFor('r', ['role' => '公司管理员']), 'key');
+$check('导出工具顺序', $toolKeys, [
+    'sync_orders',
+    'platform_orders_import',
+    'shipping_import',
+    'shipment_export',
+    'platform_export',
+    'finance_export',
+    'customers_export',
+    'delivery_notice_export',
+    'xizhen_delivery_export',
+]);
 
 $importUserTools = $toolMap($registry->exportToolsFor('r', ['role' => '客服', 'permissions' => ['导入导出']]));
 $checkTrue('导入导出用户可见同步订单', $importUserTools['sync_orders'] ?? false);

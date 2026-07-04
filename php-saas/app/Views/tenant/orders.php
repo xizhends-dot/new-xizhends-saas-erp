@@ -4,6 +4,7 @@ $activeTitle = $viewLabels[$orderView] ?? '平台订单';
 $totalItems = array_sum(array_map(fn (array $order): int => count($order['items'] ?? []), $orders));
 $resultTotal = $orderView === 'platform' ? count($orders) : $totalItems;
 $resultUnit = $orderView === 'platform' ? '单' : '件';
+$advancedId = 'adv-' . $orderView;
 $platformLabel = $platform ? ($platformNames[$platform] ?? $platform) : '全部平台';
 $resultLabel = $orderView === 'jp' ? '件待发' : $resultUnit . '结果';
 $filters = $filters ?? [];
@@ -30,7 +31,13 @@ $can1688Logistics = (bool) ($can1688Logistics ?? false);
 $canExpressLogistics = (bool) ($canExpressLogistics ?? false);
 $canJpLogistics = (bool) ($canJpLogistics ?? false);
 $stores = is_array($stores ?? null) ? $stores : [];
+$storeNames = array_values(array_unique(array_filter(array_map(
+    static fn (array $store): string => (string) (($store['name'] ?? '') ?: ($store['short'] ?? '')),
+    $stores
+), static fn (string $name): bool => $name !== '')));
 $filterValue = static fn (string $key): string => (string) ($filters[$key] ?? '');
+$selectedFilter = static fn (string $key, string $value): string => ((string) ($filters[$key] ?? '') === $value) ? 'selected' : '';
+$checkedFilter = static fn (string $key): string => trim((string) ($filters[$key] ?? '')) !== '' ? 'checked' : '';
 $platformSyncServices = is_array($platformSyncServices ?? null) ? $platformSyncServices : [];
 $currentPlatform = (string) ($platform ?? '');
 $platformSyncName = $currentPlatform !== '' ? (string) ($platformSyncServices[$currentPlatform] ?? '') : '';
@@ -62,19 +69,38 @@ $filterFields = array_values(array_filter(
     is_array($filterFields ?? null) ? $filterFields : [],
     static fn (mixed $field): bool => is_array($field) && trim((string) ($field['key'] ?? '')) !== ''
 ));
+$visibleForView = static function (array $field) use ($orderView): bool {
+    $views = is_array($field['views'] ?? null) ? $field['views'] : ['platform', 'purchase', 'jp'];
+
+    return in_array($orderView, array_map('strval', $views), true);
+};
+$basicFields = array_values(array_filter($filterFields, static fn (array $field): bool => ($field['section'] ?? 'basic') === 'basic' && $visibleForView($field)));
+$advancedFields = array_values(array_filter($filterFields, static fn (array $field): bool => ($field['section'] ?? 'basic') === 'advanced' && $visibleForView($field)));
+$flagFields = array_values(array_filter($filterFields, static fn (array $field): bool => ($field['section'] ?? 'basic') === 'flags' && $visibleForView($field)));
 $exportTools = array_values(array_filter(
     is_array($exportTools ?? null) ? $exportTools : [],
     static fn (mixed $tool): bool => is_array($tool) && !empty($tool['visibleWhen'])
 ));
-$priceDefaults = is_array($priceDefaults ?? null) ? $priceDefaults : [];
-$formatNumber = static fn (mixed $value, int $decimals = 2): string => number_format((float) $value, $decimals, '.', '');
+$syncTool = null;
+$toolGroups = ['import' => [], 'shipment' => [], 'finance' => [], 'delivery' => []];
+foreach ($exportTools as $tool) {
+    $toolKey = (string) ($tool['key'] ?? '');
+    if ($toolKey === 'sync_orders') {
+        $syncTool = $tool;
+        continue;
+    }
+    $group = (string) ($tool['group'] ?? '');
+    if (array_key_exists($group, $toolGroups)) {
+        $toolGroups[$group][] = $tool;
+    }
+}
 $urlWithQuery = static function (string $path, array $params): string {
     $params = array_filter($params, static fn (mixed $value): bool => trim((string) $value) !== '');
 
     return $path . ($params ? '?' . http_build_query($params) : '');
 };
 $exportUrl = static fn (string $path, array $extra = []): string => $urlWithQuery($path, array_merge($hiddenFilters, $extra));
-$fieldOptions = static function (array $field) use ($statusOptions, $orderView): array {
+$fieldOptions = static function (array $field) use ($statusOptions, $orderView, $storeNames): array {
     $key = (string) ($field['key'] ?? '');
     if (($field['optionsKey'] ?? '') === 'statusOptions') {
         if ($orderView === 'jp') {
@@ -88,11 +114,109 @@ $fieldOptions = static function (array $field) use ($statusOptions, $orderView):
 
         return array_map(static fn (string $status): array => ['value' => $status, 'label' => $status], $statusOptions);
     }
-    if ($key === 'page_size') {
+    if (($field['optionsKey'] ?? '') === 'storeNames') {
+        return array_map(static fn (string $name): array => ['value' => $name, 'label' => $name], $storeNames);
+    }
+    if (in_array($key, ['page_size', 'source', 'buyer'], true)) {
         return is_array($field['options'] ?? null) ? $field['options'] : [];
     }
 
     return [];
+};
+$fieldCurrentValue = static function (array $field) use ($filterValue, $keyword, $source): string {
+    $key = (string) ($field['key'] ?? '');
+    if ($key === 'order_no') {
+        $value = $filterValue($key);
+        return $value !== '' ? $value : (string) $keyword;
+    }
+    if ($key === 'source') {
+        return (string) $source;
+    }
+
+    return $filterValue($key);
+};
+$renderFilterField = static function (array $field, string $extraClass = '') use ($fieldOptions, $fieldCurrentValue, $orderView, $checkedFilter): void {
+    $key = (string) ($field['key'] ?? '');
+    $label = (string) ($field['label'] ?? $key);
+    $type = (string) ($field['type'] ?? 'text');
+    $value = $fieldCurrentValue($field);
+    if ($key === 'status' && $orderView === 'jp') {
+        $label = '出库状态';
+    }
+    if ($key === 'buyer' && $orderView === 'jp') {
+        $label = '发货员';
+    }
+    $class = trim('fg order-search-field order-search-field-' . $key . ' ' . $extraClass);
+    ?>
+    <label class="<?= e($class) ?>">
+        <span class="lb"><?= e($label) ?></span>
+        <?php if ($type === 'select'): ?>
+            <select name="<?= e($key) ?>">
+                <?php if ($key === 'status'): ?>
+                    <option value=""><?= e($orderView === 'jp' ? '全部状态' : '— 待处理订单 —') ?></option>
+                    <?php if ($orderView !== 'jp'): ?>
+                        <option value="__ALL__" <?= e($value === '__ALL__' ? 'selected' : '') ?>>全部订单</option>
+                    <?php endif; ?>
+                <?php elseif (in_array($key, ['store', 'buyer'], true)): ?>
+                    <option value="">全部</option>
+                <?php endif; ?>
+                <?php foreach ($fieldOptions($field) as $option): ?>
+                    <?php
+                    $optionValue = (string) ($option['value'] ?? $option['label'] ?? '');
+                    $optionLabel = (string) ($option['label'] ?? $optionValue);
+                    ?>
+                    <option value="<?= e($optionValue) ?>" <?= e($value === $optionValue ? 'selected' : '') ?>><?= e($optionLabel) ?></option>
+                <?php endforeach; ?>
+            </select>
+        <?php elseif ($type === 'checkbox'): ?>
+            <span class="ck"><input type="checkbox" name="<?= e($key) ?>" value="1" <?= e($checkedFilter($key)) ?>> <?= e($label === '超时发货' ? '勾选' : '空') ?></span>
+        <?php elseif ($type === 'date_range'): ?>
+            <span class="dwrap">
+                <input type="date" name="<?= e((string) ($field['from'] ?? 'date_from')) ?>" value="<?= e($fieldCurrentValue(['key' => (string) ($field['from'] ?? 'date_from')])) ?>">
+                <span>至</span>
+                <input type="date" name="<?= e((string) ($field['to'] ?? 'date_to')) ?>" value="<?= e($fieldCurrentValue(['key' => (string) ($field['to'] ?? 'date_to')])) ?>">
+            </span>
+        <?php else: ?>
+            <input type="<?= e($type === 'date' ? 'date' : 'text') ?>" name="<?= e($key) ?>" value="<?= e($value) ?>" placeholder="<?= e($label) ?>">
+        <?php endif; ?>
+    </label>
+    <?php
+};
+$renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exportUrl): void {
+    $toolKey = (string) ($tool['key'] ?? '');
+    $label = (string) ($tool['label'] ?? '工具');
+    $method = (string) ($tool['method'] ?? 'get');
+    $action = (string) ($tool['action'] ?? '#');
+    $desc = !empty($tool['needsDateRange']) ? '按当前筛选范围' : '进入处理页面';
+    if ($toolKey === 'platform_orders_import') {
+        $href = $urlWithQuery($action, ['tenant' => $tenantKey, 'job' => (string) ($tool['job'] ?? '')]);
+        ?>
+        <a class="order-tool-action" href="<?= e($href) ?>"><span><?= e($label) ?></span><em>上传订单文件</em></a>
+        <?php
+        return;
+    }
+    if ($toolKey === 'shipping_import') {
+        $href = $urlWithQuery($action, ['tenant' => $tenantKey, 'job' => (string) ($tool['job'] ?? '')]);
+        ?>
+        <a class="order-tool-action" href="<?= e($href) ?>"><span><?= e($label) ?></span><em>上传运单文件</em></a>
+        <?php
+        return;
+    }
+    if ($method === 'post' && $action === '/orders/xizhen-delivery/export') {
+        ?>
+        <button class="order-tool-action" type="submit" form="xizhen-delivery-form"><span><?= e($label) ?></span><em><?= e($desc) ?></em></button>
+        <?php
+        return;
+    }
+    if ($method === 'post') {
+        ?>
+        <button class="order-tool-action" type="submit" name="type" value="<?= e((string) ($tool['type'] ?? '')) ?>" form="order-export-form"><span><?= e($label) ?></span><em><?= e($desc) ?></em></button>
+        <?php
+        return;
+    }
+    ?>
+    <a class="order-tool-action" href="<?= e($exportUrl($action)) ?>"><span><?= e($label) ?></span><em><?= e($desc) ?></em></a>
+    <?php
 };
 ?>
 <div class="order-page">
@@ -107,6 +231,18 @@ $fieldOptions = static function (array $field) use ($statusOptions, $orderView):
         <div class="notice slim"><?= e($message) ?></div>
     <?php endif; ?>
 
+    <?php if (!empty($tenantNotices)): ?>
+        <div class="order-notice-strip">
+            <?php foreach (($tenantNotices ?? []) as $notice): ?>
+                <article class="order-notice-item">
+                    <strong><?= e($notice['title'] ?? '') ?></strong>
+                    <span><?= e($notice['published_at'] ?? '') ?></span>
+                    <p><?= e($notice['body'] ?? '') ?></p>
+                </article>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+
     <section class="order-workbench-grid">
         <div class="order-workbench-panel order-search-panel">
             <div class="order-panel-head">
@@ -117,46 +253,46 @@ $fieldOptions = static function (array $field) use ($statusOptions, $orderView):
                 <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                 <input type="hidden" name="view" value="<?= e($orderView) ?>">
                 <input type="hidden" name="platform" value="<?= e((string) ($platform ?? '')) ?>">
-                <input type="hidden" name="source" value="<?= e((string) ($source ?? 'all')) ?>">
+                <?php if (!in_array('source', array_column($basicFields, 'key'), true)): ?>
+                    <input type="hidden" name="source" value="<?= e((string) ($source ?? 'all')) ?>">
+                <?php endif; ?>
+
                 <div class="order-search-grid">
-                    <?php foreach ($filterFields as $field): ?>
-                        <?php
-                        $key = (string) ($field['key'] ?? '');
-                        $label = (string) ($field['label'] ?? $key);
-                        $type = (string) ($field['type'] ?? 'text');
-                        $value = $filterValue($key);
-                        if ($key === 'order_no' && $value === '') {
-                            $value = (string) $keyword;
-                        }
-                        if ($key === 'status' && $orderView === 'jp') {
-                            $label = '出库状态';
-                        }
-                        ?>
-                        <label class="fg order-search-field order-search-field-<?= e($key) ?>">
-                            <span class="lb"><?= e($label) ?></span>
-                            <?php if ($type === 'select'): ?>
-                                <select name="<?= e($key) ?>">
-                                    <?php if ($key === 'status'): ?>
-                                        <option value=""><?= e($orderView === 'jp' ? '全部状态' : '— 待处理订单 —') ?></option>
-                                        <?php if ($orderView !== 'jp'): ?>
-                                            <option value="__ALL__" <?= e($value === '__ALL__' ? 'selected' : '') ?>>全部订单</option>
-                                        <?php endif; ?>
-                                    <?php endif; ?>
-                                    <?php foreach ($fieldOptions($field) as $option): ?>
-                                        <?php
-                                        $optionValue = (string) ($option['value'] ?? $option['label'] ?? '');
-                                        $optionLabel = (string) ($option['label'] ?? $optionValue);
-                                        ?>
-                                        <option value="<?= e($optionValue) ?>" <?= e($value === $optionValue ? 'selected' : '') ?>><?= e($optionLabel) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            <?php else: ?>
-                                <input type="<?= e($type === 'date' ? 'date' : 'text') ?>" name="<?= e($key) ?>" value="<?= e($value) ?>" placeholder="<?= e($label) ?>">
-                            <?php endif; ?>
-                        </label>
+                    <?php foreach ($basicFields as $field): ?>
+                        <?php $renderFilterField($field); ?>
                     <?php endforeach; ?>
                 </div>
+
+                <?php if ($advancedFields || $flagFields): ?>
+                    <div class="filter-adv" id="<?= e($advancedId) ?>">
+                        <div class="filter-adv-title">更多筛选</div>
+                        <?php if ($advancedFields): ?>
+                            <div class="order-search-grid">
+                                <?php foreach ($advancedFields as $field): ?>
+                                    <?php $renderFilterField($field, ((string) ($field['type'] ?? '') === 'date_range') ? 'col2' : ''); ?>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($flagFields): ?>
+                            <div class="filter-foot adv-checks">
+                                <div class="filter-cks">
+                                    <?php foreach ($flagFields as $field): ?>
+                                        <?php
+                                        $key = (string) ($field['key'] ?? '');
+                                        $label = (string) ($field['label'] ?? $key);
+                                        ?>
+                                        <label class="ck <?= $key === 'late_ship' ? 'warn' : '' ?>"><input type="checkbox" name="<?= e($key) ?>" value="1" <?= e($checkedFilter($key)) ?>> <?= e($label) ?></label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+
                 <div class="filter-foot order-filter-actions">
+                    <?php if ($advancedFields || $flagFields): ?>
+                        <button class="more-btn" type="button" data-adv="<?= e($advancedId) ?>">更多筛选 <span class="arr">▾</span></button>
+                    <?php endif; ?>
                     <div class="fsum">共 <strong><?= e($resultTotal) ?></strong> <?= e($resultLabel) ?></div>
                     <div class="fsp"></div>
                     <button class="btn btn-p search-btn" type="submit">搜索</button>
@@ -165,114 +301,46 @@ $fieldOptions = static function (array $field) use ($statusOptions, $orderView):
             </form>
         </div>
 
-        <div class="order-workbench-panel order-info-panel">
-            <div class="order-panel-head">
-                <span>信息</span>
-                <span class="sub">汇率与公告</span>
-            </div>
-            <div class="order-rate-box">
-                <span class="order-rate-label">实时汇率</span>
-                <strong><?= e($formatNumber($priceDefaults['exchange_rate'] ?? 0.048, 4)) ?></strong>
-                <span><?= e((string) ($priceDefaults['exchange_rate_source'] ?? '固定汇率')) ?></span>
-            </div>
-            <div class="order-rate-meta">
-                <span>默认运费 ￥<?= e($formatNumber($priceDefaults['shipping'] ?? 40, 2)) ?></span>
-                <span>默认扣点 <?= e($formatNumber($priceDefaults['deduction'] ?? 70, 0)) ?>%</span>
-            </div>
-            <div class="order-notice-list">
-                <?php if (empty($tenantNotices)): ?>
-                    <div class="order-notice-empty">暂无通知公告</div>
-                <?php endif; ?>
-                <?php foreach (($tenantNotices ?? []) as $notice): ?>
-                    <article class="order-notice-item">
-                        <strong><?= e($notice['title'] ?? '') ?></strong>
-                        <span><?= e($notice['published_at'] ?? '') ?></span>
-                        <p><?= e($notice['body'] ?? '') ?></p>
-                    </article>
-                <?php endforeach; ?>
-            </div>
-        </div>
-
         <div class="order-workbench-panel order-tools-panel">
             <div class="order-panel-head">
-                <span>导出 / 物流</span>
+                <span>同步 / 导入导出</span>
                 <span class="sub">常驻工具</span>
             </div>
             <div class="order-tool-list">
-                <?php foreach ($exportTools as $tool): ?>
-                    <?php $toolKey = (string) ($tool['key'] ?? ''); ?>
-                    <?php if ($toolKey === 'sync_orders'): ?>
-                        <?php if ($orderView === 'platform' && $platformSyncName !== '' && $platformSyncStores): ?>
-                            <form class="order-tool-row order-tool-form" method="post" action="<?= e((string) ($tool['action'] ?? '/orders/platform/sync')) ?>">
-                                <?= csrf_field() ?>
-                                <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
-                                <input type="hidden" name="return" value="<?= e($returnUrl) ?>">
-                                <input type="hidden" name="platform" value="<?= e($currentPlatform) ?>">
-                                <select name="store_id" aria-label="<?= e($platformSyncName . '店铺') ?>">
-                                    <?php foreach ($platformSyncStores as $store): ?>
-                                        <option value="<?= e($store['id'] ?? '') ?>"><?= e($store['name'] ?? $store['short'] ?? '') ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <select name="days" aria-label="同步天数">
-                                    <?php foreach ([1, 3, 7, 15, 30] as $days): ?>
-                                        <option value="<?= e($days) ?>" <?= e($days === 7 ? 'selected' : '') ?>><?= e($days) ?>天</option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <button class="order-tool-button" type="submit"><?= e((string) ($tool['label'] ?? '同步订单')) ?></button>
-                            </form>
-                        <?php else: ?>
-                            <div class="order-tool-row muted" title="请选择已接入 API 的平台和店铺后再同步。">
-                                <button class="order-tool-button" type="button" disabled><?= e((string) ($tool['label'] ?? '同步订单')) ?></button>
-                                <span>未选择可同步店铺</span>
-                            </div>
-                        <?php endif; ?>
-                    <?php elseif ($toolKey === 'platform_orders_import' || $toolKey === 'shipping_import'): ?>
-                        <a class="order-tool-row" href="<?= e($urlWithQuery((string) ($tool['action'] ?? '/import-export'), ['tenant' => $tenantKey, 'job' => (string) ($tool['job'] ?? '')])) ?>">
-                            <span class="order-tool-button"><?= e((string) ($tool['label'] ?? '导入')) ?></span>
-                            <span><?= e($toolKey === 'shipping_import' ? '进入导入导出中心上传运单文件' : '进入导入导出中心上传订单文件') ?></span>
-                        </a>
-                    <?php elseif ($toolKey === 'shipment_export'): ?>
-                        <?php if ($canPlatformImportExport): ?>
-                            <button class="order-tool-row" type="submit" name="type" value="<?= e((string) ($tool['type'] ?? 'shipment')) ?>" form="order-export-form">
-                                <span class="order-tool-button"><?= e((string) ($tool['label'] ?? '发货表导出')) ?></span>
-                                <span><?= e(!empty($tool['needsDateRange']) ? '按当前筛选范围导出' : '立即导出') ?></span>
-                            </button>
-                        <?php endif; ?>
-                    <?php elseif ($toolKey === 'finance_export'): ?>
-                        <a class="order-tool-row" href="<?= e($exportUrl((string) ($tool['action'] ?? '/import-export/finance-placeholder/export'))) ?>">
-                            <span class="order-tool-button"><?= e((string) ($tool['label'] ?? '财务表导出')) ?></span>
-                            <span><?= e(!empty($tool['needsDateRange']) ? '按当前筛选范围导出' : '立即导出') ?></span>
-                        </a>
-                    <?php elseif ($toolKey === 'customers_export'): ?>
-                        <a class="order-tool-row" href="<?= e($exportUrl((string) ($tool['action'] ?? '/import-export/customers/export'))) ?>">
-                            <span class="order-tool-button"><?= e((string) ($tool['label'] ?? '客户资料导出')) ?></span>
-                            <span><?= e(!empty($tool['needsDateRange']) ? '按当前筛选范围导出' : '立即导出') ?></span>
-                        </a>
+                <?php if ($syncTool !== null): ?>
+                    <?php if ($orderView === 'platform' && $platformSyncName !== '' && $platformSyncStores): ?>
+                        <form class="order-tool-row order-tool-form order-tool-sync" method="post" action="<?= e((string) ($syncTool['action'] ?? '/orders/platform/sync')) ?>">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
+                            <input type="hidden" name="return" value="<?= e($returnUrl) ?>">
+                            <input type="hidden" name="platform" value="<?= e($currentPlatform) ?>">
+                            <select name="store_id" aria-label="<?= e($platformSyncName . '店铺') ?>">
+                                <?php foreach ($platformSyncStores as $store): ?>
+                                    <option value="<?= e($store['id'] ?? '') ?>"><?= e($store['name'] ?? $store['short'] ?? '') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button class="order-tool-button" type="submit"><?= e((string) ($syncTool['label'] ?? '同步订单')) ?></button>
+                        </form>
+                    <?php else: ?>
+                        <div class="order-tool-row muted" title="请选择已接入 API 的平台和店铺后再同步。">
+                            <button class="order-tool-button" type="button" disabled><?= e((string) ($syncTool['label'] ?? '同步订单')) ?></button>
+                            <span>未选择可同步店铺</span>
+                        </div>
                     <?php endif; ?>
+                <?php endif; ?>
+
+                <?php foreach ($toolGroups as $tools): ?>
+                    <?php if (!$tools) { continue; } ?>
+                    <div class="order-tool-pair">
+                        <?php foreach ($tools as $index => $tool): ?>
+                            <?php $renderTool($tool); ?>
+                            <?php if ($index === 0 && count($tools) > 1): ?><span class="order-tool-sep">|</span><?php endif; ?>
+                        <?php endforeach; ?>
+                    </div>
                 <?php endforeach; ?>
 
-                <?php if ($canPlatformImportExport): ?>
-                    <button class="order-tool-row" type="submit" name="type" value="platform" form="order-export-form"><span class="order-tool-button">平台订单表导出</span><span>当前筛选订单</span></button>
-                    <button class="order-tool-row" type="submit" name="type" value="delivery_notice" form="order-export-form"><span class="order-tool-button">发货通知表导出</span><span>客户邮件与国际单号</span></button>
-                    <button class="order-tool-row" type="submit" form="xizhen-delivery-form"><span class="order-tool-button">西阵发货表导出</span><span>当前平台发货格式</span></button>
-                <?php endif; ?>
-                <?php if ($canPurchaseImportExport): ?>
-                    <button class="order-tool-row" type="submit" name="type" value="purchase" form="order-export-form"><span class="order-tool-button">待采购单导出</span><span>采购视图明细</span></button>
-                <?php endif; ?>
-                <?php if ($canBatchPurchase): ?>
-                    <button class="order-tool-row" type="submit" form="send-jp-form"><span class="order-tool-button">批量已发日本</span><span>选中明细流转</span></button>
-                <?php endif; ?>
-                <?php if ($can1688Logistics): ?>
-                    <button class="order-tool-row" type="submit" name="type" value="1688" form="order-logistics-form"><span class="order-tool-button">更新1688物流</span><span>当前筛选明细</span></button>
-                <?php endif; ?>
-                <?php if ($canExpressLogistics): ?>
-                    <button class="order-tool-row" type="submit" name="type" value="express" form="order-logistics-form"><span class="order-tool-button">更新TB/PDD物流</span><span>当前筛选明细</span></button>
-                <?php endif; ?>
-                <?php if ($canJpLogistics): ?>
-                    <button class="order-tool-row" type="submit" name="type" value="jp" form="order-logistics-form"><span class="order-tool-button">更新国际物流</span><span>当前筛选明细</span></button>
-                <?php endif; ?>
-                <?php if (!$exportTools && !$canPlatformImportExport && !$canPurchaseImportExport && !$canBatchPurchase && !$can1688Logistics && !$canExpressLogistics && !$canJpLogistics): ?>
-                    <div class="order-tool-empty">当前账号没有可用导出或物流工具。</div>
+                <?php if ($syncTool === null && !$toolGroups['import'] && !$toolGroups['shipment'] && !$toolGroups['finance'] && !$toolGroups['delivery']): ?>
+                    <div class="order-tool-empty">当前账号没有可用同步、导入或导出工具。</div>
                 <?php endif; ?>
             </div>
         </div>
@@ -287,13 +355,13 @@ $fieldOptions = static function (array $field) use ($statusOptions, $orderView):
     <?php endif; ?>
     <?php if ($canImportExport): ?>
         <form id="order-export-form" method="post" action="/orders/export" class="batch-form">
-                <?= csrf_field() ?>
+            <?= csrf_field() ?>
             <?php foreach ($hiddenFilters as $name => $value): ?>
                 <input type="hidden" name="<?= e($name) ?>" value="<?= e($value) ?>">
             <?php endforeach; ?>
         </form>
         <form id="xizhen-delivery-form" method="post" action="/orders/xizhen-delivery/export" class="batch-form">
-                <?= csrf_field() ?>
+            <?= csrf_field() ?>
             <?php foreach ($hiddenFilters as $name => $value): ?>
                 <input type="hidden" name="<?= e($name) ?>" value="<?= e($value) ?>">
             <?php endforeach; ?>
@@ -301,7 +369,7 @@ $fieldOptions = static function (array $field) use ($statusOptions, $orderView):
     <?php endif; ?>
     <?php if ($canBatchPurchase): ?>
         <form id="send-jp-form" method="post" action="/orders/send-jp" class="batch-form">
-                <?= csrf_field() ?>
+            <?= csrf_field() ?>
             <?php foreach ($hiddenFilters as $name => $value): ?>
                 <input type="hidden" name="<?= e($name) ?>" value="<?= e($value) ?>">
             <?php endforeach; ?>
@@ -310,7 +378,7 @@ $fieldOptions = static function (array $field) use ($statusOptions, $orderView):
     <?php endif; ?>
     <?php if ($can1688Logistics || $canExpressLogistics || $canJpLogistics): ?>
         <form id="order-logistics-form" method="post" action="/orders/logistics/update" class="batch-form">
-                <?= csrf_field() ?>
+            <?= csrf_field() ?>
             <?php foreach ($hiddenFilters as $name => $value): ?>
                 <input type="hidden" name="<?= e($name) ?>" value="<?= e($value) ?>">
             <?php endforeach; ?>
@@ -322,6 +390,18 @@ $fieldOptions = static function (array $field) use ($statusOptions, $orderView):
         <div class="tbar-count">已选择 <strong>0</strong> / <strong><?= e($resultTotal) ?></strong> <?= e($resultUnit) ?><?php if ($canSelectAll): ?><button class="select-all-btn" type="button" data-toggle-selection="all">全选</button><?php endif; ?></div>
         <div class="tbar-actions">
             <button class="tgl-all detail-toggle" type="button">展开详情</button>
+            <?php if ($can1688Logistics): ?>
+                <button class="btn-xs" type="submit" name="type" value="1688" form="order-logistics-form">更新1688物流</button>
+            <?php endif; ?>
+            <?php if ($canExpressLogistics): ?>
+                <button class="btn-xs" type="submit" name="type" value="express" form="order-logistics-form">更新TB/PDD物流</button>
+            <?php endif; ?>
+            <?php if ($canJpLogistics): ?>
+                <button class="btn-xs" type="submit" name="type" value="jp" form="order-logistics-form">更新国际物流</button>
+            <?php endif; ?>
+            <?php if ($canBatchPurchase): ?>
+                <button class="btn-xs" type="submit" form="send-jp-form">批量已发日本</button>
+            <?php endif; ?>
             <?php if (($orderView === 'jp' && !$canBatchJp) || ($orderView !== 'jp' && !$canBatchPurchase)): ?>
                 <span class="batch-label">当前账号没有批量操作权限</span>
             <?php elseif ($orderView === 'jp'): ?>

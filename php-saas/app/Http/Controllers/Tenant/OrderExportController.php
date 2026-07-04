@@ -239,7 +239,9 @@ final class OrderExportController extends TenantBaseController
             $this->forbid('当前账号没有该店铺的订单同步权限。');
         }
 
-        $days = $this->boundedInt($_POST['days'] ?? 7, 1, 30);
+        $settings = $this->store->tenantSettings($tenantKey);
+        $ordersSettings = is_array($settings['orders'] ?? null) ? $settings['orders'] : [];
+        $days = $this->boundedInt($ordersSettings['platform_sync_default_days'] ?? 7, 1, 30);
         $operator = $this->currentUserName($tenantKey);
         $result = $service->sync($tenantKey, $storeId, $days, $operator);
 

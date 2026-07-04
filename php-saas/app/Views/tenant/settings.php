@@ -81,6 +81,7 @@ $settingsTabs = [
                 <div class="panel-body form-grid">
                     <label><span>默认分页</span><input type="number" min="20" max="1000" name="default_page_size" value="<?= e($orders['default_page_size'] ?? 200) ?>"></label>
                     <label><span>默认查询天数</span><input type="number" min="1" max="365" name="default_query_days" value="<?= e($orders['default_query_days'] ?? 30) ?>"></label>
+                    <label><span>平台订单同步默认天数</span><input type="number" min="1" max="30" name="platform_sync_default_days" value="<?= e($orders['platform_sync_default_days'] ?? 7) ?>"></label>
                     <label><span>归档周期天数</span><input type="number" min="30" max="3650" name="archive_days" value="<?= e($orders['archive_days'] ?? 180) ?>"></label>
                     <label><span>售价预警指数</span><input type="number" step="0.01" min="0" name="price_warning_index" value="<?= e($orders['price_warning_index'] ?? 0) ?>"></label>
                 </div>
