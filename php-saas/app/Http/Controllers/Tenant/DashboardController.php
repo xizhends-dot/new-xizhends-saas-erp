@@ -48,7 +48,6 @@ final class DashboardController extends TenantBaseController
     public function dashboard(): void
     {
         $tenantKey = current_tenant_key();
-        $this->auth->requireTenant($tenantKey);
         $currentUser = $this->auth->currentTenantUser($tenantKey);
         $tenant = $this->store->tenant($tenantKey);
         $this->view->render('tenant/dashboard', [
@@ -69,7 +68,6 @@ final class DashboardController extends TenantBaseController
     public function features(): void
     {
         $tenantKey = current_tenant_key();
-        $this->auth->requireTenant($tenantKey);
         $this->renderTenant('tenant/features', $tenantKey, [
             'title' => '功能工作台',
             'active' => 'features',

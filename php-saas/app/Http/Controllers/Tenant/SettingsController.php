@@ -138,7 +138,6 @@ final class SettingsController extends TenantBaseController
     {
         $tenantKey = current_tenant_key();
         $this->requireTenantFeature($tenantKey, 'management.jobs');
-        $this->auth->requireTenant($tenantKey);
         $this->renderTenant('tenant/jobs', $tenantKey, [
             'title' => '定时任务',
             'active' => 'jobs',

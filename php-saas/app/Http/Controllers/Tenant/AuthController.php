@@ -96,7 +96,6 @@ final class AuthController extends TenantBaseController
     {
         $tenantKey = current_tenant_key();
         $this->requireTenantFeature($tenantKey, 'account.password_edit');
-        $this->auth->requireTenant($tenantKey);
         $this->renderTenant('tenant/password_edit', $tenantKey, [
             'title' => '修改密码',
             'active' => 'password_edit',
@@ -110,7 +109,6 @@ final class AuthController extends TenantBaseController
     {
         $tenantKey = current_tenant_key();
         $this->requireTenantFeature($tenantKey, 'account.password_edit');
-        $this->auth->requireTenant($tenantKey);
         $currentUser = $this->auth->currentTenantUser($tenantKey);
         $result = $this->tenantUserSecurityService->changePassword(
             $tenantKey,

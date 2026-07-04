@@ -65,7 +65,6 @@ final class AdminController
 
     public function overview(): void
     {
-        $this->auth->requireAdmin();
         $tenants = $this->service->tenantsWithPlatformLabels();
         $activeTenants = array_filter($tenants, fn (array $tenant): bool => ($tenant['status'] ?? '') === 'active');
         $platformAuthCount = 0;
@@ -94,7 +93,6 @@ final class AdminController
 
     public function tenants(): void
     {
-        $this->auth->requireAdmin();
         $this->view->render('admin/tenants', [
             'title' => '租户管理',
             'active' => 'tenants',
@@ -106,7 +104,6 @@ final class AdminController
 
     public function tenantCreateForm(): void
     {
-        $this->auth->requireAdmin();
         $this->renderTenantCreate([
             'plan' => 'basic',
             'db_host' => $this->defaultDbHost(),
@@ -116,7 +113,6 @@ final class AdminController
 
     public function tenantCreate(): void
     {
-        $this->auth->requireAdmin();
         $admin = $this->auth->currentAdmin();
         $operator = (string) (($admin['display_name'] ?? '') ?: ($admin['username'] ?? 'superadmin'));
         $values = $_POST;
@@ -132,7 +128,6 @@ final class AdminController
 
     public function billing(): void
     {
-        $this->auth->requireAdmin();
         $selected = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($_GET['tenant'] ?? 'erp')) ?: 'erp';
         $this->view->render('admin/billing', [
             'title' => '租户费用管理',
@@ -149,7 +144,6 @@ final class AdminController
 
     public function adjustBilling(): void
     {
-        $this->auth->requireAdmin();
         $tenant = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($_POST['tenant'] ?? 'erp')) ?: 'erp';
         $action = (string) ($_POST['action'] ?? 'recharge');
         $amount = max(0, (int) ($_POST['amount'] ?? 0));
@@ -174,7 +168,6 @@ final class AdminController
 
     public function processBilling(): void
     {
-        $this->auth->requireAdmin();
         $tenant = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($_POST['tenant'] ?? 'erp')) ?: 'erp';
         $admin = $this->auth->currentAdmin();
         $operator = (string) (($admin['display_name'] ?? '') ?: ($admin['username'] ?? 'superadmin'));
@@ -185,7 +178,6 @@ final class AdminController
 
     public function platforms(): void
     {
-        $this->auth->requireAdmin();
         $selected = (string) ($_GET['tenant'] ?? 'erp');
         $this->view->render('admin/platforms', [
             'title' => '租户授权',
@@ -202,7 +194,6 @@ final class AdminController
 
     public function togglePlatform(): void
     {
-        $this->auth->requireAdmin();
         $tenant = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($_POST['tenant'] ?? 'erp')) ?: 'erp';
         $platform = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($_POST['platform'] ?? '')) ?: '';
         $field = (string) ($_POST['field'] ?? '');
@@ -216,7 +207,6 @@ final class AdminController
 
     public function toggleFeature(): void
     {
-        $this->auth->requireAdmin();
         $tenant = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($_POST['tenant'] ?? 'erp')) ?: 'erp';
         $feature = preg_replace('/[^a-zA-Z0-9_.-]/', '', (string) ($_POST['feature'] ?? '')) ?: '';
 
@@ -229,7 +219,6 @@ final class AdminController
 
     public function announcements(): void
     {
-        $this->auth->requireAdmin();
         $this->view->render('admin/announcements', [
             'title' => '系统公告',
             'active' => 'announcements',
@@ -240,7 +229,6 @@ final class AdminController
 
     public function settings(): void
     {
-        $this->auth->requireAdmin();
         $settings = $this->store->globalSettings();
         if (trim((string) ($settings['updated_at'] ?? '')) === '') {
             $settings = array_replace_recursive($settings, $this->legacySettings->globalSettingsDefaults());
@@ -259,7 +247,6 @@ final class AdminController
 
     public function saveSettings(): void
     {
-        $this->auth->requireAdmin();
         $mapping = is_array($_POST['logistics_mapping'] ?? null) ? $_POST['logistics_mapping'] : [];
         $showapi = is_array($_POST['showapi'] ?? null) ? $_POST['showapi'] : [];
         $proxy = is_array($_POST['proxy'] ?? null) ? $_POST['proxy'] : [];
@@ -289,7 +276,6 @@ final class AdminController
 
     public function systemStatus(): void
     {
-        $this->auth->requireAdmin();
         $this->view->render('admin/system_status', [
             'title' => '系统状态',
             'active' => 'system',

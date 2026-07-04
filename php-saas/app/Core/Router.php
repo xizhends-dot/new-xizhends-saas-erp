@@ -4,55 +4,144 @@ declare(strict_types=1);
 
 namespace Xizhen\Core;
 
+use Xizhen\Core\Middleware\MiddlewareInterface;
+use RuntimeException;
+
 final class Router
 {
-    /** @var array<string, array<string, callable>> */
+    /** @var array<string, array<int, array{path: string, pattern: string, parameters: array<int, string>, handler: mixed, middleware: array<int, string>}>> */
     private array $routes = [
         'GET' => [],
         'POST' => [],
     ];
 
-    public function get(string $path, callable $handler): void
+    /** @var array<int, string> */
+    private array $globalMiddleware = [];
+
+    /** @var array<int, string> */
+    private array $groupMiddleware = [];
+
+    public function __construct(private readonly Container $container)
     {
-        $this->routes['GET'][$this->normalize($path)] = $handler;
     }
 
-    public function post(string $path, callable $handler): void
+    public function middleware(array $middleware): void
     {
-        $this->routes['POST'][$this->normalize($path)] = $handler;
+        $this->globalMiddleware = array_values($middleware);
+    }
+
+    public function get(string $path, mixed $handler): void
+    {
+        $this->add('GET', $path, $handler);
+    }
+
+    public function post(string $path, mixed $handler): void
+    {
+        $this->add('POST', $path, $handler);
+    }
+
+    public function group(array $middleware, callable $register): void
+    {
+        $previous = $this->groupMiddleware;
+        $this->groupMiddleware = array_merge($this->groupMiddleware, array_values($middleware));
+        $register($this);
+        $this->groupMiddleware = $previous;
     }
 
     public function dispatch(string $method, string $path): void
     {
         $method = strtoupper($method);
         $path = $this->normalize($path);
+        $route = $this->match($method, $path);
 
-        if ($method === 'POST' && !$this->csrfValid()) {
-            $this->rejectExpiredPage();
+        if ($route === null) {
+            ErrorHandler::render404();
             return;
         }
 
-        $handler = $this->routes[$method][$path] ?? null;
+        $middleware = array_map(
+            fn (string $class): MiddlewareInterface => $this->container->make($class),
+            array_merge($this->globalMiddleware, $route['middleware'])
+        );
 
-        if (!$handler) {
-            http_response_code(404);
-            echo '页面不存在';
-            return;
+        (new Pipeline($middleware))->run(fn (): mixed => $this->call($route['handler']));
+    }
+
+    private function add(string $method, string $path, mixed $handler): void
+    {
+        $path = $this->normalize($path);
+        [$pattern, $parameters] = $this->compile($path);
+
+        $this->routes[$method][] = [
+            'path' => $path,
+            'pattern' => $pattern,
+            'parameters' => $parameters,
+            'handler' => $handler,
+            'middleware' => $this->groupMiddleware,
+        ];
+    }
+
+    /** @return array{path: string, pattern: string, parameters: array<int, string>, handler: mixed, middleware: array<int, string>}|null */
+    private function match(string $method, string $path): ?array
+    {
+        foreach ($this->routes[$method] ?? [] as $route) {
+            if ($route['path'] === $path) {
+                return $route;
+            }
         }
 
-        $handler();
+        foreach ($this->routes[$method] ?? [] as $route) {
+            if ($route['parameters'] === []) {
+                continue;
+            }
+
+            if (preg_match($route['pattern'], $path, $matches) !== 1) {
+                continue;
+            }
+
+            foreach ($route['parameters'] as $parameter) {
+                $_GET[$parameter] = $matches[$parameter] ?? '';
+            }
+
+            return $route;
+        }
+
+        return null;
     }
 
-    private function csrfValid(): bool
+    private function call(mixed $handler): mixed
     {
-        return \csrf_token_matches($_POST['_token'] ?? null)
-            || \csrf_token_matches($_SERVER['HTTP_X_CSRF_TOKEN'] ?? null);
+        if (is_array($handler) && is_string($handler[0] ?? null) && is_string($handler[1] ?? null)) {
+            $controller = $this->container->make($handler[0]);
+            return $controller->{$handler[1]}();
+        }
+
+        if (is_callable($handler)) {
+            return $handler();
+        }
+
+        throw new RuntimeException('Invalid route handler.');
     }
 
-    private function rejectExpiredPage(): void
+    /** @return array{0: string, 1: array<int, string>} */
+    private function compile(string $path): array
     {
-        http_response_code(419);
-        echo '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>页面已过期</title><link rel="stylesheet" href="/assets/app.css"></head><body class="auth-page"><main class="login-card"><h1>页面已过期</h1><p>页面已过期，请刷新重试</p><p><a class="btn primary" href="javascript:history.back()">返回上一页</a></p></main></body></html>';
+        $parameters = [];
+        $segments = explode('/', trim($path, '/'));
+        $compiled = [];
+        foreach ($segments as $segment) {
+            if (preg_match('/^\{([a-zA-Z_][a-zA-Z0-9_]*)\}$/', $segment, $matches) === 1) {
+                $parameters[] = $matches[1];
+                $compiled[] = '(?P<' . $matches[1] . '>[^/]+)';
+                continue;
+            }
+
+            $compiled[] = preg_quote($segment, '#');
+        }
+
+        $pattern = $path === '/' ? '/' : '/' . implode('/', $compiled);
+
+        return ['#^' . $pattern . '$#', $parameters];
     }
 
     private function normalize(string $path): string
