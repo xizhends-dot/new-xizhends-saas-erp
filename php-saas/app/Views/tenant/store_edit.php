@@ -17,18 +17,29 @@
 <?php if (($store['platform'] ?? '') === 'y'): ?>
     <div class="notice">Yahoo Shop 授权会使用店铺 API 配置中的 AppID/Secret 和 seller_id，回调地址为 <code>/oauth/yahoo/callback</code>。请确保 Yahoo Developer Console 中登记了当前域名的完整回调 URL。</div>
 <?php endif; ?>
+<?php
+$storeApiFields = is_array($storeApiFields ?? null) ? $storeApiFields : [];
+$storeApiValues = is_array($storeApiValues ?? null) ? $storeApiValues : [];
+$jsonFlags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
+$storeApiFieldsJson = json_encode($storeApiFields, $jsonFlags) ?: '{}';
+$storeApiValuesJson = json_encode($storeApiValues, $jsonFlags) ?: '{}';
+$apiConfigRaw = (string) ($store['api_config'] ?? '');
+?>
 
 <div class="panel form-panel">
     <div class="panel-head"><span>店铺资料</span><span class="sub">只影响当前租户：<?= e($tenant['company_name'] ?? $tenantKey) ?></span></div>
     <div class="panel-body">
-        <form id="store-edit-form" class="form-grid" method="post" action="/stores/update">
+        <form id="store-edit-form" class="form-grid store-api-form" method="post" action="/stores/update" data-store-api-form data-store-api-definitions="<?= e($storeApiFieldsJson) ?>" data-store-api-values="<?= e($storeApiValuesJson) ?>">
                 <?= csrf_field() ?>
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
             <input type="hidden" name="id" value="<?= e($store['id'] ?? '') ?>">
+            <input type="hidden" name="api_fields_original" value="<?= e($storeApiValuesJson) ?>">
+            <input type="hidden" name="api_config_original" value="<?= e($apiConfigRaw) ?>">
+            <input type="hidden" name="api_config_platform_original" value="<?= e($store['platform'] ?? '') ?>">
 
             <label>
                 <span>平台</span>
-                <select name="platform">
+                <select name="platform" data-store-api-platform>
                     <?php foreach ($platformNames as $code => $name): ?>
                         <option value="<?= e($code) ?>" <?= ($store['platform'] ?? '') === $code ? 'selected' : '' ?>><?= e($name) ?></option>
                     <?php endforeach; ?>
@@ -77,10 +88,17 @@
                 <input name="hidden_reason" value="<?= e($store['hidden_reason'] ?? '') ?>" placeholder="如 已休店 / 测试店铺 / 平台锁定">
             </label>
 
-            <label class="wide">
-                <span>店铺 API 配置</span>
-                <textarea name="api_config" placeholder='乐天 RMS 示例：{"Secret":"...","Key":"..."}；也兼容旧 dpapi_config JSON'><?= e($store['api_config'] ?? '') ?></textarea>
-            </label>
+            <div class="wide store-api-fields">
+                <div class="store-api-title">店铺 API 配置</div>
+                <div class="store-api-field-list" data-store-api-field-list></div>
+            </div>
+            <details class="wide store-api-advanced">
+                <summary>高级：原始JSON</summary>
+                <label>
+                    <span>原始 JSON</span>
+                    <textarea name="api_config_raw" data-store-api-raw placeholder='特殊场景可直接填写 JSON，例如 {"Secret":"...","Key":"..."}'><?= e($apiConfigRaw) ?></textarea>
+                </label>
+            </details>
         </form>
     </div>
 </div>

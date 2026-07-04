@@ -665,6 +665,87 @@ window.addEventListener('hashchange', initSettingsPane);
 })();
 
 (function () {
+  function parseStoreApiJson(value, fallback) {
+    try {
+      var parsed = JSON.parse(value || '');
+      return parsed && typeof parsed === 'object' ? parsed : fallback;
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  function fieldValue(values, key) {
+    if (!values || typeof values !== 'object') return '';
+    var value = values[key];
+    return value === undefined || value === null ? '' : String(value);
+  }
+
+  function renderStoreApiFields(form) {
+    var platformSelect = form.querySelector('[data-store-api-platform]');
+    var target = form.querySelector('[data-store-api-field-list]');
+    if (!(platformSelect instanceof HTMLSelectElement) || !(target instanceof HTMLElement)) return;
+
+    var definitions = parseStoreApiJson(form.getAttribute('data-store-api-definitions') || '{}', {});
+    var values = parseStoreApiJson(form.getAttribute('data-store-api-values') || '{}', {});
+    var fields = definitions[platformSelect.value] || [];
+    target.replaceChildren();
+
+    if (!fields.length) {
+      var empty = document.createElement('div');
+      empty.className = 'store-api-empty';
+      empty.textContent = '该平台暂无需API配置';
+      target.appendChild(empty);
+      return;
+    }
+
+    fields.forEach(function (field) {
+      if (!field || typeof field !== 'object') return;
+
+      var label = document.createElement('label');
+      label.className = 'store-api-field';
+
+      var title = document.createElement('span');
+      title.textContent = field.label || field.key || '';
+      label.appendChild(title);
+
+      var input = document.createElement('input');
+      input.name = 'api_fields[' + (field.key || '') + ']';
+      input.value = fieldValue(values, field.key || '');
+      input.autocomplete = 'off';
+      label.appendChild(input);
+
+      if (field.hint) {
+        var hint = document.createElement('small');
+        hint.textContent = field.hint;
+        label.appendChild(hint);
+      }
+
+      target.appendChild(label);
+    });
+  }
+
+  function initStoreApiForms() {
+    document.querySelectorAll('[data-store-api-form]').forEach(function (form) {
+      if (!(form instanceof HTMLFormElement)) return;
+      renderStoreApiFields(form);
+      var platformSelect = form.querySelector('[data-store-api-platform]');
+      if (platformSelect instanceof HTMLSelectElement) {
+        platformSelect.addEventListener('change', function () {
+          form.setAttribute('data-store-api-values', '{}');
+          renderStoreApiFields(form);
+        });
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initStoreApiForms);
+  } else {
+    initStoreApiForms();
+  }
+})();
+
+(function () {
   var preview = null;
   var previewImage = null;
 

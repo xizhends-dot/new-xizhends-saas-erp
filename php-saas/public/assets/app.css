@@ -2342,6 +2342,49 @@ label.ck.warn { color: #475569; }
   grid-column: span 2;
 }
 
+.store-api-fields {
+  border: 1px solid var(--line);
+  background: #f8fafc;
+  padding: 10px;
+}
+
+.store-api-title {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.store-api-field-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.store-api-field small,
+.store-api-empty {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.store-api-advanced {
+  border: 1px dashed var(--line);
+  background: #fff;
+  padding: 10px;
+}
+
+.store-api-advanced summary {
+  cursor: pointer;
+  color: #334155;
+  font-size: 13px;
+}
+
+.store-api-advanced label {
+  display: block;
+  margin-top: 10px;
+}
+
 .perm-grid {
   display: flex;
   flex-wrap: wrap;
@@ -3749,6 +3792,10 @@ body.kefu-col-resizing {
   .settings-page .form-grid .wide {
     grid-template-columns: 1fr;
     grid-column: auto;
+  }
+
+  .store-api-field-list {
+    grid-template-columns: 1fr;
   }
 
   .purchase-status-row {

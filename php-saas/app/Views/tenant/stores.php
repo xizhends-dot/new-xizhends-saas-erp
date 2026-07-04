@@ -13,6 +13,10 @@ $storeAddFee = (int) ($billingAccount['store_add_fee'] ?? 50);
 $storeMonthlyFee = (int) ($billingAccount['store_monthly_fee'] ?? 50);
 $debtSuspendThreshold = (int) ($billingAccount['debt_suspend_threshold'] ?? -300);
 $platformSyncServices = is_array($platformSyncServices ?? null) ? $platformSyncServices : [];
+$storeApiFields = is_array($storeApiFields ?? null) ? $storeApiFields : [];
+$jsonFlags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
+$storeApiFieldsJson = json_encode($storeApiFields, $jsonFlags) ?: '{}';
+$emptyApiValuesJson = '{}';
 $currentUser = is_array($currentUser ?? null) ? $currentUser : [];
 $canOperateOrders = \Xizhen\Core\Permission::hasAny($currentUser, ['导入导出', '订单编辑']);
 $message = trim((string) ($message ?? ''));
@@ -32,10 +36,13 @@ $message = trim((string) ($message ?? ''));
 <div class="panel form-panel">
     <div class="panel-head"><span>新增店铺</span><span class="sub">租户管理员或有“店铺新增”权限的员工可操作</span></div>
     <div class="panel-body">
-        <form id="store-add-form" class="form-grid" method="post" action="/stores/add">
+        <form id="store-add-form" class="form-grid store-api-form" method="post" action="/stores/add" data-store-api-form data-store-api-definitions="<?= e($storeApiFieldsJson) ?>" data-store-api-values="<?= e($emptyApiValuesJson) ?>">
                 <?= csrf_field() ?>
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
-            <label><span>平台</span><select name="platform">
+            <input type="hidden" name="api_fields_original" value="<?= e($emptyApiValuesJson) ?>">
+            <input type="hidden" name="api_config_original" value="">
+            <input type="hidden" name="api_config_platform_original" value="">
+            <label><span>平台</span><select name="platform" data-store-api-platform>
                 <?php foreach ($platformNames as $code => $name): ?>
                     <option value="<?= e($code) ?>"><?= e($name) ?></option>
                 <?php endforeach; ?>
@@ -47,7 +54,17 @@ $message = trim((string) ($message ?? ''));
             <label><span>可见状态</span><select name="status"><option value="visible">可见</option><option value="hidden">隐藏</option></select></label>
             <label><span>API 状态</span><select name="api_status"><option>未配置</option><option>已配置</option><option>平台锁定</option></select></label>
             <label class="wide"><span>隐藏原因</span><input name="hidden_reason" placeholder="如 已休店 / 测试店铺 / 平台锁定"></label>
-            <label class="wide"><span>店铺 API 配置</span><textarea name="api_config" placeholder='乐天 RMS 示例：{"Secret":"...","Key":"..."}；也兼容旧 dpapi_config JSON'></textarea></label>
+            <div class="wide store-api-fields">
+                <div class="store-api-title">店铺 API 配置</div>
+                <div class="store-api-field-list" data-store-api-field-list></div>
+            </div>
+            <details class="wide store-api-advanced">
+                <summary>高级：原始JSON</summary>
+                <label>
+                    <span>原始 JSON</span>
+                    <textarea name="api_config_raw" data-store-api-raw placeholder='特殊场景可直接填写 JSON，例如 {"Secret":"...","Key":"..."}'></textarea>
+                </label>
+            </details>
         </form>
     </div>
 </div>

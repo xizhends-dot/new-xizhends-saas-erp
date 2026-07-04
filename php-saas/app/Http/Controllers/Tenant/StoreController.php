@@ -35,6 +35,7 @@ use Xizhen\Services\ShippingAnomalyService;
 use Xizhen\Services\ShippingImportModeService;
 use Xizhen\Services\ShippingWorkflowService;
 use Xizhen\Services\SpreadsheetExportService;
+use Xizhen\Services\StoreApiFieldRegistry;
 use Xizhen\Services\TenantNoticeService;
 use Xizhen\Services\TenantUserSecurityService;
 use Xizhen\Services\UserPermissionOverrideService;
@@ -59,6 +60,7 @@ final class StoreController extends TenantBaseController
             'active' => 'stores',
             'platformNames' => $this->service->tenantPlatformNames($tenantKey),
             'platformSyncServices' => $this->platformOrderSyncRegistry->names(),
+            'storeApiFields' => $this->storeApiFieldRegistry()->all(),
             'stores' => $this->service->storesForTenant($tenantKey),
             'billingAccount' => $this->store->tenantBillingAccount($tenantKey),
             'currentUser' => $this->auth->currentTenantUser($tenantKey),
@@ -94,7 +96,7 @@ final class StoreController extends TenantBaseController
                 'name' => $name,
                 'status' => $_POST['status'] ?? 'visible',
                 'api_status' => $_POST['api_status'] ?? '未配置',
-                'api_config' => $_POST['api_config'] ?? '',
+                'api_config' => $this->apiConfigFromPost($platform),
                 'profit_deduction' => $_POST['profit_deduction'] ?? 70,
                 'hidden_reason' => $_POST['hidden_reason'] ?? '',
             ]);
@@ -129,6 +131,8 @@ final class StoreController extends TenantBaseController
             'active' => 'stores',
             'store' => $store,
             'platformNames' => $this->service->tenantPlatformNames($tenantKey),
+            'storeApiFields' => $this->storeApiFieldRegistry()->all(),
+            'storeApiValues' => $this->storeApiFieldRegistry()->fromJson((string) ($store['platform'] ?? ''), (string) ($store['api_config'] ?? '')),
             'returnUrl' => (string) ($_GET['return'] ?? "/stores?tenant={$tenantKey}"),
         ]);
     }
@@ -151,7 +155,7 @@ final class StoreController extends TenantBaseController
             'name' => $_POST['name'] ?? '',
             'status' => $_POST['status'] ?? 'visible',
             'api_status' => $_POST['api_status'] ?? '未配置',
-            'api_config' => $_POST['api_config'] ?? '',
+            'api_config' => $this->apiConfigFromPost($platform),
             'profit_deduction' => $_POST['profit_deduction'] ?? 70,
             'hidden_reason' => $_POST['hidden_reason'] ?? '',
         ]);
@@ -294,6 +298,53 @@ final class StoreController extends TenantBaseController
         $host = (string) ($_SERVER['HTTP_HOST'] ?? '127.0.0.1');
 
         return $scheme . '://' . $host . $path;
+    }
+
+    private function storeApiFieldRegistry(): StoreApiFieldRegistry
+    {
+        return new StoreApiFieldRegistry();
+    }
+
+    private function apiConfigFromPost(string $platform): string
+    {
+        $registry = $this->storeApiFieldRegistry();
+        $fields = is_array($_POST['api_fields'] ?? null) ? $_POST['api_fields'] : [];
+        $fieldValues = $this->apiFieldValues($registry, $platform, $fields);
+        $originalFields = json_decode((string) ($_POST['api_fields_original'] ?? '[]'), true);
+        $originalFieldValues = $this->apiFieldValues($registry, $platform, is_array($originalFields) ? $originalFields : []);
+        $fieldJson = $registry->toJson($platform, $fields);
+        $raw = trim((string) ($_POST['api_config_raw'] ?? ''));
+        $original = trim((string) ($_POST['api_config_original'] ?? ''));
+        $originalPlatform = strtolower(trim((string) ($_POST['api_config_platform_original'] ?? '')));
+        $platformChanged = $originalPlatform !== '' && $originalPlatform !== strtolower(trim($platform));
+
+        if ($raw !== '' && ($original === '' || $raw !== $original || ($fieldJson === '' && !$platformChanged))) {
+            return $raw;
+        }
+
+        if (!$platformChanged && $original !== '' && $raw === $original && $fieldValues === $originalFieldValues) {
+            return $original;
+        }
+
+        if ($fieldJson !== '' || $fieldValues !== $originalFieldValues || $raw === '' || $platformChanged) {
+            return $fieldJson;
+        }
+
+        return $raw;
+    }
+
+    /** @param array<string, mixed> $input */
+    private function apiFieldValues(StoreApiFieldRegistry $registry, string $platform, array $input): array
+    {
+        $values = [];
+        foreach ($registry->fieldsFor($platform) as $field) {
+            $value = trim((string) ($input[$field['key']] ?? ''));
+            if ($value !== '') {
+                $values[$field['key']] = $value;
+            }
+        }
+
+        return $values;
     }
 
     /** @return array<string, mixed> */
