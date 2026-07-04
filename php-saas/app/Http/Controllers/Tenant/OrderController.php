@@ -25,6 +25,7 @@ use Xizhen\Services\LegacyEdgeToolService;
 use Xizhen\Services\MailService;
 use Xizhen\Services\OrderAjaxService;
 use Xizhen\Services\OrderItemSaveRuleService;
+use Xizhen\Services\OrderPageConfigRegistry;
 use Xizhen\Services\PerformanceStatsService;
 use Xizhen\Services\PlatformExportService;
 use Xizhen\Services\PlatformOrderSyncRegistry;
@@ -80,6 +81,7 @@ final class OrderController extends TenantBaseController
         $canFinanceExport = $this->service->tenantFeatureEnabled($tenantKey, 'import_export.center')
             && $this->service->tenantFeatureEnabled($tenantKey, 'import_export.finance')
             && Permission::has($currentUser, '导入导出');
+        $orderPageConfigRegistry = new OrderPageConfigRegistry();
 
         $orders = $this->service->filterOrdersForView(
             $this->service->ordersForUser($tenantKey, $currentUser),
@@ -108,6 +110,9 @@ final class OrderController extends TenantBaseController
             'platformSyncServices' => $this->platformOrderSyncRegistry->names(),
             'stores' => $this->service->storesForTenant($tenantKey),
             'statusOptions' => $this->service->purchaseStatuses($tenantKey),
+            'filterFields' => $orderPageConfigRegistry->filterFieldsFor($platform),
+            'exportTools' => $orderPageConfigRegistry->exportToolsFor($platform, $currentUser ?? []),
+            'priceDefaults' => $this->priceCalculatorService->defaults($tenantKey),
             'canEditOrders' => $canEditFeature && $this->auth->tenantCan($tenantKey, '订单编辑'),
             'canEditSource' => $canEditFeature && $this->service->tenantFeatureEnabled($tenantKey, 'orders.platform') && Permission::hasAny($currentUser, ['订单编辑', '货源改判']),
             'canEditPurchase' => $canEditFeature && $this->service->tenantFeatureEnabled($tenantKey, 'orders.purchase') && Permission::hasAny($currentUser, ['订单编辑', '采购状态']),
