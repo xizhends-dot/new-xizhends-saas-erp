@@ -196,11 +196,12 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
     $label = (string) ($tool['label'] ?? '工具');
     $method = (string) ($tool['method'] ?? 'get');
     $action = (string) ($tool['action'] ?? '#');
+    $params = is_array($tool['params'] ?? null) ? $tool['params'] : [];
     $desc = !empty($tool['needsDateRange']) ? '按当前筛选范围' : '进入处理页面';
-    if ($toolKey === 'platform_orders_import') {
+    if (in_array($toolKey, ['platform_orders_import', 'purchase_import'], true)) {
         $href = $urlWithQuery($action, ['tenant' => $tenantKey, 'job' => (string) ($tool['job'] ?? '')]);
         ?>
-        <a class="order-tool-action" href="<?= e($href) ?>"><span><?= e($label) ?></span><em>上传订单文件</em></a>
+        <a class="order-tool-action" href="<?= e($href) ?>"><span><?= e($label) ?></span><em><?= e($toolKey === 'purchase_import' ? '上传采购表' : '上传订单文件') ?></em></a>
         <?php
         return;
     }
@@ -208,6 +209,13 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
         $href = $urlWithQuery($action, ['tenant' => $tenantKey, 'job' => (string) ($tool['job'] ?? '')]);
         ?>
         <a class="order-tool-action" href="<?= e($href) ?>"><span><?= e($label) ?></span><em>上传运单文件</em></a>
+        <?php
+        return;
+    }
+    if ($toolKey === 'export_template') {
+        $href = $urlWithQuery($action, ['tenant' => $tenantKey]);
+        ?>
+        <a class="order-tool-action" href="<?= e($href) ?>"><span><?= e($label) ?></span><em>编辑导出字段</em></a>
         <?php
         return;
     }
@@ -224,7 +232,7 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
         return;
     }
     ?>
-    <a class="order-tool-action" href="<?= e($exportUrl($action)) ?>"><span><?= e($label) ?></span><em><?= e($desc) ?></em></a>
+    <a class="order-tool-action" href="<?= e($exportUrl($action, $params)) ?>"><span><?= e($label) ?></span><em><?= e($desc) ?></em></a>
     <?php
 };
 ?>

@@ -199,6 +199,20 @@ final class OrderPageConfigRegistry
      */
     public function exportToolsFor(string $platform, array $user): array
     {
+        $platform = $this->normalizePlatform($platform);
+        $role = Permission::normalizeRole($user['role'] ?? '');
+        $username = strtolower(trim((string) ($user['username'] ?? '')));
+        $isCompanyAdmin = (bool) ($user['is_company_admin'] ?? false) || $role === '公司管理员';
+        $canSyncOrders = Permission::hasAny($user, ['导入导出', '订单编辑']);
+        $canPlatformImportExport = Permission::has($user, '导入导出');
+        $canPurchaseImport = $platform === 'r' && Permission::has($user, '采购导入导出');
+        $isFinanceIdentity = in_array($username, ['caiwu', 'xizhends'], true);
+        $canFinanceExport = $isCompanyAdmin
+            || (Permission::has($user, '财务导出') && Permission::hasAny($user, ['导入导出', '财务导出']))
+            || ($isFinanceIdentity && Permission::hasAny($user, ['导入导出', '财务导出']));
+        $canCustomersExport = $isCompanyAdmin || ($isFinanceIdentity && Permission::has($user, '客户资料'));
+        $canTemplate = $isCompanyAdmin || Permission::has($user, '公司设置');
+
         return [
             [
                 'key' => 'sync_orders',
@@ -207,7 +221,7 @@ final class OrderPageConfigRegistry
                 'method' => 'post',
                 'group' => 'sync',
                 'needsDateRange' => false,
-                'visibleWhen' => Permission::hasAny($user, ['导入导出', '订单编辑']),
+                'visibleWhen' => $canSyncOrders,
             ],
             [
                 'key' => 'platform_orders_import',
@@ -217,7 +231,17 @@ final class OrderPageConfigRegistry
                 'job' => 'platform_orders_import',
                 'group' => 'import',
                 'needsDateRange' => false,
-                'visibleWhen' => Permission::has($user, '导入导出'),
+                'visibleWhen' => $canPlatformImportExport,
+            ],
+            [
+                'key' => 'purchase_import',
+                'label' => '采购单导入',
+                'action' => '/import-export',
+                'method' => 'get',
+                'job' => 'purchase_import',
+                'group' => 'import',
+                'needsDateRange' => false,
+                'visibleWhen' => $canPurchaseImport,
             ],
             [
                 'key' => 'shipping_import',
@@ -227,7 +251,7 @@ final class OrderPageConfigRegistry
                 'job' => 'shipping_import',
                 'group' => 'import',
                 'needsDateRange' => false,
-                'visibleWhen' => Permission::has($user, '导入导出'),
+                'visibleWhen' => $canPlatformImportExport,
             ],
             [
                 'key' => 'shipment_export',
@@ -237,7 +261,7 @@ final class OrderPageConfigRegistry
                 'type' => 'shipment',
                 'group' => 'shipment',
                 'needsDateRange' => true,
-                'visibleWhen' => Permission::has($user, '导入导出'),
+                'visibleWhen' => $canPlatformImportExport,
             ],
             [
                 'key' => 'platform_export',
@@ -247,7 +271,17 @@ final class OrderPageConfigRegistry
                 'type' => 'platform',
                 'group' => 'shipment',
                 'needsDateRange' => true,
-                'visibleWhen' => Permission::has($user, '导入导出'),
+                'visibleWhen' => $canPlatformImportExport,
+            ],
+            [
+                'key' => 'yahoo_auction_qoo10_shipment_export',
+                'label' => '雅拍出荷处理表',
+                'action' => '/import-export/platform-special/export',
+                'method' => 'get',
+                'group' => 'shipment',
+                'needsDateRange' => true,
+                'params' => ['template_id' => 'builtin_qoo10'],
+                'visibleWhen' => $platform === 'yp' && $canPlatformImportExport,
             ],
             [
                 'key' => 'finance_export',
@@ -256,7 +290,7 @@ final class OrderPageConfigRegistry
                 'method' => 'get',
                 'group' => 'finance',
                 'needsDateRange' => true,
-                'visibleWhen' => Permission::hasAny($user, ['导入导出', '财务导出']),
+                'visibleWhen' => $canFinanceExport,
             ],
             [
                 'key' => 'customers_export',
@@ -265,7 +299,7 @@ final class OrderPageConfigRegistry
                 'method' => 'get',
                 'group' => 'finance',
                 'needsDateRange' => true,
-                'visibleWhen' => Permission::has($user, '客户资料'),
+                'visibleWhen' => $canCustomersExport,
             ],
             [
                 'key' => 'delivery_notice_export',
@@ -275,7 +309,7 @@ final class OrderPageConfigRegistry
                 'type' => 'delivery_notice',
                 'group' => 'delivery',
                 'needsDateRange' => true,
-                'visibleWhen' => Permission::has($user, '导入导出'),
+                'visibleWhen' => $canPlatformImportExport,
             ],
             [
                 'key' => 'xizhen_delivery_export',
@@ -284,7 +318,27 @@ final class OrderPageConfigRegistry
                 'method' => 'post',
                 'group' => 'delivery',
                 'needsDateRange' => true,
-                'visibleWhen' => Permission::has($user, '导入导出'),
+                'visibleWhen' => $canPlatformImportExport,
+            ],
+            [
+                'key' => 'export_template',
+                'label' => '发货单导出模板',
+                'action' => '/import-export/export-templates/edit',
+                'method' => 'get',
+                'group' => 'delivery',
+                'needsDateRange' => false,
+                'visibleWhen' => $canTemplate,
+            ],
+            [
+                'key' => 'mercari_new_import_todo',
+                'label' => 'Mercari新版导入',
+                'action' => '',
+                'method' => 'todo',
+                'group' => 'import',
+                'needsDateRange' => false,
+                'visibleWhen' => false,
+                'todo' => $platform === 'm',
+                'note' => '新系统暂无 orderinsert_new 对应动作，未生成入口。',
             ],
         ];
     }

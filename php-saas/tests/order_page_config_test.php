@@ -168,15 +168,19 @@ $toolMap = static function (array $tools): array {
     return $result;
 };
 
-$adminTools = $toolMap($registry->exportToolsFor('r', ['role' => '公司管理员']));
-foreach (['sync_orders', 'platform_orders_import', 'shipping_import', 'shipment_export', 'platform_export', 'finance_export', 'customers_export', 'delivery_notice_export', 'xizhen_delivery_export'] as $key) {
+$adminTools = $toolMap($registry->exportToolsFor('r', ['role' => '公司管理员', 'is_company_admin' => true]));
+foreach (['sync_orders', 'platform_orders_import', 'purchase_import', 'shipping_import', 'shipment_export', 'platform_export', 'finance_export', 'customers_export', 'delivery_notice_export', 'xizhen_delivery_export', 'export_template'] as $key) {
     $checkTrue("公司管理员可见 {$key}", $adminTools[$key] ?? false);
 }
 
-$toolKeys = array_column($registry->exportToolsFor('r', ['role' => '公司管理员']), 'key');
-$check('导出工具顺序', $toolKeys, [
+$visibleToolKeys = array_values(array_map(
+    static fn (array $tool): string => (string) $tool['key'],
+    array_filter($registry->exportToolsFor('r', ['role' => '公司管理员', 'is_company_admin' => true]), static fn (array $tool): bool => !empty($tool['visibleWhen']))
+));
+$check('可见导出工具顺序', $visibleToolKeys, [
     'sync_orders',
     'platform_orders_import',
+    'purchase_import',
     'shipping_import',
     'shipment_export',
     'platform_export',
@@ -184,6 +188,7 @@ $check('导出工具顺序', $toolKeys, [
     'customers_export',
     'delivery_notice_export',
     'xizhen_delivery_export',
+    'export_template',
 ]);
 
 $importUserTools = $toolMap($registry->exportToolsFor('r', ['role' => '客服', 'permissions' => ['导入导出']]));
@@ -191,13 +196,24 @@ $checkTrue('导入导出用户可见同步订单', $importUserTools['sync_orders
 $checkTrue('导入导出用户可见平台订单导入', $importUserTools['platform_orders_import'] ?? false);
 $checkTrue('导入导出用户可见国际运单导入', $importUserTools['shipping_import'] ?? false);
 $checkTrue('导入导出用户可见发货表导出', $importUserTools['shipment_export'] ?? false);
-$checkTrue('导入导出用户可见财务表导出', $importUserTools['finance_export'] ?? false);
+$checkFalse('导入导出用户不可见财务表导出', $importUserTools['finance_export'] ?? false);
+$checkFalse('导入导出客服无公司设置不可见模板入口', $importUserTools['export_template'] ?? false);
+
+$buyerRakutenTools = $toolMap($registry->exportToolsFor('r', ['role' => '采购', 'permissions' => ['采购导入导出']]));
+$checkTrue('采购角色乐天可见采购单导入', $buyerRakutenTools['purchase_import'] ?? false);
+$checkFalse('采购角色不可见同步订单', $buyerRakutenTools['sync_orders'] ?? false);
+$checkFalse('采购角色不可见平台订单导入', $buyerRakutenTools['platform_orders_import'] ?? false);
+$buyerMercariTools = $toolMap($registry->exportToolsFor('m', ['role' => '采购', 'permissions' => []]));
+$checkFalse('采购角色默认权限 Mercari 不显示采购单导入', $buyerMercariTools['purchase_import'] ?? false);
 
 $financeTools = $toolMap($registry->exportToolsFor('r', ['role' => '客服', 'permissions' => ['财务导出']]));
 $checkTrue('财务导出用户可见财务表导出', $financeTools['finance_export'] ?? false);
 $checkFalse('财务导出用户不可见平台订单导入', $financeTools['platform_orders_import'] ?? false);
 
-$customerTools = $toolMap($registry->exportToolsFor('r', ['role' => '客服', 'permissions' => ['客户资料']]));
+$financeNamedTools = $toolMap($registry->exportToolsFor('r', ['role' => '客服', 'username' => 'caiwu', 'permissions' => ['财务导出']]));
+$checkTrue('caiwu 用户可见财务表导出', $financeNamedTools['finance_export'] ?? false);
+
+$customerTools = $toolMap($registry->exportToolsFor('r', ['role' => '客服', 'username' => 'xizhends', 'permissions' => ['客户资料']]));
 $checkTrue('客户资料用户可见客户资料导出', $customerTools['customers_export'] ?? false);
 $checkFalse('客户资料用户不可见发货表导出', $customerTools['shipment_export'] ?? false);
 
@@ -205,10 +221,30 @@ $editorTools = $toolMap($registry->exportToolsFor('r', ['role' => '客服', 'per
 $checkTrue('订单编辑用户可见同步订单', $editorTools['sync_orders'] ?? false);
 $checkFalse('订单编辑用户不可见平台订单导入', $editorTools['platform_orders_import'] ?? false);
 
-$plainTools = $toolMap($registry->exportToolsFor('r', ['role' => '采购', 'permissions' => []]));
+$plainTools = $toolMap($registry->exportToolsFor('r', [
+    'role' => '客服',
+    'permissions' => [],
+    'permission_overrides' => [
+        'deny' => ['导入导出', '订单编辑', '采购导入导出', '财务导出', '客户资料', '公司设置'],
+    ],
+]));
 foreach ($plainTools as $key => $visible) {
     $checkFalse("无导入导出/订单编辑/客户资料权限用户不可见 {$key}", $visible);
 }
+
+$templateTools = $toolMap($registry->exportToolsFor('r', ['role' => '客服', 'permissions' => ['公司设置']]));
+$checkTrue('公司设置权限用户可见模板入口', $templateTools['export_template'] ?? false);
+
+$mercariTools = $registry->exportToolsFor('m', ['role' => '公司管理员', 'is_company_admin' => true]);
+$mercariTodo = array_values(array_filter($mercariTools, static fn (array $tool): bool => ($tool['key'] ?? '') === 'mercari_new_import_todo'))[0] ?? [];
+$checkTrue('Mercari 新版导入仅标 TODO', !empty($mercariTodo['todo']));
+$checkFalse('Mercari 新版导入不显示不可用入口', (bool) ($mercariTodo['visibleWhen'] ?? false));
+
+$ypTools = $registry->exportToolsFor('yp', ['role' => '公司管理员', 'is_company_admin' => true]);
+$ypShipment = array_values(array_filter($ypTools, static fn (array $tool): bool => ($tool['key'] ?? '') === 'yahoo_auction_qoo10_shipment_export'))[0] ?? [];
+$checkTrue('雅拍出荷处理表复用 Qoo10 预置模板入口', !empty($ypShipment['visibleWhen']));
+$check('雅拍出荷处理表动作', $ypShipment['action'] ?? null, '/import-export/platform-special/export');
+$check('雅拍出荷处理表模板', $ypShipment['params']['template_id'] ?? null, 'builtin_qoo10');
 
 if ($failures !== []) {
     echo "OrderPageConfigRegistry test FAILED:\n - " . implode("\n - ", $failures) . "\n";
