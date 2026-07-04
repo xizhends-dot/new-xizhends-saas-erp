@@ -58,7 +58,9 @@ final class SettingsRepository extends BaseRepository
             foreach (['company', 'orders', 'profit', 'logistics', 'api_1688', 'notices', 'export_templates', 'purchase_statuses'] as $section) {
                 $stmt->execute([
                     $section,
-                    json_encode($settings[$section] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    // INVALID_UTF8_SUBSTITUTE：个别非法字节替换为 U+FFFD，避免 json_encode
+                    // 返回 false 导致空串写入 JSON 列而整次保存失败
+                    json_encode($settings[$section] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE),
                 ]);
             }
         }
@@ -131,6 +133,19 @@ final class SettingsRepository extends BaseRepository
         $this->saveTenantSettings($tenantKey, ['notices' => ['items' => $notices]]);
 
         return $noticeId;
+    }
+
+    /**
+     * 列表内自增 id（与 JsonStore::nextId 同口径：max(id)+1）。
+     * 原 MysqlStore 从 JsonStore 移植公告逻辑时漏抄了本辅助方法，
+     * 导致 MySQL 模式下新建公告调用未定义方法而 500。
+     *
+     * @param array<int, array<string, mixed>> $rows
+     */
+    private function nextId(array $rows): int
+    {
+        $ids = array_map(static fn (array $row): int => (int) ($row['id'] ?? 0), $rows);
+        return ($ids ? max($ids) : 0) + 1;
     }
 
 
