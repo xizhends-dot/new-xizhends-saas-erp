@@ -4,20 +4,8 @@ declare(strict_types=1);
 
 define('BASE_PATH', dirname(__DIR__));
 
+require BASE_PATH . '/vendor/autoload.php';
 require BASE_PATH . '/app/Core/helpers.php';
-
-spl_autoload_register(function (string $class): void {
-    $prefix = 'Xizhen\\';
-    if (!str_starts_with($class, $prefix)) {
-        return;
-    }
-
-    $relative = substr($class, strlen($prefix));
-    $file = BASE_PATH . '/app/' . str_replace('\\', '/', $relative) . '.php';
-    if (is_file($file)) {
-        require $file;
-    }
-});
 
 use Xizhen\Core\Config;
 use Xizhen\Core\StoreFactory;

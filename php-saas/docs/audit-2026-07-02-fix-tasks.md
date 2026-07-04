@@ -120,21 +120,40 @@
 
 ---
 
-### ☐ 8. 6 个平台订单同步均未接入定时任务
-**现象**：`TenantController.php`（约 1699-1719 行）里平台同步只能手动点击按钮触发，`CronTaskRegistry` 只注册了 `Sync1688LogisticsTask`、`SyncJapanLogisticsTask` 两项，没有平台订单同步的定时任务。
+### ✅ 8. 6 个平台订单同步均未接入定时任务
+**口径已确认（2026-07-04，业务方决定）**：平台订单同步维持人工触发的现状，**不需要**接入自动定时任务，本项不算迁移缺失，无需代码改动。
 
-**参考**：`php-saas/app/Services/CronTaskRegistry.php`；`php-saas/app/Services/AbstractPlatformOrderSyncService.php`；`php-saas/bin/cron.php`。
-
-**要求**：为 6 个平台订单同步各建一个 `CronTaskInterface` 实现（参考 `Sync1688LogisticsTask` 写法），注册进 `CronTaskRegistry`，`bin/cron.php list` 应能看到。
+**现状**：6 个平台（乐天 RMS/Wowma/Yahoo Shop/Mercari/Qoo10/雅虎拍卖）的 `sync()` 逻辑均已完整实现（`PlatformOrderSyncInterface`），通过 `TenantController::syncPlatformOrders()` 手动触发（后台点"同步"按钮）。`CronTaskRegistry` 只注册 `Sync1688LogisticsTask`、`SyncJapanLogisticsTask` 两个物流类定时任务，不需要补充平台订单同步任务。
 
 ---
 
-### ☐ 9. `order_monitor`/`order_archive`/主图下载/图片清理脚本均未迁移
+### ✅ 9. `order_monitor`/`order_archive`/主图下载/图片清理脚本均未迁移
 **现象**：老系统 `cron/order_monitor.php`（自动填充订单信息）、`cron/order_archive.php`（按年度归档到 `ph_order{tag}_{year}`）、`cron/zhutu_downloader.php`（下载商品主图）、`cron/cleanup_old_images.php`/`cleanup_old_images_preview.php`（图片清理），php-saas 无任何对应实现。
 
 **参考**：`old/cron/order_monitor.php`、`order_archive.php`、`zhutu_downloader.php`、`cleanup_old_images.php`。
 
-**要求**（**需先确认这几项当前是否必需**——数据量、图片存储压力是否已到需要处理的阶段）：需要的话按 `CronTaskInterface` 各自实现并注册。
+**口径已确认（2026-07-04，业务方决定）**：全部 4 项都需要实现，按 `CronTaskInterface` 各自实现并注册进 `CronTaskRegistry`，通过 `bin/cron.php run <key>` 提供给业务方自行接入 OS 级计划任务（不代为配置 crontab/任务计划程序）。`cleanup_old_images_preview.php` 是 `cleanup_old_images.php` 的预览模式，合并为同一任务的 `--dry-run` 选项，不单列。
+
+**完成说明**：已实现并注册 `order:auto-complete`、`order:archive`、`product:image-download`、`storage:image-cleanup`。M（Mercari）平台本轮不做，依赖老系统外部二进制 `generateMercariDPoP`，无源码/无二进制可迁移，已与业务方确认跳过。
+
+完成提交：`待补`
+
+---
+
+### ☐ 9b.（新发现，2026-07-04）`daily_maintain.php`/`caigou_status_stats.php` 两个定时任务缺口
+**背景**：处理第 9 项时用户要求顺带核实 `old/cron/` 下是否还有其他未记录的计划任务，逐一读完全部 14 个脚本后新发现以下 2 项真定时任务缺口（此前任何清单都未记录）：
+
+- `daily_maintain.php` —— 每天固定时段（23:00-07:00 之间）清理 4 张老日志表（obtb 缓存、国际物流查询日志 `ph_log_shipinfo`、1688 接口日志 `ph_log_1688api`、ShowAPI 物流查询日志 `ph_log_express_showapi`），只保留最近 30 天。php-saas 目前没有任何日志清理任务。
+- `caigou_status_stats.php` —— 每天统计一次全平台采购状态分布快照，写入 `ph_caigou_status_daily`/`ph_caigou_status_daily_summary` 两张表。与已完成的**第 5 项**（`ph_caigou_record` 事件审计表）不是一回事：第 5 项是"状态变更时记一笔事件"，这个是"每天定点拍一次全量快照"，两者互补，都未迁移。
+
+**口径已确认（2026-07-04，业务方决定）**：这两项本轮**不做**，先记录到清单待后续单独排期，不纳入第 9 项的实现范围。
+
+**要求**：后续排期时，`daily_maintain` 需先确认 php-saas 是否存在对应的日志表（新架构下这几张具体表可能不存在，需要重新设计清理对象）；`caigou_status_stats` 需要新建统计表并按 `CronTaskInterface` 实现。
+
+---
+
+### 附：3 个一次性/运维修复脚本核实结论（2026-07-04，业务方决定：不迁移）
+处理第 9 项时一并核实了 `cleanup_yamato_unregistered.php`（清空异常物流状态值"伝票番号未登録"）、`backfill_jpship_completed_at.php`（补录历史订单配达完了时间）、`fix_368_yamato.php`（修复老系统 `setting.ini` 配置错误导致 368 开头运单号被错误当佐川查询的历史脏数据）。三者均为 CLI 手动执行的一次性/运维工具，非 crontab 常驻定时任务。**业务方决定视为老系统历史遗留问题，不迁移到 php-saas**，不建新条目跟踪，仅记录于此避免后续审计重复发现。
 
 ---
 
