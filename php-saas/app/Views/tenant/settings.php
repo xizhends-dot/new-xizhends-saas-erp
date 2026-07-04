@@ -5,9 +5,15 @@ $profit = is_array($settings['profit'] ?? null) ? $settings['profit'] : [];
 $logistics = is_array($settings['logistics'] ?? null) ? $settings['logistics'] : [];
 $api1688 = is_array($settings['api_1688'] ?? null) ? $settings['api_1688'] : [];
 $platformDeductions = is_array($profit['platform_deductions'] ?? null) ? $profit['platform_deductions'] : [];
+$purchaseStatuses = array_values(array_filter(array_map('strval', is_array($purchaseStatuses ?? null) ? $purchaseStatuses : [])));
+$systemPurchaseStatuses = is_array($systemPurchaseStatuses ?? null) ? $systemPurchaseStatuses : [];
+$purchaseStatusSaved = ($saved ?? '') === 'purchase_statuses';
+$settingsSaved = ($saved ?? '') === '1';
+$error = trim((string) ($error ?? ''));
 $settingsTabs = [
     ['key' => 'company', 'title' => '公司资料', 'desc' => '登录页、侧栏与租户资料'],
     ['key' => 'orders', 'title' => '订单参数', 'desc' => '查询默认值与归档策略'],
+    ['key' => 'purchase-statuses', 'title' => '采购状态', 'desc' => '状态清单与显示顺序'],
     ['key' => 'profit', 'title' => '利润参数', 'desc' => '利润分析与财务导出口径'],
     ['key' => 'logistics', 'title' => '国内快递', 'desc' => '签收地与国内物流口径'],
     ['key' => 'api1688', 'title' => '1688 接口', 'desc' => '租户业务接口配置'],
@@ -22,11 +28,18 @@ $settingsTabs = [
     </div>
 </div>
 
-<?php if (($saved ?? '') === '1'): ?>
+<?php if ($settingsSaved): ?>
     <div class="notice">设置已保存，利润分析和导出报表会使用新的口径。</div>
+<?php endif; ?>
+<?php if ($purchaseStatusSaved): ?>
+    <div class="notice">采购状态已保存，订单页和导出模板会使用新的清单顺序。</div>
+<?php endif; ?>
+<?php if ($error !== ''): ?>
+    <div class="notice error"><?= e($error) ?></div>
 <?php endif; ?>
 
 <form id="tenant-settings-form" method="post" action="/settings/save" class="settings-page">
+                <?= csrf_field() ?>
     <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
 
     <div class="tenant-settings-layout" data-settings-layout>
@@ -70,6 +83,38 @@ $settingsTabs = [
                     <label><span>默认查询天数</span><input type="number" min="1" max="365" name="default_query_days" value="<?= e($orders['default_query_days'] ?? 30) ?>"></label>
                     <label><span>归档周期天数</span><input type="number" min="30" max="3650" name="archive_days" value="<?= e($orders['archive_days'] ?? 180) ?>"></label>
                     <label><span>售价预警指数</span><input type="number" step="0.01" min="0" name="price_warning_index" value="<?= e($orders['price_warning_index'] ?? 0) ?>"></label>
+                </div>
+            </section>
+
+            <section class="panel settings-pane" id="settings-pane-purchase-statuses" data-settings-pane="purchase-statuses" role="tabpanel" hidden>
+                <div class="panel-head"><span>采购状态</span><span class="sub">删除状态不会改动历史订单；历史值仍会在编辑时保留</span></div>
+                <div class="panel-body purchase-status-editor" data-purchase-status-editor>
+                    <div class="purchase-status-list" data-purchase-status-list>
+                        <?php foreach ($purchaseStatuses as $status): ?>
+                            <?php
+                            $lockReason = (string) ($systemPurchaseStatuses[$status] ?? '');
+                            $locked = $lockReason !== '';
+                            ?>
+                            <div class="purchase-status-row" data-purchase-status-row data-locked="<?= $locked ? '1' : '0' ?>">
+                                <input class="purchase-status-name" value="<?= e($status) ?>" <?= $locked ? 'readonly' : '' ?> maxlength="32" data-purchase-status-name>
+                                <?php if ($locked): ?>
+                                    <span class="status-lock-tag" title="<?= e($lockReason) ?>">系统状态·自动化依赖</span>
+                                <?php endif; ?>
+                                <div class="purchase-status-actions">
+                                    <button class="btn-xs" type="button" data-purchase-status-move="up">上移</button>
+                                    <button class="btn-xs" type="button" data-purchase-status-move="down">下移</button>
+                                    <button class="btn-xs danger-text" type="button" data-purchase-status-delete <?= $locked ? 'disabled' : '' ?>>删除</button>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="purchase-status-add">
+                        <input type="text" maxlength="32" placeholder="新增状态名称" data-purchase-status-new>
+                        <button class="btn" type="button" data-purchase-status-add>新增状态</button>
+                        <button class="btn primary" type="submit" form="purchase-status-form">保存采购状态</button>
+                        <button class="btn" type="submit" name="reset" value="1" form="purchase-status-form" onclick="return confirm('确定恢复默认采购状态清单?')">恢复默认</button>
+                    </div>
+                    <div class="setting-muted">系统状态可移动顺序，但不能改名或删除；服务端会再次校验完整清单。</div>
                 </div>
             </section>
 
@@ -121,4 +166,10 @@ $settingsTabs = [
         <button class="btn primary" type="submit">保存设置</button>
         <span class="setting-muted">保存后仅对当前租户生效，不会影响其他租户。</span>
     </div>
+</form>
+
+<form id="purchase-status-form" method="post" action="/settings/purchase-statuses/save">
+                <?= csrf_field() ?>
+    <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
+    <input type="hidden" name="statuses_json" value="" data-purchase-status-json>
 </form>

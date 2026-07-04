@@ -24,6 +24,7 @@ foreach ($assignments as $assignment) {
         <div class="panel-body assignment-list">
             <?php foreach ($buyers as $buyer): ?>
                 <form class="assign-card" method="post" action="/assignments/save">
+                <?= csrf_field() ?>
                     <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                     <input type="hidden" name="mode" value="buyer">
                     <input type="hidden" name="buyer_user_id" value="<?= e($buyer['id']) ?>">
@@ -48,6 +49,7 @@ foreach ($assignments as $assignment) {
         <div class="panel-body assignment-list">
             <?php foreach ($supports as $support): ?>
                 <form class="assign-card" method="post" action="/assignments/save">
+                <?= csrf_field() ?>
                     <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                     <input type="hidden" name="mode" value="support">
                     <input type="hidden" name="support_user_id" value="<?= e($support['id']) ?>">

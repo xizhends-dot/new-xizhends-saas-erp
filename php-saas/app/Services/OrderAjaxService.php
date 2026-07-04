@@ -31,7 +31,7 @@ final class OrderAjaxService
             'seq' => (int) ($context['seq'] ?? 1),
             'returnUrl' => (string) ($context['returnUrl'] ?? tenant_url('/orders', $tenantKey)),
             'orderView' => (string) ($context['orderView'] ?? 'platform'),
-            'statusOptions' => $this->app->purchaseStatuses(),
+            'statusOptions' => $this->app->purchaseStatuses($tenantKey),
         ]));
 
         return ['ok' => true, 'status' => 200, 'message' => '订单行已刷新。', 'html' => $html, 'order' => $order];
@@ -52,6 +52,7 @@ final class OrderAjaxService
             'tenantKey' => $tenantKey,
             'order' => $order,
             'attachments' => $this->store->orderAttachments($tenantKey, $orderId),
+            'statusOptions' => $this->app->purchaseStatuses($tenantKey),
         ]);
 
         return ['ok' => true, 'status' => 200, 'message' => '订单详情已刷新。', 'html' => $html, 'order' => $order];

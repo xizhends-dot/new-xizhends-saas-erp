@@ -7,6 +7,51 @@ function e(mixed $value): string
     return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+function start_xizhen_session(): void
+{
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        return;
+    }
+
+    if (!headers_sent()) {
+        session_name('XZSAAS');
+        session_set_cookie_params([
+            'lifetime' => 0,
+            'path' => '/',
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+    }
+
+    session_start();
+}
+
+function csrf_token(): string
+{
+    $token = $_SESSION['_csrf'] ?? null;
+    if (!is_string($token) || $token === '') {
+        $token = bin2hex(random_bytes(32));
+        $_SESSION['_csrf'] = $token;
+    }
+
+    return $token;
+}
+
+function csrf_field(): string
+{
+    return '<input type="hidden" name="_token" value="' . e(csrf_token()) . '">';
+}
+
+function csrf_token_matches(mixed $token): bool
+{
+    $sessionToken = $_SESSION['_csrf'] ?? null;
+    if (!is_string($sessionToken) || $sessionToken === '' || !is_string($token) || $token === '') {
+        return false;
+    }
+
+    return hash_equals($sessionToken, $token);
+}
+
 function current_tenant_key(): string
 {
     $tenant = tenant_key_from_host() ?? $_GET['tenant'] ?? $_POST['tenant'] ?? 'erp';
@@ -18,11 +63,13 @@ function tenant_key_from_host(): ?string
 {
     $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
     $host = preg_replace('/:\d+$/', '', $host) ?? $host;
-    if ($host === '' || in_array($host, ['localhost', '127.0.0.1', '::1', 'saas.xizhends.com'], true)) {
+    $adminHost = strtolower((string) (getenv('SAAS_ADMIN_HOST') ?: 'saas.xizhends.com'));
+    if ($host === '' || in_array($host, ['localhost', '127.0.0.1', '::1', $adminHost], true)) {
         return null;
     }
 
-    $suffix = '.xizhends.com';
+    $baseDomain = strtolower((string) (getenv('TENANT_BASE_DOMAIN') ?: 'xizhends.com'));
+    $suffix = '.' . ltrim($baseDomain, '.');
     if (!str_ends_with($host, $suffix)) {
         return null;
     }

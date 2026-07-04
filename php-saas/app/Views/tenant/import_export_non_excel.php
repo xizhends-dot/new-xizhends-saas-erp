@@ -45,6 +45,7 @@ $json = static fn (mixed $value): string => json_encode($value, JSON_UNESCAPED_U
                                 <a class="btn" href="/import-export/export-templates/edit?tenant=<?= e($tenantKey) ?>&id=<?= e($template['id'] ?? '') ?>"><?= $isBuiltin ? '复制' : '编辑' ?></a>
                                 <?php if (!$isBuiltin): ?>
                                     <form method="post" action="/import-export/export-templates/delete" onsubmit="return confirm('确定删除模板「<?= e($template['name'] ?? '') ?>」?');" style="display:inline;">
+                                        <?= csrf_field() ?>
                                         <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                                         <input type="hidden" name="id" value="<?= e($template['id'] ?? '') ?>">
                                         <button class="btn" type="submit">删除</button>
@@ -75,6 +76,7 @@ $json = static fn (mixed $value): string => json_encode($value, JSON_UNESCAPED_U
                 ['title' => '外部运单/订单插入', 'preview' => '/import-export/external-insert/preview', 'import' => '/import-export/external-insert/import', 'note' => '按平台、订单号、运单号插入外部记录。', 'needs_store' => true],
             ] as $form): ?>
                 <form class="panel mini-import-panel" method="post" action="<?= e($form['preview']) ?>" enctype="multipart/form-data">
+                    <?= csrf_field() ?>
                     <div class="panel-head"><span><?= e($form['title']) ?></span><span class="sub">CSV</span></div>
                     <div class="panel-body">
                         <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">

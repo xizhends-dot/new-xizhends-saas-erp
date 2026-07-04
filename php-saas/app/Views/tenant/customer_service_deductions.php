@@ -3,7 +3,6 @@ $rows = is_array($rows ?? null) ? $rows : [];
 $summary = is_array($summary ?? null) ? $summary : ['total' => 0, 'configured' => 0, 'defaulted' => 0, 'average' => 0];
 $message = (string) ($message ?? '');
 $errors = is_array($errors ?? null) ? $errors : [];
-$requirements = is_array($requirements ?? null) ? $requirements : [];
 ?>
 
 <div class="page-head">
@@ -33,6 +32,7 @@ $requirements = is_array($requirements ?? null) ? $requirements : [];
     <div class="panel-head"><span>快捷编辑</span><span class="sub">old 用户列表内保存 profit_deduction 的迁移视图</span></div>
     <div class="panel-body">
         <form id="customer-service-deduction-form" method="post" action="/users/customer-service-deductions/save">
+                <?= csrf_field() ?>
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
             <table class="table">
                 <thead><tr><th>客服</th><th>登录名</th><th>状态</th><th>扣点</th><th>来源</th><th>校验</th></tr></thead>
@@ -57,20 +57,5 @@ $requirements = is_array($requirements ?? null) ? $requirements : [];
                 </tbody>
             </table>
         </form>
-    </div>
-</div>
-
-<div class="panel">
-    <div class="panel-head"><span>持久化说明</span><span class="sub">现阶段优先复用租户设置</span></div>
-    <div class="panel-body">
-        <?php if ($requirements): ?>
-            <ul class="plain-list">
-                <?php foreach ($requirements as $item): ?>
-                    <li><?= e($item) ?></li>
-                <?php endforeach; ?>
-            </ul>
-        <?php else: ?>
-            <div class="notice">可先保存到 tenant_settings.profit.customer_service_deductions；完整 old 语义建议补用户字段和 Store 方法。</div>
-        <?php endif; ?>
     </div>
 </div>

@@ -22,6 +22,7 @@
     <div class="panel-head"><span>店铺资料</span><span class="sub">只影响当前租户：<?= e($tenant['company_name'] ?? $tenantKey) ?></span></div>
     <div class="panel-body">
         <form id="store-edit-form" class="form-grid" method="post" action="/stores/update">
+                <?= csrf_field() ?>
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
             <input type="hidden" name="id" value="<?= e($store['id'] ?? '') ?>">
 

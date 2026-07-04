@@ -1,21 +1,15 @@
 <?php
 $platformName = $platformNames[$order['platform'] ?? ''] ?? ($order['platform'] ?? '');
 $returnUrl = $returnUrl ?? "/orders?tenant={$tenantKey}";
-$statusOptions = [
-    '未处理的订单',
-    '国内采购-准备',
-    '国内采购--问题',
-    '国内采购-已采购',
-    '国内采购-TB/PDD已采购',
-    '发货中',
-    '已到货',
-    '已发货代订单',
-    '已发日本',
-    '已发出荷通知',
-    '已到货问题件',
-    '问题订单(后台处理)',
-    '已取消',
-];
+$statusOptions = array_values(array_filter(array_map('strval', is_array($statusOptions ?? null) ? $statusOptions : [])));
+$statusOptionsFor = static function (mixed $current) use ($statusOptions): array {
+    $current = trim((string) $current);
+    if ($current !== '' && !in_array($current, $statusOptions, true)) {
+        return array_merge([$current], $statusOptions);
+    }
+
+    return $statusOptions;
+};
 $sourceOptions = ['cn_purchase' => '国内采购', 'jp_stock' => '日本仓', 'pending' => '待定'];
 $outOptions = ['待分配', '已分配', '已出库', '已发货'];
 $canEditOrders = (bool) ($canEditOrders ?? false);
@@ -56,6 +50,7 @@ $canEditAnyItemField = $canEditOrders || $canEditPurchase || $canEditJp || $canC
     <div class="panel-body">
         <?php if ($canUploadImage): ?>
         <form class="form-grid attachment-form" method="post" action="/orders/attachments/add">
+                <?= csrf_field() ?>
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
             <input type="hidden" name="order_id" value="<?= e($order['id']) ?>">
             <label><span>类型</span><select name="type">
@@ -78,6 +73,7 @@ $canEditAnyItemField = $canEditOrders || $canEditPurchase || $canEditJp || $canC
         </form>
 
         <form class="form-grid attachment-form" method="post" action="/orders/images/upload" enctype="multipart/form-data">
+                <?= csrf_field() ?>
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
             <input type="hidden" name="order_id" value="<?= e($order['id']) ?>">
             <input type="hidden" name="kind" value="attachment">
@@ -116,6 +112,7 @@ $canEditAnyItemField = $canEditOrders || $canEditPurchase || $canEditJp || $canC
                     <td>
                         <?php if ($canDeleteImage): ?>
                         <form class="mini-form" method="post" action="/orders/attachments/delete">
+                <?= csrf_field() ?>
                             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                             <input type="hidden" name="order_id" value="<?= e($order['id']) ?>">
                             <input type="hidden" name="attachment_id" value="<?= e($attachment['id']) ?>">
@@ -145,6 +142,7 @@ $canEditAnyItemField = $canEditOrders || $canEditPurchase || $canEditJp || $canC
         <div class="panel-body">
             <?php if ($canEditAnyItemField): ?>
             <form id="<?= e($formId) ?>" class="detail-form" method="post" action="/orders/item/save">
+                <?= csrf_field() ?>
                 <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                 <input type="hidden" name="order_id" value="<?= e($order['id']) ?>">
                 <input type="hidden" name="item_id" value="<?= e($item['id']) ?>">
@@ -162,6 +160,7 @@ $canEditAnyItemField = $canEditOrders || $canEditPurchase || $canEditJp || $canC
                 <div class="image-tools">
                     <?php foreach (['main' => '主图', 'sku' => 'SKU图'] as $kind => $label): ?>
                         <form class="image-upload-form" method="post" action="/orders/images/upload" enctype="multipart/form-data">
+                <?= csrf_field() ?>
                             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                             <input type="hidden" name="order_id" value="<?= e($order['id']) ?>">
                             <input type="hidden" name="item_id" value="<?= e($item['id']) ?>">
@@ -185,7 +184,7 @@ $canEditAnyItemField = $canEditOrders || $canEditPurchase || $canEditJp || $canC
                     <?php endif; ?>
                     <?php if ($canEditOrders || $canEditPurchase): ?>
                     <label><span>采购状态</span><select name="purchase_status">
-                        <?php foreach ($statusOptions as $status): ?>
+                        <?php foreach ($statusOptionsFor($item['purchase_status'] ?? '') as $status): ?>
                             <option <?= ($item['purchase_status'] ?? '') === $status ? 'selected' : '' ?>><?= e($status) ?></option>
                         <?php endforeach; ?>
                     </select></label>

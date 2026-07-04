@@ -30,6 +30,7 @@ use Xizhen\Services\PlatformExportService;
 use Xizhen\Services\PlatformOrderSyncRegistry;
 use Xizhen\Services\PriceCalculatorService;
 use Xizhen\Services\PurchaseStatsService;
+use Xizhen\Services\PurchaseStatusService;
 use Xizhen\Services\ShippingAnomalyService;
 use Xizhen\Services\ShippingImportModeService;
 use Xizhen\Services\ShippingWorkflowService;
@@ -72,6 +73,7 @@ final class TenantController
     private LegacyEdgeToolService $legacyEdgeToolService;
     private SpreadsheetExportService $spreadsheetExportService;
     private YahooShopOAuthService $yahooShopOAuthService;
+    private PurchaseStatusService $purchaseStatusService;
 
     public function __construct(private readonly StoreInterface $store, private readonly View $view, private readonly AuthService $auth)
     {
@@ -104,6 +106,7 @@ final class TenantController
         $this->legacyEdgeToolService = new LegacyEdgeToolService($store);
         $this->spreadsheetExportService = new SpreadsheetExportService(BASE_PATH);
         $this->yahooShopOAuthService = new YahooShopOAuthService($store);
+        $this->purchaseStatusService = new PurchaseStatusService($store);
     }
 
     public function loginForm(): void
@@ -236,6 +239,7 @@ final class TenantController
             'platformNames' => $this->service->tenantPlatformNames($tenantKey),
             'platformSyncServices' => $this->platformOrderSyncRegistry->names(),
             'stores' => $this->service->storesForTenant($tenantKey),
+            'statusOptions' => $this->service->purchaseStatuses($tenantKey),
             'canEditOrders' => $canEditFeature && $this->auth->tenantCan($tenantKey, '订单编辑'),
             'canEditSource' => $canEditFeature && $this->service->tenantFeatureEnabled($tenantKey, 'orders.platform') && Permission::hasAny($currentUser, ['订单编辑', '货源改判']),
             'canEditPurchase' => $canEditFeature && $this->service->tenantFeatureEnabled($tenantKey, 'orders.purchase') && Permission::hasAny($currentUser, ['订单编辑', '采购状态']),
@@ -353,6 +357,7 @@ final class TenantController
             'order' => $order,
             'attachments' => $this->store->orderAttachments($tenantKey, $orderId),
             'platformNames' => $this->service->tenantPlatformNames($tenantKey),
+            'statusOptions' => $this->service->purchaseStatuses($tenantKey),
             'returnUrl' => (string) ($_GET['return'] ?? "/orders?tenant={$tenantKey}"),
             'canEditOrders' => $canEditFeature && $this->auth->tenantCan($tenantKey, '订单编辑'),
             'canEditPurchase' => $canEditFeature && $this->service->tenantFeatureEnabled($tenantKey, 'orders.purchase') && Permission::hasAny($currentUser, ['订单编辑', '采购状态']),
@@ -484,6 +489,24 @@ final class TenantController
             'platformNames' => $this->service->tenantPlatformNames($tenantKey),
             'stores' => $this->service->storesForTenant($tenantKey),
             'billingAccount' => $this->store->tenantBillingAccount($tenantKey),
+            'currentUser' => $this->auth->currentTenantUser($tenantKey),
+        ]);
+    }
+
+    public function billing(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->auth->requireTenantCompanyAdmin($tenantKey);
+        $this->view->render('tenant/billing', [
+            'title' => '积分账单',
+            'active' => 'billing',
+            'tenantKey' => $tenantKey,
+            'tenant' => $this->store->tenant($tenantKey),
+            'menu' => $this->service->platformMenu($tenantKey),
+            'tenantFeatures' => $this->service->tenantFeatureMap($tenantKey),
+            'account' => $this->store->tenantBillingAccount($tenantKey),
+            'ledger' => $this->store->tenantBillingLedger($tenantKey, 100),
+            'subscriptions' => $this->store->tenantBillingSubscriptions($tenantKey),
             'currentUser' => $this->auth->currentTenantUser($tenantKey),
         ]);
     }
@@ -747,7 +770,6 @@ final class TenantController
             'users' => $canManageNotices ? $this->store->users($tenantKey) : [],
             'message' => (string) ($_GET['message'] ?? ''),
             'errors' => ($_GET['error'] ?? '') !== '' ? ['form' => (string) $_GET['error']] : [],
-            'requirements' => $canManageNotices ? $this->tenantNoticeService->persistenceRequirements() : [],
         ]);
     }
 
@@ -798,7 +820,6 @@ final class TenantController
             'user' => $matrix['user'] ?? [],
             'groups' => $matrix['groups'] ?? [],
             'message' => (string) ($_GET['message'] ?? ($matrix['message'] ?? '')),
-            'requirements' => $this->userPermissionOverrideService->persistenceRequirements(),
         ]);
     }
 
@@ -826,7 +847,6 @@ final class TenantController
             'summary' => $this->customerServiceDeductionService->summary($tenantKey),
             'message' => (string) ($_GET['message'] ?? ''),
             'errors' => ($_GET['error'] ?? '') !== '' ? ['form' => (string) $_GET['error']] : [],
-            'requirements' => $this->customerServiceDeductionService->persistenceRequirements(),
         ]);
     }
 
@@ -2090,7 +2110,13 @@ final class TenantController
     private function buildPurchaseWorkbook(string $tenantKey, array $orders, string $platform = ''): array
     {
         try {
-            return $this->spreadsheetExportService->purchaseWorkbook($tenantKey, $orders, $this->currentUserName($tenantKey), $platform);
+            return $this->spreadsheetExportService->purchaseWorkbook(
+                $tenantKey,
+                $orders,
+                $this->currentUserName($tenantKey),
+                $platform,
+                $this->service->purchaseStatuses($tenantKey)
+            );
         } catch (RuntimeException $exception) {
             $this->forbid($exception->getMessage());
         }
@@ -2286,7 +2312,10 @@ final class TenantController
             'active' => 'settings',
             'settings' => $settings,
             'platformNames' => $this->service->tenantPlatformNames($tenantKey, true),
+            'purchaseStatuses' => $this->purchaseStatusService->statusesFor($tenantKey),
+            'systemPurchaseStatuses' => PurchaseStatusService::systemStatuses(),
             'saved' => (string) ($_GET['saved'] ?? ''),
+            'error' => (string) ($_GET['error'] ?? ''),
         ]);
     }
 
@@ -2334,6 +2363,26 @@ final class TenantController
         ]);
 
         redirect_to('/settings?tenant=' . rawurlencode($tenantKey) . '&saved=1');
+    }
+
+    public function savePurchaseStatuses(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'management.settings');
+        $this->auth->requireAnyTenantPermission($tenantKey, ['公司设置', '系统设置']);
+
+        if (isset($_POST['reset'])) {
+            $result = $this->purchaseStatusService->resetStatuses($tenantKey);
+        } else {
+            $decoded = json_decode((string) ($_POST['statuses_json'] ?? '[]'), true);
+            $result = is_array($decoded)
+                ? $this->purchaseStatusService->saveStatuses($tenantKey, $decoded)
+                : ['ok' => false, 'message' => '采购状态数据格式错误。'];
+        }
+
+        $queryKey = ($result['ok'] ?? false) ? 'saved' : 'error';
+        $message = ($result['ok'] ?? false) ? 'purchase_statuses' : (string) ($result['message'] ?? '采购状态保存失败。');
+        redirect_to('/settings?tenant=' . rawurlencode($tenantKey) . '&' . $queryKey . '=' . rawurlencode($message) . '#purchase-statuses');
     }
 
     private function tenant1688ConfigRelativePath(string $tenantKey): string

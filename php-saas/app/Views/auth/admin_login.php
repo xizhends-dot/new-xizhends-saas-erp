@@ -18,6 +18,7 @@
         <?php endif; ?>
 
         <form class="auth-form" method="post" action="/admin/login">
+                <?= csrf_field() ?>
             <input type="hidden" name="return" value="<?= e($returnUrl ?? '/admin') ?>">
             <label>
                 <span>账号</span>

@@ -1748,6 +1748,67 @@ label.ck.warn { color: #475569; }
   overflow: auto;
 }
 
+.purchase-status-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.purchase-status-list {
+  display: grid;
+  gap: 8px;
+}
+
+.purchase-status-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.purchase-status-name {
+  min-width: 0;
+}
+
+.purchase-status-name[readonly] {
+  background: #f8fafc;
+  color: #475569;
+}
+
+.status-lock-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 2px 8px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.purchase-status-actions,
+.purchase-status-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.purchase-status-add {
+  padding-top: 4px;
+}
+
+.purchase-status-add input {
+  width: min(320px, 100%);
+}
+
+#purchase-status-form {
+  display: none;
+}
+
 .billing-stats {
   grid-template-columns: repeat(5, minmax(150px, 1fr));
   margin-bottom: 12px;
@@ -3543,6 +3604,20 @@ body.kefu-col-resizing {
   .settings-page .form-grid .wide {
     grid-template-columns: 1fr;
     grid-column: auto;
+  }
+
+  .purchase-status-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .status-lock-tag {
+    width: fit-content;
+  }
+
+  .purchase-status-actions,
+  .purchase-status-add {
+    align-items: stretch;
   }
 
   .settings-submit-row {

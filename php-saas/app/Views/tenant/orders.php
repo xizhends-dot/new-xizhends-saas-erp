@@ -67,21 +67,15 @@ foreach ($filters as $filterKey => $filterValue) {
     }
 }
 
-$statusOptions = [
-    '未处理的订单',
-    '国内采购-准备',
-    '国内采购--问题',
-    '国内采购-已采购',
-    '国内采购-TB/PDD已采购',
-    '发货中',
-    '已到货',
-    '已发货代订单',
-    '已发日本',
-    '已发出荷通知',
-    '已到货问题件',
-    '问题订单(后台处理)',
-    '已取消',
-];
+$statusOptions = array_values(array_filter(array_map('strval', is_array($statusOptions ?? null) ? $statusOptions : [])));
+$statusOptionsFor = static function (mixed $current) use ($statusOptions): array {
+    $current = trim((string) $current);
+    if ($current !== '' && !in_array($current, $statusOptions, true)) {
+        return array_merge([$current], $statusOptions);
+    }
+
+    return $statusOptions;
+};
 ?>
 <div class="order-page">
     <div class="page-head compact-head">
@@ -89,6 +83,7 @@ $statusOptions = [
         <div class="head-actions">
             <?php if ($orderView === 'platform' && $platformSyncName !== '' && $canPlatformImportExport && $platformSyncStores): ?>
                 <form class="inline-form" method="post" action="/orders/platform/sync">
+                <?= csrf_field() ?>
                     <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                     <input type="hidden" name="return" value="<?= e($returnUrl) ?>">
                     <input type="hidden" name="platform" value="<?= e($currentPlatform) ?>">
@@ -287,17 +282,20 @@ $statusOptions = [
 
     <?php if ($canBatchOperate || $canBatchPurchase || $canBatchJp): ?>
         <form id="<?= e($batchFormId) ?>" method="post" action="/orders/batch" class="batch-form">
+            <?= csrf_field() ?>
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
             <input type="hidden" name="return" value="<?= e($returnUrl) ?>">
         </form>
     <?php endif; ?>
     <?php if ($canImportExport): ?>
         <form id="order-export-form" method="post" action="/orders/export" class="batch-form">
+                <?= csrf_field() ?>
             <?php foreach ($hiddenFilters as $name => $value): ?>
                 <input type="hidden" name="<?= e($name) ?>" value="<?= e($value) ?>">
             <?php endforeach; ?>
         </form>
         <form id="xizhen-delivery-form" method="post" action="/orders/xizhen-delivery/export" class="batch-form">
+                <?= csrf_field() ?>
             <?php foreach ($hiddenFilters as $name => $value): ?>
                 <input type="hidden" name="<?= e($name) ?>" value="<?= e($value) ?>">
             <?php endforeach; ?>
@@ -305,6 +303,7 @@ $statusOptions = [
     <?php endif; ?>
     <?php if ($canBatchPurchase): ?>
         <form id="send-jp-form" method="post" action="/orders/send-jp" class="batch-form">
+                <?= csrf_field() ?>
             <?php foreach ($hiddenFilters as $name => $value): ?>
                 <input type="hidden" name="<?= e($name) ?>" value="<?= e($value) ?>">
             <?php endforeach; ?>
@@ -313,6 +312,7 @@ $statusOptions = [
     <?php endif; ?>
     <?php if ($can1688Logistics || $canExpressLogistics || $canJpLogistics): ?>
         <form id="order-logistics-form" method="post" action="/orders/logistics/update" class="batch-form">
+                <?= csrf_field() ?>
             <?php foreach ($hiddenFilters as $name => $value): ?>
                 <input type="hidden" name="<?= e($name) ?>" value="<?= e($value) ?>">
             <?php endforeach; ?>

@@ -11,7 +11,7 @@ use Xizhen\Core\TenantFeature;
 final class AppService
 {
     /** @var array<int, string> */
-    private const PURCHASE_STATUSES = [
+    public const PURCHASE_STATUSES = [
         '未处理的订单',
         '国内采购-准备',
         '国内采购--问题',
@@ -59,9 +59,9 @@ final class AppService
     }
 
     /** @return array<int, string> */
-    public function purchaseStatuses(): array
+    public function purchaseStatuses(string $tenantKey): array
     {
-        return self::PURCHASE_STATUSES;
+        return (new PurchaseStatusService($this->store))->statusesFor($tenantKey);
     }
 
     /** @return array<int, array<string, mixed>> */

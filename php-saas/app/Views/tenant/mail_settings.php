@@ -66,6 +66,7 @@ $mailTab = 'settings';
         <div class="panel-head"><span>账号配置</span><span class="sub"><?= $selectedAccount ? e('#' . $selectedAccountId) : '新增账号' ?></span></div>
         <div class="panel-body">
             <form class="config-form" method="post" action="/mail/accounts/save">
+                <?= csrf_field() ?>
                 <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                 <input type="hidden" name="id" value="<?= e($selectedAccount['id'] ?? 0) ?>">
                 <div class="form-row">
@@ -112,17 +113,20 @@ $mailTab = 'settings';
             <?php if ($selectedAccount): ?>
                 <div class="toolbar account-tools">
                     <form method="post" action="/mail/folders/probe">
+                <?= csrf_field() ?>
                         <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                         <input type="hidden" name="account_id" value="<?= e($selectedAccountId) ?>">
                         <button class="btn" type="submit">读取文件夹</button>
                     </form>
                     <form method="post" action="/mail/sync">
+                <?= csrf_field() ?>
                         <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                         <input type="hidden" name="account_id" value="<?= e($selectedAccountId) ?>">
                         <input type="hidden" name="return" value="<?= e($settingsUrl(['account_id' => $selectedAccountId])) ?>">
                         <button class="btn" type="submit">同步此账号</button>
                     </form>
                     <form method="post" action="/mail/accounts/delete" onsubmit="return confirm('确认删除此邮箱账号及其本地邮件缓存？')">
+                <?= csrf_field() ?>
                         <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                         <input type="hidden" name="account_id" value="<?= e($selectedAccountId) ?>">
                         <button class="btn danger" type="submit">删除账号</button>
@@ -143,6 +147,7 @@ $mailTab = 'settings';
         <?php endif; ?>
         <?php foreach ($accountFolders as $folder): ?>
             <form class="folder-row" method="post" action="/mail/folders/save">
+                <?= csrf_field() ?>
                 <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                 <input type="hidden" name="return" value="<?= e($settingsUrl(['account_id' => $selectedAccountId])) ?>">
                 <input type="hidden" name="folder_id" value="<?= e($folder['id']) ?>">

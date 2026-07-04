@@ -11,7 +11,15 @@ $payMethod = (string) ($order['pay_method'] ?? '');
 $shipMethod = (string) ($order['ship_method'] ?? '');
 $batchFormId = $batchFormId ?? ('batch-' . $orderView);
 $detailUrl = '/orders/detail?tenant=' . rawurlencode((string) $tenantKey) . '&id=' . rawurlencode((string) ($order['id'] ?? '')) . '&return=' . rawurlencode((string) $returnUrl);
-$statusOptions = $statusOptions ?? [];
+$statusOptions = array_values(array_filter(array_map('strval', is_array($statusOptions ?? null) ? $statusOptions : [])));
+$statusOptionsFor = static function (mixed $current) use ($statusOptions): array {
+    $current = trim((string) $current);
+    if ($current !== '' && !in_array($current, $statusOptions, true)) {
+        return array_merge([$current], $statusOptions);
+    }
+
+    return $statusOptions;
+};
 $canEditOrders = (bool) ($canEditOrders ?? false);
 $canEditPurchase = (bool) ($canEditPurchase ?? false);
 $canEditJp = (bool) ($canEditJp ?? false);
@@ -148,6 +156,7 @@ $outStatusClass = static fn (string $status): string => match ($status) {
                 <td class="source-status-cell">
                     <?php if ($orderView === 'platform' && $canChangeSource): ?>
                         <form class="source-form compact-source auto-submit-source" method="post" action="/orders/source">
+                <?= csrf_field() ?>
                             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                             <input type="hidden" name="item_id" value="<?= e($item['id']) ?>">
                             <input type="hidden" name="return" value="<?= e($returnUrl) ?>">
@@ -274,6 +283,7 @@ $outStatusClass = static fn (string $status): string => match ($status) {
                 <button class="drawer-close" type="button" data-close-editor="editor-<?= e($item['id']) ?>" aria-label="关闭">×</button>
             </div>
             <form class="drawer-body" method="post" action="/orders/item/save">
+                <?= csrf_field() ?>
                 <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                 <input type="hidden" name="order_id" value="<?= e($order['id']) ?>">
                 <input type="hidden" name="item_id" value="<?= e($item['id']) ?>">
@@ -296,7 +306,7 @@ $outStatusClass = static fn (string $status): string => match ($status) {
                 <?php endif; ?>
                 <?php if ($canEditOrders || $canEditPurchase): ?>
                 <label><span>采购状态</span><select name="purchase_status">
-                    <?php foreach ($statusOptions as $statusOption): ?>
+                    <?php foreach ($statusOptionsFor($item['purchase_status'] ?? '') as $statusOption): ?>
                         <option <?= ($item['purchase_status'] ?? '') === $statusOption ? 'selected' : '' ?>><?= e($statusOption) ?></option>
                     <?php endforeach; ?>
                 </select></label>

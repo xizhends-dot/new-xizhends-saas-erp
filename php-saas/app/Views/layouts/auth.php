@@ -4,6 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="<?= e(csrf_token()) ?>">
     <title><?= e($title ?? '登录') ?></title>
     <link rel="stylesheet" href="/assets/app.css?v=<?= e($assetVersion('/assets/app.css')) ?>">
 </head>

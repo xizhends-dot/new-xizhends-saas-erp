@@ -25,6 +25,7 @@ $debtSuspendThreshold = (int) ($billingAccount['debt_suspend_threshold'] ?? -300
     <div class="panel-head"><span>新增店铺</span><span class="sub">租户管理员或有“店铺新增”权限的员工可操作</span></div>
     <div class="panel-body">
         <form id="store-add-form" class="form-grid" method="post" action="/stores/add">
+                <?= csrf_field() ?>
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
             <label><span>平台</span><select name="platform">
                 <?php foreach ($platformNames as $code => $name): ?>

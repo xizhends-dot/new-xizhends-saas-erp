@@ -1,7 +1,9 @@
 .codegraph/
 vendor/
 composer.phar
-storage/
+storage/*
+!storage/reference/
+!storage/reference/no-pic-*.gif
 docs/project_id_*
 *.log
 .tmp-server-*.log

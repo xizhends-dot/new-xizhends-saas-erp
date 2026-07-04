@@ -59,6 +59,7 @@ $mailTab = 'rules';
                         <td>
                             <a class="btn" href="<?= e($rulesUrl(['rule_id' => (int) ($rule['id'] ?? 0)])) ?>">编辑</a>
                             <form method="post" action="/mail/rules/delete" class="inline-form">
+                <?= csrf_field() ?>
                                 <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                                 <input type="hidden" name="rule_id" value="<?= e($rule['id']) ?>">
                                 <button class="btn danger" type="submit">删除</button>
@@ -69,6 +70,7 @@ $mailTab = 'rules';
                 </tbody>
             </table>
             <form method="post" action="/mail/rules/apply" class="mail-rule-apply">
+                <?= csrf_field() ?>
                 <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                 <select name="account_id">
                     <option value="0">全部账号</option>
@@ -86,6 +88,7 @@ $mailTab = 'rules';
             </form>
         </div>
         <form class="rule-form" method="post" action="/mail/rules/save">
+                <?= csrf_field() ?>
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
             <input type="hidden" name="id" value="<?= e($selectedRule['id'] ?? 0) ?>">
             <div class="form-section-title"><?= $selectedRule ? '编辑规则' : '新增规则' ?></div>

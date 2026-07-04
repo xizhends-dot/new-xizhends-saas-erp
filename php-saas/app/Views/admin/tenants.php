@@ -3,9 +3,13 @@
         <h1>租户管理 <span class="sub">管理所有公司、数据库与套餐</span></h1>
     </div>
     <div class="head-actions">
-        <button class="btn admin" type="button">新建租户</button>
+        <a class="btn admin" href="/admin/tenants/create">新增租户</a>
     </div>
 </div>
+
+<?php if (trim((string) ($message ?? '')) !== ''): ?>
+    <div class="notice ok slim"><?= e($message) ?></div>
+<?php endif; ?>
 
 <div class="panel">
     <div class="panel-head"><span>租户列表</span><span class="sub"><?= e(count($tenants)) ?> 家公司</span></div>

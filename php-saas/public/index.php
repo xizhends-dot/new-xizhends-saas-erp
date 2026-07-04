@@ -4,25 +4,10 @@ declare(strict_types=1);
 
 define('BASE_PATH', dirname(__DIR__));
 
-$composerAutoload = BASE_PATH . '/vendor/autoload.php';
-if (is_file($composerAutoload)) {
-    require $composerAutoload;
-}
-
+require BASE_PATH . '/vendor/autoload.php';
 require BASE_PATH . '/app/Core/helpers.php';
 
-spl_autoload_register(function (string $class): void {
-    $prefix = 'Xizhen\\';
-    if (!str_starts_with($class, $prefix)) {
-        return;
-    }
-
-    $relative = substr($class, strlen($prefix));
-    $file = BASE_PATH . '/app/' . str_replace('\\', '/', $relative) . '.php';
-    if (is_file($file)) {
-        require $file;
-    }
-});
+start_xizhen_session();
 
 use Xizhen\Controllers\AdminController;
 use Xizhen\Controllers\TenantController;
@@ -41,123 +26,10 @@ $router = new Router();
 $admin = new AdminController($store, $view, $config, $auth);
 $tenant = new TenantController($store, $view, $auth);
 
-$router->get('/admin/login', [$admin, 'loginForm']);
-$router->post('/admin/login', [$admin, 'login']);
-$router->post('/admin/logout', [$admin, 'logout']);
-$router->get('/admin', [$admin, 'overview']);
-$router->get('/admin/tenants', [$admin, 'tenants']);
-$router->get('/admin/billing', [$admin, 'billing']);
-$router->post('/admin/billing/adjust', [$admin, 'adjustBilling']);
-$router->post('/admin/billing/process', [$admin, 'processBilling']);
-$router->get('/admin/platforms', [$admin, 'platforms']);
-$router->post('/admin/platforms/toggle', [$admin, 'togglePlatform']);
-$router->post('/admin/features/toggle', [$admin, 'toggleFeature']);
-$router->get('/admin/announcements', [$admin, 'announcements']);
-$router->get('/admin/settings', [$admin, 'settings']);
-$router->post('/admin/settings/save', [$admin, 'saveSettings']);
-$router->get('/admin/system', [$admin, 'systemStatus']);
+$routes = require BASE_PATH . '/app/Http/routes.php';
+$routes($router, $admin, $tenant);
 
-$router->get('/login', [$tenant, 'loginForm']);
-$router->post('/login', [$tenant, 'login']);
-$router->post('/logout', [$tenant, 'logout']);
-$router->get('/', [$tenant, 'dashboard']);
-$router->get('/orders', [$tenant, 'orders']);
-$router->get('/orders/detail', [$tenant, 'orderDetail']);
-$router->post('/orders/source', [$tenant, 'changeSource']);
-$router->post('/orders/batch', [$tenant, 'batchOrders']);
-$router->post('/orders/export', [$tenant, 'exportOrders']);
-$router->post('/orders/send-jp', [$tenant, 'sendJapan']);
-$router->post('/orders/xizhen-delivery/export', [$tenant, 'exportXizhenDelivery']);
-$router->post('/orders/logistics/update', [$tenant, 'updateLogistics']);
-$router->post('/orders/platform/sync', [$tenant, 'syncPlatformOrders']);
-$router->post('/orders/rakuten/sync', [$tenant, 'syncRakutenOrders']);
-$router->post('/orders/item/save', [$tenant, 'saveOrderItem']);
-$router->post('/orders/attachments/add', [$tenant, 'addOrderAttachment']);
-$router->post('/orders/attachments/delete', [$tenant, 'deleteOrderAttachment']);
-$router->post('/orders/images/upload', [$tenant, 'uploadOrderImage']);
-$router->get('/features', [$tenant, 'features']);
-$router->get('/search', [$tenant, 'search']);
-$router->get('/analytics/profit', [$tenant, 'profit']);
-$router->get('/performance', [$tenant, 'performanceDashboard']);
-$router->get('/performance/daily-data', [$tenant, 'performanceDailyData']);
-$router->get('/performance/summary', [$tenant, 'performanceSummary']);
-$router->get('/performance/products', [$tenant, 'productAnalysis']);
-$router->get('/performance/products-data', [$tenant, 'productAnalysisData']);
-$router->get('/price-calculator', [$tenant, 'priceCalculator']);
-$router->post('/price-calculator/calculate', [$tenant, 'calculatePrice']);
-$router->get('/stats/purchase', [$tenant, 'purchaseStats']);
-$router->get('/stats/purchase/status-daily', [$tenant, 'purchaseStatusDaily']);
-$router->get('/stats/shipping-anomaly', [$tenant, 'shippingAnomaly']);
-$router->get('/logistics/1688', [$tenant, 'logistics1688']);
-$router->get('/logistics/express', [$tenant, 'logisticsExpress']);
-$router->get('/logistics/jp', [$tenant, 'logisticsJp']);
-$router->get('/logistics/waybill-check', [$tenant, 'waybillCheck']);
-$router->get('/logistics/jpyd-check', [$tenant, 'jpydCheck']);
-$router->get('/mail', [$tenant, 'mail']);
-$router->get('/mail/settings', [$tenant, 'mailSettings']);
-$router->get('/mail/rules', [$tenant, 'mailRules']);
-$router->post('/mail/accounts/save', [$tenant, 'saveMailAccount']);
-$router->post('/mail/accounts/delete', [$tenant, 'deleteMailAccount']);
-$router->post('/mail/folders/probe', [$tenant, 'probeMailFolders']);
-$router->post('/mail/folders/save', [$tenant, 'saveMailFolder']);
-$router->post('/mail/sync', [$tenant, 'syncMail']);
-$router->post('/mail/action', [$tenant, 'mailAction']);
-$router->post('/mail/move', [$tenant, 'moveMail']);
-$router->post('/mail/rules/save', [$tenant, 'saveMailRule']);
-$router->post('/mail/rules/delete', [$tenant, 'deleteMailRule']);
-$router->post('/mail/rules/apply', [$tenant, 'applyMailRules']);
-$router->post('/mail/reply', [$tenant, 'replyMail']);
-$router->get('/import-export', [$tenant, 'importExport']);
-$router->get('/import-export/non-excel', [$tenant, 'importExportNonExcel']);
-$router->get('/import-export/export', [$tenant, 'exportCsv']);
-$router->get('/import-export/platform-special/export', [$tenant, 'exportPlatformSpecial']);
-$router->get('/import-export/export-templates/edit', [$tenant, 'exportTemplateEdit']);
-$router->post('/import-export/export-templates/save', [$tenant, 'saveExportTemplate']);
-$router->post('/import-export/export-templates/delete', [$tenant, 'deleteExportTemplate']);
-$router->post('/import-export/export-templates/preview', [$tenant, 'previewExportTemplate']);
-$router->get('/import-export/customers/export', [$tenant, 'exportCustomers']);
-$router->get('/import-export/finance-placeholder/export', [$tenant, 'exportFinancePlaceholder']);
-$router->get('/import-export/brush-orders/export', [$tenant, 'exportBrushOrders']);
-$router->post('/import-export/import', [$tenant, 'importCsv']);
-$router->post('/import-export/finance-import/preview', [$tenant, 'previewFinanceImport']);
-$router->post('/import-export/finance-import/import', [$tenant, 'importFinanceData']);
-$router->post('/import-export/shipping-modes/preview', [$tenant, 'previewShippingImportModes']);
-$router->post('/import-export/shipping-modes/import', [$tenant, 'importShippingModes']);
-$router->post('/import-export/jp-warehouse/preview', [$tenant, 'previewJapanWarehouseImport']);
-$router->post('/import-export/jp-warehouse/import', [$tenant, 'importJapanWarehouse']);
-$router->post('/import-export/external-insert/preview', [$tenant, 'externalInsertPreview']);
-$router->post('/import-export/external-insert/import', [$tenant, 'externalInsertImport']);
-$router->get('/media', [$tenant, 'media']);
-$router->get('/jobs', [$tenant, 'jobs']);
-$router->get('/logs', [$tenant, 'logs']);
-$router->get('/settings', [$tenant, 'settings']);
-$router->post('/settings/save', [$tenant, 'saveSettings']);
-$router->get('/stores', [$tenant, 'stores']);
-$router->post('/stores/add', [$tenant, 'addStore']);
-$router->get('/stores/edit', [$tenant, 'editStore']);
-$router->post('/stores/update', [$tenant, 'updateStore']);
-$router->get('/stores/yahoo/authorize', [$tenant, 'authorizeYahooShop']);
-$router->get('/oauth/yahoo/callback', [$tenant, 'yahooOAuthCallback']);
-$router->get('/users', [$tenant, 'users']);
-$router->post('/users/add', [$tenant, 'addUser']);
-$router->get('/users/edit', [$tenant, 'editUser']);
-$router->post('/users/update', [$tenant, 'updateUser']);
-$router->get('/password/edit', [$tenant, 'passwordEdit']);
-$router->post('/password/update', [$tenant, 'passwordUpdate']);
-$router->get('/notices', [$tenant, 'tenantNotices']);
-$router->get('/notices/edit', [$tenant, 'tenantNotices']);
-$router->post('/notices/save', [$tenant, 'saveTenantNotice']);
-$router->post('/notices/delete', [$tenant, 'deleteTenantNotice']);
-$router->post('/notices/pin', [$tenant, 'pinTenantNotice']);
-$router->get('/users/permissions', [$tenant, 'userPermissions']);
-$router->post('/users/permissions/save', [$tenant, 'saveUserPermissions']);
-$router->get('/users/customer-service-deductions', [$tenant, 'customerServiceDeductions']);
-$router->post('/users/customer-service-deductions/save', [$tenant, 'saveCustomerServiceDeductions']);
-$router->get('/assignments', [$tenant, 'assignments']);
-$router->post('/assignments/save', [$tenant, 'saveAssignment']);
-$router->get('/orders/ajax/row', [$tenant, 'ajaxOrderRow']);
-$router->get('/orders/ajax/detail', [$tenant, 'ajaxOrderDetail']);
-$router->get('/orders/ajax/logistics', [$tenant, 'ajaxLogisticsReload']);
-$router->post('/orders/ajax/review', [$tenant, 'ajaxToggleReview']);
-
-$router->dispatch($_SERVER['REQUEST_METHOD'] ?? 'GET', parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/');
+$router->dispatch(
+    $_SERVER['REQUEST_METHOD'] ?? 'GET',
+    parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/'
+);

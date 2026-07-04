@@ -94,6 +94,7 @@ $typeLabels = [
         <div class="panel-head"><span>充值 / 扣减</span><span class="sub">单位：pt</span></div>
         <div class="panel-body">
             <form class="form-grid billing-adjust" method="post" action="/admin/billing/adjust">
+                <?= csrf_field() ?>
                 <input type="hidden" name="tenant" value="<?= e($selected) ?>">
                 <label>
                     <span>操作</span>
@@ -119,6 +120,7 @@ $typeLabels = [
         <div class="panel-head"><span>到期扣费</span><span class="sub"><?= e(count($dueSubscriptions)) ?> 笔到期</span></div>
         <div class="panel-body">
             <form class="billing-process" method="post" action="/admin/billing/process">
+                <?= csrf_field() ?>
                 <input type="hidden" name="tenant" value="<?= e($selected) ?>">
                 <div>
                     <strong><?= e($selectedTenant['company_name'] ?? $selected) ?></strong>

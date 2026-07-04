@@ -33,6 +33,7 @@
             <div class="switch-row">
                 <span>访问开关</span>
                 <form class="mini-form" method="post" action="/admin/platforms/toggle">
+                <?= csrf_field() ?>
                     <input type="hidden" name="tenant" value="<?= e($selected) ?>">
                     <input type="hidden" name="platform" value="<?= e($platform['code']) ?>">
                     <input type="hidden" name="field" value="enabled">
@@ -42,6 +43,7 @@
             <div class="switch-row">
                 <span>锁定状态</span>
                 <form class="mini-form" method="post" action="/admin/platforms/toggle">
+                <?= csrf_field() ?>
                     <input type="hidden" name="tenant" value="<?= e($selected) ?>">
                     <input type="hidden" name="platform" value="<?= e($platform['code']) ?>">
                     <input type="hidden" name="field" value="locked">
@@ -76,6 +78,7 @@
                                 <code><?= e($item['key']) ?></code>
                             </div>
                             <form class="mini-form" method="post" action="/admin/features/toggle">
+                <?= csrf_field() ?>
                                 <input type="hidden" name="tenant" value="<?= e($selected) ?>">
                                 <input type="hidden" name="feature" value="<?= e($item['key']) ?>">
                                 <button class="btn <?= $enabled ? 'admin' : '' ?>" type="submit"><?= $enabled ? '关闭' : '开通' ?></button>

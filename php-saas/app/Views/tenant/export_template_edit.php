@@ -18,6 +18,7 @@ $columnsJson = json_encode($columns, $jsonFlags) ?: '[]';
 <?php endif; ?>
 
 <form method="post" action="/import-export/export-templates/save" id="tpl-form">
+                <?= csrf_field() ?>
     <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
     <input type="hidden" name="id" value="<?= e($template['id'] ?? '') ?>">
     <input type="hidden" name="columns_json" id="columns-json" value="">

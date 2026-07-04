@@ -20,6 +20,7 @@ $userStores = $user['stores'] ?? [];
     <div class="panel-head"><span>账号资料</span><span class="sub">角色、店铺范围与功能权限</span></div>
     <div class="panel-body">
         <form id="user-edit-form" class="form-grid" method="post" action="/users/update">
+                <?= csrf_field() ?>
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
             <input type="hidden" name="id" value="<?= e($user['id'] ?? '') ?>">
 

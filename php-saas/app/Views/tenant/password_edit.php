@@ -25,6 +25,7 @@ $policy = is_array($policy ?? null) ? $policy : ['min_length' => 8, 'require_let
     <div class="panel-head"><span>员工自助改密码</span><span class="sub">需要验证旧密码，保存后只写入安全哈希</span></div>
     <div class="panel-body">
         <form id="password-edit-form" class="form-grid" method="post" action="/password/update">
+                <?= csrf_field() ?>
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
 
             <label>

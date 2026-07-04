@@ -4,7 +4,6 @@ $draft = is_array($draft ?? null) ? $draft : [];
 $targetRoles = is_array($targetRoles ?? null) ? $targetRoles : ['公司管理员', '采购', '客服'];
 $errors = is_array($errors ?? null) ? $errors : [];
 $message = (string) ($message ?? '');
-$requirements = is_array($requirements ?? null) ? $requirements : [];
 $canManageNotices = (bool) ($canManageNotices ?? false);
 ?>
 
@@ -32,6 +31,7 @@ $canManageNotices = (bool) ($canManageNotices ?? false);
             <div class="panel-head"><span>发布公告</span><span class="sub">按角色定向，可置顶</span></div>
             <div class="panel-body">
                 <form id="tenant-notice-form" class="form-grid" method="post" action="/notices/save">
+                <?= csrf_field() ?>
                     <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                     <input type="hidden" name="id" value="<?= e($draft['id'] ?? '') ?>">
 
@@ -84,21 +84,6 @@ $canManageNotices = (bool) ($canManageNotices ?? false);
                         <?php if (isset($errors['body'])): ?><small class="form-error"><?= e($errors['body']) ?></small><?php endif; ?>
                     </label>
                 </form>
-            </div>
-        </div>
-
-        <div class="panel">
-            <div class="panel-head"><span>持久化状态</span><span class="sub">Store 接口</span></div>
-            <div class="panel-body">
-                <?php if ($requirements): ?>
-                    <ul class="plain-list">
-                        <?php foreach ($requirements as $item): ?>
-                            <li><?= e($item) ?></li>
-                        <?php endforeach; ?>
-                    </ul>
-                <?php else: ?>
-                    <div class="notice">公告已接入当前租户设置存储。</div>
-                <?php endif; ?>
             </div>
         </div>
     </div>

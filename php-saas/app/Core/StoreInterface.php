@@ -12,6 +12,12 @@ interface StoreInterface
     /** @return array<int, array<string, mixed>> */
     public function tenants(): array;
 
+    /**
+     * @param array<string, mixed> $data
+     * @return array{ok: bool, message: string}
+     */
+    public function createTenant(array $data): array;
+
     /** @return array<string, mixed>|null */
     public function adminByUsername(string $username): ?array;
 
@@ -25,6 +31,9 @@ interface StoreInterface
 
     /** @return array<int, array<string, mixed>> */
     public function orders(string $tenantKey): array;
+
+    /** @return array<int, array<string, mixed>> */
+    public function ordersByYear(string $tenantKey, int $year): array;
 
     /**
      * @param array<int, string> $stores

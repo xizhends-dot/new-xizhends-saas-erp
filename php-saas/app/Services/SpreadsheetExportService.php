@@ -14,6 +14,7 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Protection;
 use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use RuntimeException;
 
 final class SpreadsheetExportService
@@ -198,12 +199,14 @@ final class SpreadsheetExportService
 
     /**
      * @param array<int, array<string, mixed>> $orders
+     * @param array<int, string> $purchaseStatuses
      * @return array{name: string, filename: string, path: string, rows: int, format: string}
      */
-    public function purchaseWorkbook(string $tenantKey, array $orders, string $operator = '', string $platform = ''): array
+    public function purchaseWorkbook(string $tenantKey, array $orders, string $operator = '', string $platform = '', array $purchaseStatuses = []): array
     {
         $this->assertRuntime();
         $template = $this->purchaseTemplate($orders, $platform);
+        $purchaseStatuses = $purchaseStatuses !== [] ? $purchaseStatuses : ['已采购', '未采购'];
 
         $spreadsheet = new Spreadsheet();
         $spreadsheet->getProperties()
@@ -216,6 +219,7 @@ final class SpreadsheetExportService
 
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle($template['sheet']);
+        $purchaseStatusFormula = $this->purchaseStatusValidationFormula($spreadsheet, $purchaseStatuses);
         $spreadsheet->getDefaultStyle()->getFont()->setName('微软雅黑')->setSize(12);
         $sheet->getDefaultColumnDimension()->setWidth(20);
         $sheet->getDefaultRowDimension()->setRowHeight(20);
@@ -263,7 +267,7 @@ final class SpreadsheetExportService
                         $this->setHyperlink($sheet, $cell, (string) $value);
                     }
                     if ($key === 'purchase_status') {
-                        $this->setPurchaseStatusValidation($sheet, $cell);
+                        $this->setPurchaseStatusValidation($sheet, $cell, $purchaseStatusFormula);
                     }
                 }
 
@@ -309,6 +313,7 @@ final class SpreadsheetExportService
         }
 
         $sheet->setSelectedCell($this->cell($template['first_editable_column'], 2));
+        $spreadsheet->setActiveSheetIndex(0);
 
         return $this->writeWorkbook(
             $spreadsheet,
@@ -658,7 +663,7 @@ final class SpreadsheetExportService
         $style->getFont()->getColor()->setRGB('0563C1');
     }
 
-    private function setPurchaseStatusValidation(object $sheet, string $cell): void
+    private function setPurchaseStatusValidation(object $sheet, string $cell, string $formula): void
     {
         $validation = $sheet->getCell($cell)->getDataValidation();
         $validation->setType(DataValidation::TYPE_LIST)
@@ -671,7 +676,28 @@ final class SpreadsheetExportService
             ->setError('您输入的值不在下拉框列表内')
             ->setPromptTitle('【采购状态】')
             ->setPrompt('请点击右边下拉按钮选择采购状态')
-            ->setFormula1('"已采购,未采购"');
+            ->setFormula1($formula);
+    }
+
+    /** @param array<int, string> $purchaseStatuses */
+    private function purchaseStatusValidationFormula(Spreadsheet $spreadsheet, array $purchaseStatuses): string
+    {
+        $statuses = array_values(array_filter(array_map(
+            static fn (string $status): string => trim($status),
+            $purchaseStatuses
+        ), static fn (string $status): bool => $status !== ''));
+        if ($statuses === []) {
+            $statuses = ['已采购', '未采购'];
+        }
+
+        $sheet = $spreadsheet->createSheet();
+        $sheet->setTitle('采购状态选项');
+        foreach ($statuses as $index => $status) {
+            $this->setText($sheet, 'A' . ($index + 1), $status);
+        }
+        $sheet->setSheetState(Worksheet::SHEETSTATE_HIDDEN);
+
+        return "'采购状态选项'!\$A\$1:\$A\$" . count($statuses);
     }
 
     private function cell(int $column, int $row): string

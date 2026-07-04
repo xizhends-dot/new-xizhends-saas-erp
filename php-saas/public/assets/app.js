@@ -67,6 +67,24 @@ document.addEventListener('click', function (event) {
     activateSettingsPane(settingsTab.getAttribute('data-settings-tab') || '', true);
   }
 
+  var statusMove = target.closest('[data-purchase-status-move]');
+  if (statusMove) {
+    event.preventDefault();
+    movePurchaseStatusRow(statusMove.closest('[data-purchase-status-row]'), statusMove.getAttribute('data-purchase-status-move') || '');
+  }
+
+  var statusDelete = target.closest('[data-purchase-status-delete]');
+  if (statusDelete) {
+    event.preventDefault();
+    deletePurchaseStatusRow(statusDelete.closest('[data-purchase-status-row]'));
+  }
+
+  var statusAdd = target.closest('[data-purchase-status-add]');
+  if (statusAdd) {
+    event.preventDefault();
+    addPurchaseStatusRow(statusAdd.closest('[data-purchase-status-editor]'));
+  }
+
   if (target.classList.contains('drawer-backdrop')) {
     closeAllEditors();
   }
@@ -85,12 +103,18 @@ document.addEventListener('change', function (event) {
 
   var form = target.closest('.auto-submit-source');
   if (form instanceof HTMLFormElement) {
+    ensureCsrfField(form);
     form.submit();
   }
 });
 
 document.addEventListener('submit', function (event) {
   var form = event.target;
+  if (form instanceof HTMLFormElement && form.id === 'purchase-status-form') {
+    serializePurchaseStatuses(form);
+    return;
+  }
+
   if (!(form instanceof HTMLFormElement) || (form.id !== 'send-jp-form' && form.id !== 'xizhen-delivery-form')) return;
 
   if (!form.querySelector('input[data-selection-copy="1"]')) {
@@ -139,6 +163,7 @@ function toggleOrderSelection(page) {
 function syncSelectionForm(page, formId) {
   var form = document.getElementById(formId);
   if (!(form instanceof HTMLFormElement)) return;
+  ensureCsrfField(form);
   form.querySelectorAll('input[data-selection-copy="1"]').forEach(function (input) {
     input.remove();
   });
@@ -231,14 +256,97 @@ function activateSettingsPane(key, syncHash) {
   if (syncHash && targetKey !== '') {
     var nextHash = '#' + targetKey;
     if (window.location.hash !== nextHash && window.history && window.history.replaceState) {
-      window.history.replaceState(null, '', nextHash);
+  window.history.replaceState(null, '', nextHash);
     }
   }
+}
+
+function csrfToken() {
+  var meta = document.querySelector('meta[name="csrf-token"]');
+  return meta instanceof HTMLMetaElement ? meta.content : '';
+}
+
+function ensureCsrfField(form) {
+  if (!(form instanceof HTMLFormElement)) return;
+  if ((form.method || '').toLowerCase() !== 'post') return;
+  if (form.querySelector('input[name="_token"]')) return;
+  var token = csrfToken();
+  if (token === '') return;
+  var input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = '_token';
+  input.value = token;
+  form.appendChild(input);
 }
 
 function initSettingsPane() {
   if (!document.querySelector('[data-settings-layout]')) return;
   activateSettingsPane((window.location.hash || '').replace(/^#/, ''), false);
+}
+
+function movePurchaseStatusRow(row, direction) {
+  if (!(row instanceof HTMLElement)) return;
+  if (direction === 'up' && row.previousElementSibling) {
+    row.parentElement.insertBefore(row, row.previousElementSibling);
+  }
+  if (direction === 'down' && row.nextElementSibling) {
+    row.parentElement.insertBefore(row.nextElementSibling, row);
+  }
+}
+
+function deletePurchaseStatusRow(row) {
+  if (!(row instanceof HTMLElement) || row.getAttribute('data-locked') === '1') return;
+  row.remove();
+}
+
+function addPurchaseStatusRow(editor) {
+  if (!(editor instanceof HTMLElement)) return;
+  var input = editor.querySelector('[data-purchase-status-new]');
+  var list = editor.querySelector('[data-purchase-status-list]');
+  if (!(input instanceof HTMLInputElement) || !(list instanceof HTMLElement)) return;
+  var value = input.value.trim();
+  if (value === '') {
+    input.focus();
+    return;
+  }
+  var duplicate = Array.prototype.some.call(list.querySelectorAll('[data-purchase-status-name]'), function (field) {
+    return field instanceof HTMLInputElement && field.value.trim() === value;
+  });
+  if (duplicate) {
+    alert('状态名称已存在');
+    input.focus();
+    return;
+  }
+
+  var row = document.createElement('div');
+  row.className = 'purchase-status-row';
+  row.setAttribute('data-purchase-status-row', '');
+  row.setAttribute('data-locked', '0');
+  row.innerHTML = [
+    '<input class="purchase-status-name" maxlength="32" data-purchase-status-name>',
+    '<div class="purchase-status-actions">',
+    '<button class="btn-xs" type="button" data-purchase-status-move="up">上移</button>',
+    '<button class="btn-xs" type="button" data-purchase-status-move="down">下移</button>',
+    '<button class="btn-xs danger-text" type="button" data-purchase-status-delete>删除</button>',
+    '</div>'
+  ].join('');
+  var nameInput = row.querySelector('[data-purchase-status-name]');
+  if (nameInput instanceof HTMLInputElement) nameInput.value = value;
+  list.appendChild(row);
+  input.value = '';
+  if (nameInput instanceof HTMLInputElement) nameInput.focus();
+}
+
+function serializePurchaseStatuses(form) {
+  var output = form.querySelector('[data-purchase-status-json]');
+  var list = document.querySelector('[data-purchase-status-list]');
+  if (!(output instanceof HTMLInputElement) || !(list instanceof HTMLElement)) return;
+  var statuses = Array.prototype.map.call(list.querySelectorAll('[data-purchase-status-name]'), function (field) {
+    return field instanceof HTMLInputElement ? field.value.trim() : '';
+  }).filter(function (value) {
+    return value !== '';
+  });
+  output.value = JSON.stringify(statuses);
 }
 
 if (document.readyState === 'loading') {
@@ -459,6 +567,7 @@ window.addEventListener('hashchange', initSettingsPane);
       actionSelect.value = action;
     }
     form.action = '/mail/action';
+    ensureCsrfField(form);
     form.submit();
   }
 

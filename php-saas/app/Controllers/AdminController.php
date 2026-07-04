@@ -11,6 +11,7 @@ use Xizhen\Core\View;
 use Xizhen\Services\AppService;
 use Xizhen\Services\AuthService;
 use Xizhen\Services\LegacySettingsService;
+use Xizhen\Services\TenantProvisioningService;
 
 final class AdminController
 {
@@ -98,8 +99,35 @@ final class AdminController
             'title' => '租户管理',
             'active' => 'tenants',
             'tenants' => $this->service->tenantsWithPlatformLabels(),
+            'message' => (string) ($_GET['message'] ?? ''),
             'currentAdmin' => $this->auth->currentAdmin(),
         ], 'layouts/admin');
+    }
+
+    public function tenantCreateForm(): void
+    {
+        $this->auth->requireAdmin();
+        $this->renderTenantCreate([
+            'plan' => 'basic',
+            'db_host' => $this->defaultDbHost(),
+            'initial_points' => 0,
+        ]);
+    }
+
+    public function tenantCreate(): void
+    {
+        $this->auth->requireAdmin();
+        $admin = $this->auth->currentAdmin();
+        $operator = (string) (($admin['display_name'] ?? '') ?: ($admin['username'] ?? 'superadmin'));
+        $values = $_POST;
+        $values['operator'] = $operator;
+        $result = $this->store->createTenant($values);
+
+        if ($result['ok']) {
+            redirect_to('/admin/tenants?message=' . rawurlencode($result['message']));
+        }
+
+        $this->renderTenantCreate($values, (string) ($result['message'] ?? '开通失败'));
     }
 
     public function billing(): void
@@ -283,5 +311,28 @@ final class AdminController
     private function safeReturn(string $return, string $fallback): string
     {
         return str_starts_with($return, '/') && !str_starts_with($return, '//') ? $return : $fallback;
+    }
+
+    /** @param array<string, mixed> $values */
+    private function renderTenantCreate(array $values, string $error = ''): void
+    {
+        $normalized = TenantProvisioningService::normalizeInput($values, $this->defaultDbHost());
+        $this->view->render('admin/tenant_create', [
+            'title' => '新增租户',
+            'active' => 'tenants',
+            'values' => $normalized,
+            'error' => $error,
+            'baseDomain' => getenv('TENANT_BASE_DOMAIN') ?: 'xizhends.com',
+            'currentAdmin' => $this->auth->currentAdmin(),
+        ], 'layouts/admin');
+    }
+
+    private function defaultDbHost(): string
+    {
+        if (preg_match('/(?:^|;)host=([^;]+)/', $this->config->mysqlDsn(), $matches)) {
+            return $matches[1];
+        }
+
+        return '127.0.0.1';
     }
 }

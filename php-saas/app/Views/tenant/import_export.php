@@ -31,6 +31,7 @@ $exportMap = [
         <div class="panel-body">
             <?php if ($hasImportJobs): ?>
             <form id="csv-import-form" class="form-grid" method="post" action="/import-export/import" enctype="multipart/form-data">
+                <?= csrf_field() ?>
                 <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                 <label>
                     <span>导入类型</span>

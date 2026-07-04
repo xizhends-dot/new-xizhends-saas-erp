@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Xizhen\Core;
 
+use Xizhen\Services\TenantProvisioningService;
+
 final class MysqlStore implements StoreInterface
 {
     private const STORE_ADD_FEE = 50;
@@ -27,6 +29,9 @@ final class MysqlStore implements StoreInterface
 
     /** @var array<string, \PDO> */
     private array $tenantConnections = [];
+
+    /** @var array<string, bool> */
+    private array $tenantConnectionMisses = [];
 
     public function __construct(private readonly Config $config)
     {
@@ -116,6 +121,29 @@ SQL;
         }, $rows);
     }
 
+    /** @param array<string, mixed> $data @return array{ok: bool, message: string} */
+    public function createTenant(array $data): array
+    {
+        $service = new TenantProvisioningService(
+            $this->master(),
+            $this->config,
+            function (int $tenantId): void {
+                $this->ensureBillingAccount($tenantId);
+            },
+            function (string $tenantKey, int $amount, string $type, string $note, string $operator): void {
+                $this->adjustTenantPoints($tenantKey, $amount, $type, $note, $operator);
+            }
+        );
+
+        $result = $service->createTenant($data);
+        $tenantKey = (string) (TenantProvisioningService::normalizeInput($data)['subdomain'] ?? '');
+        if (($result['ok'] ?? false) && $tenantKey !== '') {
+            unset($this->tenantConnectionMisses[$tenantKey]);
+        }
+
+        return $result;
+    }
+
     /** @return array<string, mixed> */
     public function tenant(string $key): array
     {
@@ -167,6 +195,26 @@ SQL;
         $rows = $tenantPdo->query($sql)->fetchAll();
 
         return array_map(fn (array $row): array => $this->mapOrder($tenantPdo, $row), $rows);
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function ordersByYear(string $tenantKey, int $year): array
+    {
+        $tenantPdo = $this->tenantPdo($tenantKey);
+        if (!$tenantPdo) {
+            return [];
+        }
+
+        $stmt = $tenantPdo->prepare(<<<'SQL'
+SELECT o.*, COALESCE(s.dpquancheng, s.dpqz, '') AS store_name
+FROM orders o
+LEFT JOIN stores s ON s.id = o.store_id
+WHERE YEAR(COALESCE(o.order_date, o.imported_at)) = ?
+ORDER BY COALESCE(o.order_date, o.imported_at) DESC
+SQL);
+        $stmt->execute([$year]);
+
+        return array_map(fn (array $row): array => $this->mapOrder($tenantPdo, $row), $stmt->fetchAll());
     }
 
     /**
@@ -1814,6 +1862,9 @@ SQL)->fetchAll();
         if (array_key_exists('export_templates', $data)) {
             $settings['export_templates'] = $data['export_templates'];
         }
+        if (array_key_exists('purchase_statuses', $data)) {
+            $settings['purchase_statuses'] = $data['purchase_statuses'];
+        }
         $settings['updated_at'] = date('Y-m-d H:i:s');
 
         $tenantPdo = $this->tenantPdo($tenantKey);
@@ -1821,7 +1872,7 @@ SQL)->fetchAll();
             $stmt = $tenantPdo->prepare(
                 'INSERT INTO tenant_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()'
             );
-            foreach (['company', 'orders', 'profit', 'logistics', 'api_1688', 'notices', 'export_templates'] as $section) {
+            foreach (['company', 'orders', 'profit', 'logistics', 'api_1688', 'notices', 'export_templates', 'purchase_statuses'] as $section) {
                 $stmt->execute([
                     $section,
                     json_encode($settings[$section] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
@@ -2596,7 +2647,16 @@ SQL)->fetchAll();
 
         $dsn = $this->config->tenantDsn($tenantKey);
         if ($dsn === '') {
-            return null;
+            if (isset($this->tenantConnectionMisses[$tenantKey])) {
+                return null;
+            }
+            $stmt = $this->master()->prepare('SELECT db_dsn_enc FROM tenants WHERE subdomain = ? LIMIT 1');
+            $stmt->execute([$tenantKey]);
+            $dsn = trim((string) ($stmt->fetchColumn() ?: ''));
+            if ($dsn === '' || !str_starts_with($dsn, 'mysql:')) {
+                $this->tenantConnectionMisses[$tenantKey] = true;
+                return null;
+            }
         }
 
         $this->tenantConnections[$tenantKey] = $this->connect($dsn);
@@ -2741,7 +2801,10 @@ SQL)->fetchAll();
         $accountColumn = $usesPoints ? 'balance_points' : 'balance_cents';
         $amountForDb = $usesPoints ? $amount : $amount * 100;
 
-        $pdo->beginTransaction();
+        $ownsTransaction = !$pdo->inTransaction();
+        if ($ownsTransaction) {
+            $pdo->beginTransaction();
+        }
         try {
             $stmt = $pdo->prepare("SELECT {$accountColumn} AS balance FROM tenant_billing_accounts WHERE tenant_id = ? FOR UPDATE");
             $stmt->execute([$tenantId]);
@@ -2749,7 +2812,9 @@ SQL)->fetchAll();
             $currentPoints = $usesPoints ? $currentRaw : intdiv($currentRaw, 100);
             $nextPoints = $currentPoints + $amount;
             if ($amount < 0 && ($requireEnough || !$allowDebt) && $nextPoints < 0) {
-                $pdo->rollBack();
+                if ($ownsTransaction) {
+                    $pdo->rollBack();
+                }
                 return false;
             }
 
@@ -2777,11 +2842,15 @@ SQL)->fetchAll();
                 $pdo->prepare('INSERT INTO tenant_billing_ledger (' . implode(', ', $columns) . ") VALUES ({$placeholders})")->execute($params);
             }
 
-            $pdo->commit();
+            if ($ownsTransaction) {
+                $pdo->commit();
+            }
             $balanceAfterOut = $nextPoints;
             return true;
         } catch (\Throwable $error) {
-            $pdo->rollBack();
+            if ($ownsTransaction && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             throw $error;
         }
     }
@@ -3383,6 +3452,7 @@ SQL);
 
         return [
             'id' => (int) $row['id'],
+            'store_id' => (int) ($row['store_id'] ?? 0),
             'platform' => (string) $row['platform'],
             'platform_order_id' => (string) $row['platform_order_id'],
             'order_detail_id' => (string) ($row['order_detail_id'] ?? ''),

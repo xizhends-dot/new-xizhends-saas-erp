@@ -26,6 +26,7 @@ $logisticsMeta = match ($type) {
     </div>
     <div class="head-actions">
         <form method="post" action="/orders/logistics/update">
+                <?= csrf_field() ?>
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
             <input type="hidden" name="type" value="<?= e($type) ?>">
             <input type="hidden" name="return" value="<?= e($logisticsMeta['return_path'] . '?tenant=' . rawurlencode((string) $tenantKey)) ?>">

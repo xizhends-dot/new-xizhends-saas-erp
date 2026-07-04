@@ -14,6 +14,7 @@
     <div class="panel-head"><span>新增员工</span><span class="sub">采购 / 客服 / 公司管理员</span></div>
     <div class="panel-body">
         <form id="user-add-form" class="form-grid" method="post" action="/users/add">
+                <?= csrf_field() ?>
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
             <label><span>姓名</span><input name="name" placeholder="如 李四"></label>
             <label><span>登录名</span><input name="username" placeholder="如 lisi"></label>

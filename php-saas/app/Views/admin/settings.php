@@ -53,6 +53,7 @@ $lineCount = static function (string $value): int {
 </div>
 
 <form id="admin-settings-form" class="admin-settings-form" method="post" action="/admin/settings/save">
+                <?= csrf_field() ?>
     <section class="panel settings-wide">
         <div class="panel-head">
             <span>物流编号对照表</span>

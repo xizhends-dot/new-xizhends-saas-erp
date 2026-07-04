@@ -52,6 +52,7 @@ $mailTab = 'summary';
     </div>
     <div class="head-actions">
         <form method="post" action="/mail/sync">
+                <?= csrf_field() ?>
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
             <button class="btn primary" type="submit">立即同步</button>
         </form>
@@ -97,6 +98,7 @@ $mailTab = 'summary';
             <span class="kefu-count">共 <?= e((int) ($messages['total'] ?? 0)) ?> 封</span>
             <span class="kefu-spacer"></span>
             <form method="post" action="/mail/rules/apply">
+                <?= csrf_field() ?>
                 <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                 <input type="hidden" name="account_id" value="<?= e($filters['account_id'] ?? 0) ?>">
                 <input type="hidden" name="folder_id" value="<?= e($filters['folder_id'] ?? 0) ?>">
@@ -104,6 +106,7 @@ $mailTab = 'summary';
                 <button class="btn" type="submit">应用规则</button>
             </form>
             <form method="post" action="/mail/sync">
+                <?= csrf_field() ?>
                 <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                 <input type="hidden" name="account_id" value="<?= e($filters['account_id'] ?? 0) ?>">
                 <input type="hidden" name="folder_id" value="<?= e($filters['folder_id'] ?? 0) ?>">
@@ -121,6 +124,7 @@ $mailTab = 'summary';
         </div>
 
         <form id="mail-bulk-form" class="kefu-bulkbar" method="post" action="/mail/action">
+                <?= csrf_field() ?>
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
             <input type="hidden" name="return" value="<?= e($returnUrl) ?>">
             <span>已选 <b id="kefu-selected-count">0</b> 封：</span>
@@ -212,6 +216,7 @@ $mailTab = 'summary';
                     </div>
                 <?php endif; ?>
                 <form class="kefu-reply-form" method="post" action="/mail/reply">
+                <?= csrf_field() ?>
                     <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                     <input type="hidden" name="message_id" value="<?= e($selected['id'] ?? 0) ?>">
                     <label class="fg"><span>收件人</span><input name="to_addr" value="<?= e($selected['from_addr'] ?? '') ?>"></label>

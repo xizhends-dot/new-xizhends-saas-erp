@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Xizhen\Core;
 
+use Xizhen\Services\AuthService;
+use Xizhen\Services\TenantProvisioningService;
+
 final class JsonStore implements StoreInterface
 {
     private const STORE_ADD_FEE = 50;
@@ -47,6 +50,101 @@ final class JsonStore implements StoreInterface
     public function tenants(): array
     {
         return $this->all()['tenants'];
+    }
+
+    /** @param array<string, mixed> $data @return array{ok: bool, message: string} */
+    public function createTenant(array $data): array
+    {
+        $data = TenantProvisioningService::normalizeInput($data);
+        $errors = TenantProvisioningService::validateInput($data);
+        if ($errors) {
+            return ['ok' => false, 'message' => implode('；', $errors)];
+        }
+
+        foreach ($this->tenants() as $tenant) {
+            if (($tenant['key'] ?? '') === $data['subdomain'] || ($tenant['subdomain'] ?? '') === $data['subdomain']) {
+                return ['ok' => false, 'message' => '子域名已存在，请更换后重试。'];
+            }
+        }
+
+        $all = $this->all();
+        $this->ensureBillingStructure($all);
+        $subdomain = (string) $data['subdomain'];
+        $platforms = array_map(static fn (array $platform): array => [
+            'code' => (string) ($platform['code'] ?? ''),
+            'enabled' => (bool) ($platform['default_enabled'] ?? true),
+            'locked' => false,
+        ], array_values(array_filter(
+            (array) ($all['platforms'] ?? []),
+            static fn (array $platform): bool => (bool) ($platform['default_enabled'] ?? 1)
+        )));
+
+        $all['tenants'][] = [
+            'id' => $this->nextId(is_array($all['tenants'] ?? null) ? $all['tenants'] : []),
+            'key' => $subdomain,
+            'company_name' => (string) $data['company_name'],
+            'short_name' => (string) $data['company_short_name'],
+            'subdomain' => $subdomain,
+            'db_name' => (string) $data['db_name'],
+            'plan' => (string) $data['plan'],
+            'status' => 'active',
+            'staff_count' => 0,
+            'balance' => 0,
+            'billing_updated_at' => '',
+            'contact' => (string) $data['contact_name'],
+            'phone' => (string) $data['contact_phone'],
+            'contact_email' => (string) $data['contact_email'],
+            'contact_wechat' => (string) $data['contact_wechat'],
+            'address' => (string) $data['address'],
+            'remark' => (string) $data['remark'],
+            'platforms' => $platforms,
+            'features' => TenantFeature::defaultRows(),
+        ];
+        $all['stores'][$subdomain] = [];
+        $all['orders'][$subdomain] = [];
+        $all['users'][$subdomain] = [[
+            'id' => 1,
+            'name' => (string) (($data['contact_name'] ?? '') ?: '公司管理员'),
+            'username' => (string) $data['admin_username'],
+            'role' => '公司管理员',
+            'password_hash' => AuthService::makePasswordHash((string) $data['admin_password']),
+            'legacy_password' => '',
+            'password_reset' => '',
+            'password_reset_at' => date('Y-m-d H:i:s'),
+            'last_login_at' => '',
+            'preference_module' => 'dashboard',
+            'api_1688_config' => '',
+            'is_company_admin' => true,
+            'permissions' => $this->permissionsForRole('公司管理员'),
+            'permission_overrides' => ['allow' => [], 'deny' => []],
+            'stores' => ['全部店铺'],
+            'status' => 'active',
+            'created_at' => date('Y-m-d H:i'),
+        ]];
+        $all['assignments'][$subdomain] = [];
+        $all['attachments'][$subdomain] = [];
+        $all['settings']['tenant'][$subdomain] = $this->defaultTenantSettings(end($all['tenants']) ?: []);
+        $all['import_export_logs'][$subdomain] = [];
+        $all['purchase_status_events'][$subdomain] = [];
+        foreach (['accounts', 'folders', 'messages', 'replies', 'rules'] as $bucket) {
+            $all['mail'][$bucket][$subdomain] = [];
+        }
+        $all['mail']['settings'][$subdomain] = [
+            'autosync_enabled' => 1,
+            'autosync_interval_sec' => 180,
+        ];
+        $all['billing']['ledger'][$subdomain] = [];
+        $all['billing']['subscriptions'][$subdomain] = [];
+
+        $this->data = $all;
+        $initialPoints = max(0, (int) $data['initial_points']);
+        if ($initialPoints > 0) {
+            $this->writeTenantPointEntry($subdomain, $initialPoints, 'recharge', '开通初始积分', (string) $data['operator']);
+        } else {
+            $this->save();
+        }
+
+        return ['ok' => true, 'message' => '租户已开通：' . $subdomain];
     }
 
     /** @return array<string, mixed>|null */
@@ -107,6 +205,22 @@ final class JsonStore implements StoreInterface
     public function orders(string $tenantKey): array
     {
         return $this->all()['orders'][$tenantKey] ?? [];
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function ordersByYear(string $tenantKey, int $year): array
+    {
+        return array_values(array_filter(
+            $this->orders($tenantKey),
+            static function (array $order) use ($year): bool {
+                $date = trim((string) ($order['imported_at'] ?? ''));
+                if ($date === '') {
+                    $date = trim((string) ($order['order_date'] ?? ''));
+                }
+
+                return substr($date, 0, 4) === (string) $year;
+            }
+        ));
     }
 
     /**
@@ -1694,6 +1808,9 @@ final class JsonStore implements StoreInterface
         $settings = array_replace_recursive($current, $data);
         if (array_key_exists('export_templates', $data)) {
             $settings['export_templates'] = $data['export_templates'];
+        }
+        if (array_key_exists('purchase_statuses', $data)) {
+            $settings['purchase_statuses'] = $data['purchase_statuses'];
         }
         $settings['updated_at'] = date('Y-m-d H:i:s');
         $all['settings']['tenant'][$tenantKey] = $settings;

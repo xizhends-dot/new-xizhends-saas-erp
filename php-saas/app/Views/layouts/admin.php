@@ -4,6 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="<?= e(csrf_token()) ?>">
     <title><?= e($title ?? '超管后台') ?></title>
     <link rel="stylesheet" href="/assets/app.css?v=<?= e($assetVersion('/assets/app.css')) ?>">
 </head>
@@ -23,6 +24,7 @@
                 <span><?= e($currentAdmin['username'] ?? '') ?></span>
             </div>
             <form method="post" action="/admin/logout" class="mini-form">
+                <?= csrf_field() ?>
                 <button type="submit">退出</button>
             </form>
         </div>

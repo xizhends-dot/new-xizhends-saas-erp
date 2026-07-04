@@ -11,11 +11,21 @@
     return text ? path + '?' + text : path;
   }
 
+  function csrfToken() {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    return meta instanceof HTMLMetaElement ? meta.content : '';
+  }
+
   function requestJson(url, options) {
+    var requestOptions = Object.assign({}, options || {});
+    requestOptions.headers = Object.assign({ 'X-Requested-With': 'fetch' }, requestOptions.headers || {});
+    if ((requestOptions.method || '').toUpperCase() === 'POST') {
+      requestOptions.headers['X-CSRF-Token'] = csrfToken();
+    }
+
     return fetch(url, Object.assign({
-      headers: { 'X-Requested-With': 'fetch' },
       credentials: 'same-origin'
-    }, options || {})).then(function (response) {
+    }, requestOptions)).then(function (response) {
       return response.json().then(function (payload) {
         if (!response.ok || !payload.ok) throw payload;
         return payload;
@@ -87,8 +97,7 @@
       requestJson(ajaxUrl('/orders/ajax/review'), {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-          'X-Requested-With': 'fetch'
+          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
         },
         body: body.toString()
       }).then(function (payload) {

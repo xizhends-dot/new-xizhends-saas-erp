@@ -18,6 +18,7 @@
         <?php endif; ?>
 
         <form class="auth-form" method="post" action="/login">
+                <?= csrf_field() ?>
             <input type="hidden" name="return" value="<?= e($returnUrl ?? '/?tenant=' . $tenantKey) ?>">
             <?php if (!($tenantHostMode ?? false)): ?>
                 <label>

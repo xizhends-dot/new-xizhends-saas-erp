@@ -12,6 +12,7 @@ $tenantUrl = static fn (string $path, array $params = []): string => $path . '?'
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="<?= e(csrf_token()) ?>">
     <title><?= e($title ?? '西阵订单系统') ?></title>
     <link rel="stylesheet" href="/assets/app.css?v=<?= e($assetVersion('/assets/app.css')) ?>">
 </head>
@@ -31,6 +32,7 @@ $tenantUrl = static fn (string $path, array $params = []): string => $path . '?'
                 <span><?= e($currentUser['role'] ?? '员工') ?></span>
             </div>
             <form method="post" action="/logout" class="mini-form">
+                <?= csrf_field() ?>
                 <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                 <button type="submit">退出</button>
             </form>
@@ -71,6 +73,7 @@ $tenantUrl = static fn (string $path, array $params = []): string => $path . '?'
         <?php if ($featureEnabled('account.password_edit')): ?><a class="<?= ($active ?? '') === 'password_edit' ? 'active' : '' ?>" href="/password/edit?tenant=<?= e($tenantKey) ?>">修改密码</a><?php endif; ?>
         <?php if ($featureEnabled('management.notices') && $canAny(['公告管理', '通知查看'])): ?><a class="<?= ($active ?? '') === 'tenant_notices' ? 'active' : '' ?>" href="/notices?tenant=<?= e($tenantKey) ?>">通知公告</a><?php endif; ?>
         <?php if ($featureEnabled('management.stores') && $can('店铺新增')): ?><a class="<?= ($active ?? '') === 'stores' ? 'active' : '' ?>" href="/stores?tenant=<?= e($tenantKey) ?>">店铺管理</a><?php endif; ?>
+        <?php if (!empty($currentUser['is_company_admin']) || \Xizhen\Core\Permission::normalizeRole($currentUser['role'] ?? '') === '公司管理员'): ?><a class="<?= ($active ?? '') === 'billing' ? 'active' : '' ?>" href="/billing?tenant=<?= e($tenantKey) ?>">积分账单</a><?php endif; ?>
         <?php if ($featureEnabled('management.users') && $can('员工管理')): ?><a class="<?= ($active ?? '') === 'users' ? 'active' : '' ?>" href="/users?tenant=<?= e($tenantKey) ?>">员工管理</a><?php endif; ?>
         <?php if ($featureEnabled('media.library') && $canAny(['图片管理', '图片上传', '图片删除'])): ?><a class="<?= ($active ?? '') === 'media' ? 'active' : '' ?>" href="/media?tenant=<?= e($tenantKey) ?>">租户图片库</a><?php endif; ?>
         <?php if ($featureEnabled('management.jobs')): ?><a class="<?= ($active ?? '') === 'jobs' ? 'active' : '' ?>" href="/jobs?tenant=<?= e($tenantKey) ?>">定时任务</a><?php endif; ?>

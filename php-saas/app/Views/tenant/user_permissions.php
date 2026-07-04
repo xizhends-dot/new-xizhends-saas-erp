@@ -2,7 +2,6 @@
 $user = is_array($user ?? null) ? $user : [];
 $groups = is_array($groups ?? null) ? $groups : [];
 $message = (string) ($message ?? '');
-$requirements = is_array($requirements ?? null) ? $requirements : [];
 ?>
 
 <div class="page-head">
@@ -32,6 +31,7 @@ $requirements = is_array($requirements ?? null) ? $requirements : [];
 </div>
 
 <form id="permission-override-form" method="post" action="/users/permissions/save">
+                <?= csrf_field() ?>
     <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
     <input type="hidden" name="user_id" value="<?= e($user['id'] ?? '') ?>">
 
@@ -67,18 +67,3 @@ $requirements = is_array($requirements ?? null) ? $requirements : [];
         </div>
     <?php endforeach; ?>
 </form>
-
-<div class="panel">
-    <div class="panel-head"><span>主控接入要求</span><span class="sub">当前页面只生成覆盖矩阵</span></div>
-    <div class="panel-body">
-        <?php if ($requirements): ?>
-            <ul class="plain-list">
-                <?php foreach ($requirements as $item): ?>
-                    <li><?= e($item) ?></li>
-                <?php endforeach; ?>
-            </ul>
-        <?php else: ?>
-            <div class="notice">需要 Store 支持 allow/deny 覆盖字段，并在权限判定中接入 deny 优先规则。</div>
-        <?php endif; ?>
-    </div>
-</div>

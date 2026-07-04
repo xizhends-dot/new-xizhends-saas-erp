@@ -16,17 +16,8 @@ final class AuthService
 
     public function __construct(private readonly StoreInterface $store)
     {
-        if (session_status() !== PHP_SESSION_ACTIVE) {
-            if (!headers_sent()) {
-                session_name('XZSAAS');
-                session_set_cookie_params([
-                    'lifetime' => 0,
-                    'path' => '/',
-                    'httponly' => true,
-                    'samesite' => 'Lax',
-                ]);
-            }
-            session_start();
+        if (!isset($_SESSION) || !is_array($_SESSION)) {
+            $_SESSION = [];
         }
     }
 
@@ -66,6 +57,7 @@ final class AuthService
         return array_merge($session, [
             'name' => (string) (($user['name'] ?? '') ?: ($user['username'] ?? '员工')),
             'role' => (string) ($user['role'] ?? ''),
+            'is_company_admin' => (bool) ($user['is_company_admin'] ?? false),
             'permissions' => $user['permissions'] ?? [],
             'stores' => $user['stores'] ?? [],
         ]);
@@ -118,6 +110,27 @@ final class AuthService
     public function tenantCan(string $tenantKey, string $permission): bool
     {
         return Permission::has($this->currentTenantUser($tenantKey), $permission);
+    }
+
+    public function isTenantCompanyAdmin(string $tenantKey): bool
+    {
+        $user = $this->currentTenantUser($tenantKey);
+        if ($user === null) {
+            return false;
+        }
+
+        return (bool) ($user['is_company_admin'] ?? false)
+            || Permission::normalizeRole($user['role'] ?? '') === '公司管理员';
+    }
+
+    public function requireTenantCompanyAdmin(string $tenantKey): void
+    {
+        $this->requireTenant($tenantKey);
+        if ($this->isTenantCompanyAdmin($tenantKey)) {
+            return;
+        }
+
+        $this->deny('公司管理员');
     }
 
     /** @return array{ok: bool, message: string} */
@@ -182,6 +195,7 @@ final class AuthService
             'username' => (string) $user['username'],
             'name' => (string) (($user['name'] ?? '') ?: ($user['username'] ?? '员工')),
             'role' => (string) ($user['role'] ?? ''),
+            'is_company_admin' => (bool) ($user['is_company_admin'] ?? false),
             'permissions' => $user['permissions'] ?? [],
             'stores' => $user['stores'] ?? [],
             'login_at' => date('Y-m-d H:i:s'),
@@ -211,7 +225,7 @@ final class AuthService
     {
         $hash = (string) ($user['password_hash'] ?? '');
         if ($this->verifyHash($hash, $password)) {
-            if (password_needs_rehash($hash, $this->passwordAlgorithm())) {
+            if (password_needs_rehash($hash, self::passwordAlgorithm())) {
                 $this->store->updateTenantUserPassword($tenantKey, (int) $user['id'], $this->hashPassword($password));
             }
             return true;
@@ -233,12 +247,17 @@ final class AuthService
         return $hash !== '' && password_verify($password, $hash);
     }
 
-    private function hashPassword(string $password): string
+    public function hashPassword(string $password): string
     {
-        return password_hash($password, $this->passwordAlgorithm());
+        return self::makePasswordHash($password);
     }
 
-    private function passwordAlgorithm(): string|int|null
+    public static function makePasswordHash(string $password): string
+    {
+        return password_hash($password, self::passwordAlgorithm());
+    }
+
+    private static function passwordAlgorithm(): string|int|null
     {
         return defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_DEFAULT;
     }
