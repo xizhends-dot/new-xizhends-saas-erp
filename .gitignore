@@ -38,3 +38,6 @@ old/**/runtime/
 # 工具与会话产物
 .codegraph/
 generated-images/
+_orders.html
+_*.tmp
+_*.html
