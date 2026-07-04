@@ -61,9 +61,9 @@ $hiddenFilters = [
     'source' => (string) ($source ?? 'all'),
     'q' => $keyword,
 ];
-foreach ($filters as $filterKey => $filterValue) {
-    if ($filterValue !== '') {
-        $hiddenFilters[$filterKey] = (string) $filterValue;
+foreach ($filters as $filterKey => $hiddenFilterValue) {
+    if ($hiddenFilterValue !== '') {
+        $hiddenFilters[$filterKey] = (string) $hiddenFilterValue;
     }
 }
 
