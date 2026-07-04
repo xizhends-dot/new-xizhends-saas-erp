@@ -18,7 +18,7 @@
 
   function requestJson(url, options) {
     var requestOptions = Object.assign({}, options || {});
-    requestOptions.headers = Object.assign({ 'X-Requested-With': 'fetch' }, requestOptions.headers || {});
+    requestOptions.headers = Object.assign({ 'X-Requested-With': 'fetch', 'Accept': 'application/json' }, requestOptions.headers || {});
     if ((requestOptions.method || '').toUpperCase() === 'POST') {
       requestOptions.headers['X-CSRF-Token'] = csrfToken();
     }
@@ -33,9 +33,211 @@
     });
   }
 
+  var priceQuotePopover = null;
+  var priceQuoteTrigger = null;
+  var priceQuoteTimer = null;
+  var priceQuoteHideTimer = null;
+
+  function ensurePriceQuotePopover() {
+    if (priceQuotePopover) return priceQuotePopover;
+    priceQuotePopover = document.createElement('div');
+    priceQuotePopover.className = 'price-quote-popover';
+    priceQuotePopover.hidden = true;
+    priceQuotePopover.addEventListener('mouseenter', function () {
+      if (priceQuoteHideTimer) window.clearTimeout(priceQuoteHideTimer);
+    });
+    priceQuotePopover.addEventListener('mouseleave', function () {
+      schedulePriceQuoteHide();
+    });
+    priceQuotePopover.addEventListener('click', function (event) {
+      var target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      var recalc = target.closest('[data-price-quote-recalc]');
+      if (!recalc || !priceQuoteTrigger) return;
+      event.preventDefault();
+      loadPriceQuote(priceQuoteTrigger, priceQuoteValues(priceQuotePopover));
+    });
+    document.body.appendChild(priceQuotePopover);
+    return priceQuotePopover;
+  }
+
+  function numericText(value, decimals) {
+    var number = parseFloat(value);
+    if (!Number.isFinite(number)) number = 0;
+    return number.toFixed(decimals);
+  }
+
+  function sourceLabel(source) {
+    if (source === 'actual_com_amount') return '订单实际国际运费';
+    if (source === 'override') return '手动输入';
+    return '租户默认运费';
+  }
+
+  function appendField(form, labelText, name, value, suffix) {
+    var label = document.createElement('label');
+    var span = document.createElement('span');
+    var input = document.createElement('input');
+    var suffixSpan = document.createElement('span');
+    span.textContent = labelText;
+    input.type = 'number';
+    input.step = name === 'sale_price' ? '1' : '0.01';
+    input.setAttribute('data-price-quote-field', name);
+    input.value = String(value == null ? '' : value);
+    suffixSpan.className = 'price-quote-suffix';
+    suffixSpan.textContent = suffix;
+    label.appendChild(span);
+    label.appendChild(input);
+    label.appendChild(suffixSpan);
+    form.appendChild(label);
+  }
+
+  function appendMetric(container, labelText, valueText, className) {
+    var row = document.createElement('div');
+    var label = document.createElement('span');
+    var value = document.createElement('strong');
+    row.className = 'price-quote-metric';
+    label.textContent = labelText;
+    value.textContent = valueText;
+    if (className) value.className = className;
+    row.appendChild(label);
+    row.appendChild(value);
+    container.appendChild(row);
+  }
+
+  function renderPriceQuote(payload) {
+    var popover = ensurePriceQuotePopover();
+    var quote = payload && payload.quote ? payload.quote : {};
+    popover.replaceChildren();
+
+    var header = document.createElement('div');
+    header.className = 'price-quote-head';
+    var title = document.createElement('strong');
+    title.textContent = '核价';
+    var meta = document.createElement('span');
+    meta.textContent = [quote.order_no || '', quote.item_code || ''].filter(Boolean).join(' · ');
+    header.appendChild(title);
+    header.appendChild(meta);
+    popover.appendChild(header);
+
+    var form = document.createElement('div');
+    form.className = 'price-quote-form';
+    appendField(form, '售价', 'sale_price', quote.sale_price == null ? 0 : quote.sale_price, '円');
+    appendField(form, '运费', 'shipping', quote.shipping == null ? 0 : quote.shipping, '￥');
+    appendField(form, '扣点', 'deduction', quote.deduction == null ? 0 : quote.deduction, '%');
+    appendField(form, '成本', 'cost', quote.cost == null ? 0 : quote.cost, '￥');
+    popover.appendChild(form);
+
+    var metrics = document.createElement('div');
+    metrics.className = 'price-quote-metrics';
+    var profit = parseFloat(quote.profit == null ? 0 : quote.profit);
+    appendMetric(metrics, '成交收入', '￥' + numericText(quote.actual_income, 2));
+    appendMetric(metrics, '成本合计', '￥' + numericText(quote.total_cost, 2));
+    appendMetric(metrics, '预计利润', '￥' + numericText(quote.profit, 2), profit >= 0 ? 'positive' : 'negative');
+    appendMetric(metrics, '利润率', numericText(quote.profit_rate, 2) + '%', profit >= 0 ? 'positive' : 'negative');
+    popover.appendChild(metrics);
+
+    var foot = document.createElement('div');
+    foot.className = 'price-quote-foot';
+    var note = document.createElement('span');
+    note.textContent = '汇率 ' + numericText(quote.exchange_rate, 4) + ' · ' + sourceLabel(String(quote.shipping_source || ''));
+    var button = document.createElement('button');
+    button.className = 'btn-xs';
+    button.type = 'button';
+    button.setAttribute('data-price-quote-recalc', '1');
+    button.textContent = '重新计算';
+    foot.appendChild(note);
+    foot.appendChild(button);
+    popover.appendChild(foot);
+  }
+
+  function renderPriceQuoteMessage(message) {
+    var popover = ensurePriceQuotePopover();
+    popover.replaceChildren();
+    var body = document.createElement('div');
+    body.className = 'price-quote-message';
+    body.textContent = message;
+    popover.appendChild(body);
+  }
+
+  function priceQuoteValues(popover) {
+    var values = {};
+    popover.querySelectorAll('[data-price-quote-field]').forEach(function (input) {
+      if (!(input instanceof HTMLInputElement)) return;
+      values[input.getAttribute('data-price-quote-field') || ''] = input.value;
+    });
+    return values;
+  }
+
+  function loadPriceQuote(trigger, overrides) {
+    var itemId = trigger.getAttribute('data-item-id') || '';
+    if (itemId === '') return;
+    var values = Object.assign({ item_id: itemId }, overrides || {});
+    renderPriceQuoteMessage('核价中...');
+    positionPriceQuote(trigger);
+    requestJson(ajaxUrl('/orders/ajax/price-quote', values))
+      .then(function (payload) {
+        renderPriceQuote(payload);
+        positionPriceQuote(trigger);
+      })
+      .catch(function (payload) {
+        renderPriceQuoteMessage(payload.message || '核价失败');
+        positionPriceQuote(trigger);
+      });
+  }
+
+  function positionPriceQuote(trigger) {
+    var popover = ensurePriceQuotePopover();
+    var rect = trigger.getBoundingClientRect();
+    popover.hidden = false;
+    popover.classList.add('show');
+    var width = popover.offsetWidth || 320;
+    var height = popover.offsetHeight || 240;
+    var left = Math.min(Math.max(12, rect.left), Math.max(12, window.innerWidth - width - 12));
+    var top = rect.bottom + 8;
+    if (top + height > window.innerHeight - 12) {
+      top = Math.max(12, rect.top - height - 8);
+    }
+    popover.style.left = left + 'px';
+    popover.style.top = top + 'px';
+  }
+
+  function showPriceQuote(trigger) {
+    if (priceQuoteHideTimer) window.clearTimeout(priceQuoteHideTimer);
+    priceQuoteTrigger = trigger;
+    loadPriceQuote(trigger);
+  }
+
+  function schedulePriceQuote(trigger) {
+    if (priceQuoteTimer) window.clearTimeout(priceQuoteTimer);
+    priceQuoteTimer = window.setTimeout(function () {
+      showPriceQuote(trigger);
+    }, 160);
+  }
+
+  function schedulePriceQuoteHide() {
+    if (priceQuoteTimer) window.clearTimeout(priceQuoteTimer);
+    if (priceQuoteHideTimer) window.clearTimeout(priceQuoteHideTimer);
+    priceQuoteHideTimer = window.setTimeout(function () {
+      if (!priceQuotePopover) return;
+      priceQuotePopover.classList.remove('show');
+      priceQuotePopover.hidden = true;
+      priceQuoteTrigger = null;
+    }, 220);
+  }
+
   document.addEventListener('click', function (event) {
     var target = event.target;
     if (!(target instanceof HTMLElement)) return;
+
+    var quoteTrigger = target.closest('[data-price-quote-trigger]');
+    if (quoteTrigger) {
+      event.preventDefault();
+      showPriceQuote(quoteTrigger);
+      return;
+    }
+    if (priceQuotePopover && !priceQuotePopover.hidden && !priceQuotePopover.contains(target)) {
+      schedulePriceQuoteHide();
+    }
 
     var rowReload = target.closest('[data-order-row-reload]');
     if (rowReload) {
@@ -109,4 +311,37 @@
       });
     }
   });
+
+  document.addEventListener('mouseover', function (event) {
+    var target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    var trigger = target.closest('[data-price-quote-trigger]');
+    if (!trigger) return;
+    schedulePriceQuote(trigger);
+  });
+
+  document.addEventListener('mouseout', function (event) {
+    var target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    var trigger = target.closest('[data-price-quote-trigger]');
+    if (!trigger) return;
+    var related = event.relatedTarget;
+    if (related instanceof Node && (trigger.contains(related) || (priceQuotePopover && priceQuotePopover.contains(related)))) {
+      return;
+    }
+    schedulePriceQuoteHide();
+  });
+
+  document.addEventListener('focusin', function (event) {
+    var target = event.target;
+    if (target instanceof HTMLElement && target.matches('[data-price-quote-trigger]')) {
+      showPriceQuote(target);
+    }
+  });
+
+  window.addEventListener('scroll', function () {
+    if (priceQuoteTrigger && priceQuotePopover && !priceQuotePopover.hidden) {
+      positionPriceQuote(priceQuoteTrigger);
+    }
+  }, true);
 })();

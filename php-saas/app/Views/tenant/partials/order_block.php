@@ -55,6 +55,7 @@ $outStatusClass = static fn (string $status): string => match ($status) {
     '已发货' => 'sent',
     default => 'wait',
 };
+$canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单查看', '订单编辑']);
 ?>
 <article class="order-block">
     <?php if ($showA): ?>
@@ -132,6 +133,8 @@ $outStatusClass = static fn (string $status): string => match ($status) {
             $shippingFee = (float) ($item['postage_price'] ?? 0);
             $payFee = (float) ($item['pay_charge'] ?? 0);
             $lineTotal = (float) ($item['line_total'] ?? (($unitPrice * max(1, (int) ($item['quantity'] ?? 1))) + $shippingFee + $payFee));
+            $quoteSalePrice = $unitPrice > 0 ? ($unitPrice + $shippingFee) : $lineTotal;
+            $quoteCost = (float) (($item['amount'] ?? 0) ?: ($item['purchase_amount'] ?? 0) ?: ($item['cn_amount'] ?? 0));
             $itemMeta = array_values(array_filter([
                 (string) ($item['lot_number'] ?? ''),
                 (string) ($item['item_management_id'] ?? ''),
@@ -176,7 +179,7 @@ $outStatusClass = static fn (string $status): string => match ($status) {
                 <td><?= e($item['option']) ?></td>
                 <td colspan="2" title="<?= e($item['title']) ?>"><?= e($item['title']) ?></td>
                 <td><span class="qty-val">×<?= e($item['quantity']) ?></span></td>
-                <td><span class="price-val">￥<?= e(number_format($unitPrice, 0)) ?></span></td>
+                <td><span class="price-val<?php if ($canPriceQuote): ?> price-quote-trigger<?php endif; ?>"<?php if ($canPriceQuote): ?> tabindex="0" role="button" aria-label="打开核价浮层" title="悬停核价" data-price-quote-trigger data-item-id="<?= e($item['id']) ?>" data-sale-price="<?= e($quoteSalePrice) ?>" data-shipping="<?= e(($item['com_amount'] ?? 0) ?: '') ?>" data-cost="<?= e($quoteCost) ?>"<?php endif; ?>>￥<?= e(number_format($unitPrice, 0)) ?></span></td>
                 <td>￥<?= e(number_format($shippingFee, 0)) ?>/￥<?= e(number_format($payFee, 0)) ?></td>
                 <td><span class="price-val">￥<?= e(number_format($lineTotal, 0)) ?></span></td>
                 <td class="op-cell">

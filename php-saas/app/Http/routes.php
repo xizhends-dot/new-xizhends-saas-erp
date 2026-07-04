@@ -153,6 +153,7 @@ return static function (Container $container, Router $router): void {
         $router->get('/orders/ajax/row', [OrderAjaxController::class, 'ajaxOrderRow']);
         $router->get('/orders/ajax/detail', [OrderAjaxController::class, 'ajaxOrderDetail']);
         $router->get('/orders/ajax/logistics', [OrderAjaxController::class, 'ajaxLogisticsReload']);
+        $router->get('/orders/ajax/price-quote', [OrderAjaxController::class, 'priceQuote']);
         $router->post('/orders/ajax/review', [OrderAjaxController::class, 'ajaxToggleReview']);
     });
 };

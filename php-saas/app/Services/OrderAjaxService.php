@@ -32,6 +32,7 @@ final class OrderAjaxService
             'returnUrl' => (string) ($context['returnUrl'] ?? tenant_url('/orders', $tenantKey)),
             'orderView' => (string) ($context['orderView'] ?? 'platform'),
             'statusOptions' => $this->app->purchaseStatuses($tenantKey),
+            'currentUser' => $user,
         ]));
 
         return ['ok' => true, 'status' => 200, 'message' => '订单行已刷新。', 'html' => $html, 'order' => $order];

@@ -19,6 +19,19 @@ $canChangeSource = (bool) ($canChangeSource ?? false);
 $canUploadImage = (bool) ($canUploadImage ?? false);
 $canDeleteImage = (bool) ($canDeleteImage ?? false);
 $canEditAnyItemField = $canEditOrders || $canEditPurchase || $canEditJp || $canChangeSource;
+$canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单查看', '订单编辑']);
+$priceQuoteAttrs = static function (array $item) use ($canPriceQuote): string {
+    if (!$canPriceQuote) {
+        return '';
+    }
+    $unitPrice = (float) ($item['unit_price'] ?? $item['amount'] ?? 0);
+    $shippingFee = (float) ($item['postage_price'] ?? 0);
+    $lineTotal = (float) ($item['line_total'] ?? (($unitPrice * max(1, (int) ($item['quantity'] ?? 1))) + $shippingFee + (float) ($item['pay_charge'] ?? 0)));
+    $salePrice = $unitPrice > 0 ? ($unitPrice + $shippingFee) : $lineTotal;
+    $cost = (float) (($item['amount'] ?? 0) ?: ($item['purchase_amount'] ?? 0) ?: ($item['cn_amount'] ?? 0));
+
+    return ' tabindex="0" role="button" aria-label="打开核价浮层" title="悬停核价" data-price-quote-trigger data-item-id="' . e($item['id'] ?? '') . '" data-sale-price="' . e($salePrice) . '" data-shipping="' . e(($item['com_amount'] ?? 0) ?: '') . '" data-cost="' . e($cost) . '"';
+};
 ?>
 <div class="page-head">
     <div>
@@ -152,7 +165,7 @@ $canEditAnyItemField = $canEditOrders || $canEditPurchase || $canEditJp || $canC
                     <img class="detail-img" src="<?= e($item['image'] ?? '') ?>" alt="<?= e($item['title'] ?? '') ?>">
                     <div>
                         <div class="detail-title"><?= e($item['title'] ?? '') ?></div>
-                        <div class="sub"><?= e($item['option'] ?? '') ?> · 数量 ×<?= e($item['quantity'] ?? 0) ?></div>
+                        <div class="sub"><?= e($item['option'] ?? '') ?> · 数量 ×<?= e($item['quantity'] ?? 0) ?> · 单价 <span class="price-val<?= $canPriceQuote ? ' price-quote-trigger' : '' ?>"<?= $priceQuoteAttrs($item) ?>>￥<?= e(number_format((float) ($item['unit_price'] ?? $item['amount'] ?? 0), 0)) ?></span></div>
                     </div>
                 </div>
 
@@ -231,7 +244,7 @@ $canEditAnyItemField = $canEditOrders || $canEditPurchase || $canEditJp || $canC
                     <img class="detail-img" src="<?= e($item['image'] ?? '') ?>" alt="<?= e($item['title'] ?? '') ?>">
                     <div>
                         <div class="detail-title"><?= e($item['title'] ?? '') ?></div>
-                        <div class="sub"><?= e($item['option'] ?? '') ?> · 数量 ×<?= e($item['quantity'] ?? 0) ?> · 当前账号没有订单编辑权限</div>
+                        <div class="sub"><?= e($item['option'] ?? '') ?> · 数量 ×<?= e($item['quantity'] ?? 0) ?> · 单价 <span class="price-val<?= $canPriceQuote ? ' price-quote-trigger' : '' ?>"<?= $priceQuoteAttrs($item) ?>>￥<?= e(number_format((float) ($item['unit_price'] ?? $item['amount'] ?? 0), 0)) ?></span> · 当前账号没有订单编辑权限</div>
                     </div>
                 </div>
                 <div class="detail-grid">

@@ -1350,6 +1350,129 @@ label.ck.warn { color: #475569; }
 
 .price-val { font-weight: 600; }
 
+.price-quote-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  padding: 2px 6px;
+  border-bottom: 1px dotted #0f766e;
+  color: #0f766e;
+  cursor: help;
+  outline: none;
+}
+
+.price-quote-trigger:focus,
+.price-quote-trigger:hover {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.price-quote-popover {
+  position: fixed;
+  z-index: 10000;
+  width: min(340px, calc(100vw - 24px));
+  padding: 12px;
+  border: 1px solid #99f6e4;
+  background: #fff;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, .24);
+  color: #111827;
+}
+
+.price-quote-popover[hidden] {
+  display: none;
+}
+
+.price-quote-head,
+.price-quote-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.price-quote-head {
+  margin-bottom: 10px;
+}
+
+.price-quote-head strong {
+  font-size: 14px;
+}
+
+.price-quote-head span,
+.price-quote-foot span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.price-quote-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.price-quote-form label {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.price-quote-form input {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  background: #f8fafc;
+  font-size: 12px;
+}
+
+.price-quote-suffix {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.price-quote-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.price-quote-metric {
+  padding: 7px 8px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+}
+
+.price-quote-metric span {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  margin-bottom: 2px;
+}
+
+.price-quote-metric strong {
+  font-size: 13px;
+}
+
+.price-quote-metric .positive {
+  color: #15803d;
+}
+
+.price-quote-metric .negative {
+  color: #b91c1c;
+}
+
+.price-quote-message {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .accent-link {
   color: var(--green);
   text-decoration: none;

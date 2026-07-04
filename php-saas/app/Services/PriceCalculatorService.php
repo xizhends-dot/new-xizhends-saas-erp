@@ -99,6 +99,75 @@ final class PriceCalculatorService
         ];
     }
 
+    /**
+     * @param array<string, mixed> $order
+     * @param array<string, mixed> $item
+     * @param array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
+    public function quoteOrderItem(string $tenantKey, array $order, array $item, array $overrides = []): array
+    {
+        $settings = $this->store->tenantSettings($tenantKey);
+        $profit = is_array($settings['profit'] ?? null) ? $settings['profit'] : [];
+        $defaults = $this->defaults($tenantKey);
+        $defaults['shipping'] = $this->nonNegativeFloat(
+            $profit['default_intl_fee'] ?? $profit['default_shipping'] ?? $defaults['shipping'] ?? 40,
+            (float) ($defaults['shipping'] ?? 40)
+        );
+
+        $store = $this->storeForOrder($tenantKey, $order);
+        $platformDeductions = is_array($profit['platform_deductions'] ?? null) ? $profit['platform_deductions'] : [];
+        $deduction = $this->boundedFloat(
+            $store['profit_deduction'] ?? $platformDeductions[(string) ($order['platform'] ?? '')] ?? $defaults['deduction'] ?? 70,
+            0,
+            100
+        );
+        $deductionSource = isset($store['profit_deduction']) ? 'store' : 'tenant_default';
+        $actualShipping = $this->actualShippingForOrder($order);
+        $shipping = $actualShipping > 0 ? $actualShipping : (float) $defaults['shipping'];
+        $shippingSource = $actualShipping > 0 ? 'actual_com_amount' : 'tenant_default';
+        if (array_key_exists('shipping', $overrides) && trim((string) $overrides['shipping']) !== '') {
+            $shipping = $this->nonNegativeFloat($overrides['shipping'], $shipping);
+            $shippingSource = 'override';
+        }
+
+        if (array_key_exists('deduction', $overrides) && trim((string) $overrides['deduction']) !== '') {
+            $deduction = $this->boundedFloat($overrides['deduction'], 0, 100);
+            $deductionSource = 'override';
+        }
+
+        $salePrice = $this->defaultSalePrice($item);
+        if (array_key_exists('sale_price', $overrides) && trim((string) $overrides['sale_price']) !== '') {
+            $salePrice = $this->nonNegativeFloat($overrides['sale_price'], $salePrice);
+        } elseif (array_key_exists('salePrice', $overrides) && trim((string) $overrides['salePrice']) !== '') {
+            $salePrice = $this->nonNegativeFloat($overrides['salePrice'], $salePrice);
+        }
+
+        $cost = $this->defaultCost($item);
+        if (array_key_exists('cost', $overrides) && trim((string) $overrides['cost']) !== '') {
+            $cost = $this->nonNegativeFloat($overrides['cost'], $cost);
+        }
+
+        $row = [
+            'name' => (string) (($item['title'] ?? '') ?: ($item['item_code'] ?? '')),
+            'cost' => $cost,
+            'shipping' => $shipping,
+            'deduction' => $deduction,
+            'exchange_rate' => $defaults['exchange_rate'] ?? 0.048,
+            'sale_price' => $salePrice,
+        ];
+        $calculated = $this->calculateRow($row, $defaults, 1);
+
+        return $this->quotePayload($tenantKey, $order, $item, $calculated, [
+            'actual_shipping' => $actualShipping,
+            'has_actual_shipping' => $actualShipping > 0,
+            'shipping_source' => $shippingSource,
+            'deduction_source' => $deductionSource,
+            'exchange_rate_source' => (string) ($defaults['exchange_rate_source'] ?? ''),
+            'default_shipping' => (float) $defaults['shipping'],
+        ]);
+    }
+
     private function salePriceForTargetProfit(float $targetProfit, float $cost, float $shipping, float $deduction, float $rate): float
     {
         if ($deduction <= 0 || $rate <= 0) {
@@ -144,6 +213,102 @@ final class PriceCalculatorService
             'avg_profit_rate' => round($avgProfitRate, 2),
             'is_profitable' => $totalProfit >= 0,
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $order
+     * @return array<string, mixed>
+     */
+    private function storeForOrder(string $tenantKey, array $order): array
+    {
+        $storeId = (int) ($order['store_id'] ?? 0);
+        $storeName = (string) ($order['store'] ?? '');
+        foreach ($this->store->stores($tenantKey) as $store) {
+            if ($storeId > 0 && (int) ($store['id'] ?? 0) === $storeId) {
+                return $store;
+            }
+            if ($storeName !== '' && (string) ($store['name'] ?? '') === $storeName) {
+                return $store;
+            }
+        }
+
+        return [];
+    }
+
+    /** @param array<string, mixed> $order */
+    private function actualShippingForOrder(array $order): float
+    {
+        foreach ((array) ($order['items'] ?? []) as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $amount = $this->nonNegativeFloat($item['com_amount'] ?? 0, 0);
+            if ($amount > 0) {
+                return $amount;
+            }
+        }
+
+        return $this->nonNegativeFloat($order['com_amount'] ?? 0, 0);
+    }
+
+    /** @param array<string, mixed> $item */
+    private function defaultSalePrice(array $item): float
+    {
+        $unitPrice = $this->nonNegativeFloat($item['unit_price'] ?? 0, 0);
+        if ($unitPrice > 0) {
+            return $unitPrice + $this->nonNegativeFloat($item['postage_price'] ?? 0, 0);
+        }
+
+        return $this->nonNegativeFloat($item['line_total'] ?? 0, 0);
+    }
+
+    /** @param array<string, mixed> $item */
+    private function defaultCost(array $item): float
+    {
+        foreach (['amount', 'purchase_amount', 'cn_amount'] as $field) {
+            $amount = $this->nonNegativeFloat($item[$field] ?? 0, 0);
+            if ($amount > 0) {
+                return $amount;
+            }
+        }
+
+        return 0.0;
+    }
+
+    /**
+     * @param array<string, mixed> $order
+     * @param array<string, mixed> $item
+     * @param array<string, mixed> $calculated
+     * @param array<string, mixed> $context
+     * @return array<string, mixed>
+     */
+    private function quotePayload(string $tenantKey, array $order, array $item, array $calculated, array $context): array
+    {
+        $payload = array_merge($calculated, [
+            'tenant_key' => $tenantKey,
+            'order_id' => (int) ($order['id'] ?? 0),
+            'order_no' => (string) ($order['platform_order_id'] ?? ''),
+            'item_id' => (int) ($item['id'] ?? 0),
+            'item_code' => (string) (($item['item_code'] ?? '') ?: ($item['lot_number'] ?? '')),
+            'store' => (string) ($order['store'] ?? ''),
+            'actual_shipping' => round((float) ($context['actual_shipping'] ?? 0), 2),
+            'has_actual_shipping' => (bool) ($context['has_actual_shipping'] ?? false),
+            'shipping_source' => (string) ($context['shipping_source'] ?? ''),
+            'deduction_source' => (string) ($context['deduction_source'] ?? ''),
+            'exchange_rate_source' => (string) ($context['exchange_rate_source'] ?? ''),
+            'default_shipping' => round((float) ($context['default_shipping'] ?? 0), 2),
+        ]);
+
+        $payload['salePrice'] = $payload['sale_price'];
+        $payload['actualIncome'] = $payload['actual_income'];
+        $payload['profitRate'] = $payload['profit_rate'];
+        $payload['realProfit'] = $payload['profit'];
+        $payload['realProfitRate'] = $payload['profit_rate'];
+        $payload['exchangeRate'] = $payload['exchange_rate'];
+        $payload['actualShipping'] = $payload['actual_shipping'];
+        $payload['hasActualShipping'] = $payload['has_actual_shipping'];
+
+        return $payload;
     }
 
     private function positiveFloat(mixed $value, float $default): float

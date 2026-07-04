@@ -84,6 +84,31 @@ final class OrderAjaxController extends TenantBaseController
         $this->json($result, (int) $result['status']);
     }
 
+    public function priceQuote(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->auth->requireAnyTenantPermission($tenantKey, ['订单查看', '订单编辑']);
+        $itemId = (int) ($_GET['item_id'] ?? 0);
+        $match = $this->findAccessibleItem($tenantKey, $itemId);
+        if ($match === null) {
+            $this->json(['ok' => false, 'message' => '订单明细不存在或无权访问。'], 404);
+        }
+
+        $quote = $this->priceCalculatorService->quoteOrderItem(
+            $tenantKey,
+            $match['order'],
+            $match['item'],
+            [
+                'sale_price' => $_GET['sale_price'] ?? null,
+                'salePrice' => $_GET['salePrice'] ?? null,
+                'shipping' => $_GET['shipping'] ?? null,
+                'deduction' => $_GET['deduction'] ?? null,
+                'cost' => $_GET['cost'] ?? null,
+            ]
+        );
+        $this->json(['ok' => true, 'message' => '核价已计算。', 'quote' => $quote]);
+    }
+
     public function ajaxToggleReview(): void
     {
         $tenantKey = current_tenant_key();
@@ -97,5 +122,28 @@ final class OrderAjaxController extends TenantBaseController
             $this->currentUserName($tenantKey)
         );
         $this->json($result, (int) $result['status']);
+    }
+
+    /**
+     * @return array{order: array<string, mixed>, item: array<string, mixed>}|null
+     */
+    private function findAccessibleItem(string $tenantKey, int $itemId): ?array
+    {
+        if ($itemId <= 0) {
+            return null;
+        }
+
+        foreach ($this->service->ordersForUser($tenantKey, $this->auth->currentTenantUser($tenantKey)) as $order) {
+            foreach ((array) ($order['items'] ?? []) as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                if ((int) ($item['id'] ?? 0) === $itemId) {
+                    return ['order' => $order, 'item' => $item];
+                }
+            }
+        }
+
+        return null;
     }
 }
