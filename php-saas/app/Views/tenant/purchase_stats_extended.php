@@ -143,11 +143,6 @@ $uniqueOrders = (int) ($totals['unique_orders'] ?? 0);
   background: #07c160;
   border-color: #059669;
 }
-.caigou-card.highlight h3,
-.caigou-card.highlight .count,
-.caigou-card.highlight .unit {
-  color: #111827;
-}
 .caigou-card.money {
   background: #111827;
   border-color: #111827;
