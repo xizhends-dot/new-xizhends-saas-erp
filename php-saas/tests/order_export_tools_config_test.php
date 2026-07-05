@@ -97,6 +97,24 @@ $assertSame('配置规范化只保留合法键值', ['shipment_export' => 'more'
 $denied = order_export_tools_forbidden_status($basePath, $jsonPath);
 $assertSame('无公司设置权限访问配置页被拒', 403, $denied);
 
+$orderToolsHtml = order_export_tools_controller_html($basePath, $jsonPath, 'orderTools', [
+    'tenant' => 'erp',
+]);
+$assert('配置页显示新建导出模板入口', str_contains($orderToolsHtml, '新建导出模板') && str_contains($orderToolsHtml, '/import-export/export-templates/edit?tenant=erp'));
+$assert('配置页新建入口带回配置页 return', str_contains($orderToolsHtml, 'return=%2Fimport-export%2Forder-tools%3Ftenant%3Derp'));
+$assert('配置页自定义模板显示编辑入口', str_contains($orderToolsHtml, '编辑') && str_contains($orderToolsHtml, 'id=' . $templateId));
+$assert('配置页自定义模板显示删除表单', str_contains($orderToolsHtml, '/import-export/export-templates/delete') && str_contains($orderToolsHtml, 'name="id" value="' . $templateId . '"'));
+$assert('配置页预置模板显示复制入口与说明', str_contains($orderToolsHtml, '复制为自定义') && str_contains($orderToolsHtml, '预置模板不可直接修改,复制后可自由编辑字段') && str_contains($orderToolsHtml, 'builtin_riya'));
+
+$builtinEditHtml = order_export_tools_controller_html($basePath, $jsonPath, 'exportTemplateEdit', [
+    'tenant' => 'erp',
+    'id' => 'builtin_riya',
+    'return' => '/import-export/order-tools?tenant=erp',
+]);
+$assert('编辑 builtin 时模板 id 置空', str_contains($builtinEditHtml, 'name="id" value=""'));
+$assert('编辑 builtin 时名称带副本', str_contains($builtinEditHtml, '副本'));
+$assert('编辑页保留配置页 return', str_contains($builtinEditHtml, 'name="return" value="/import-export/order-tools?tenant=erp"'));
+
 @unlink($jsonPath);
 
 if ($failures !== []) {
@@ -229,4 +247,66 @@ PHP;
     @unlink($resultFile);
 
     return (int) ($result['status'] ?? 0);
+}
+
+/** @param array<string, string> $get */
+function order_export_tools_controller_html(string $basePath, string $jsonPath, string $method, array $get): string
+{
+    $childScript = sys_get_temp_dir() . '/xizhen-order-export-tools-html-' . bin2hex(random_bytes(6)) . '.php';
+    $resultFile = sys_get_temp_dir() . '/xizhen-order-export-tools-html-' . bin2hex(random_bytes(6)) . '.html';
+    $code = <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+$basePath = %BASE_PATH%;
+$jsonPath = %JSON_PATH%;
+$resultFile = %RESULT_FILE%;
+$method = %METHOD%;
+if (!defined('BASE_PATH')) {
+    define('BASE_PATH', $basePath);
+}
+require $basePath . '/vendor/autoload.php';
+require $basePath . '/app/Core/helpers.php';
+
+use Xizhen\Core\JsonStore;
+use Xizhen\Core\View;
+use Xizhen\Http\Controllers\Tenant\ImportExportController;
+use Xizhen\Services\AuthService;
+
+session_id('order-export-tools-html-' . bin2hex(random_bytes(3)));
+session_start();
+$_GET = %GET%;
+$_SERVER['REQUEST_URI'] = '/import-export/order-tools?tenant=erp';
+$_SERVER['REQUEST_METHOD'] = 'GET';
+$_SERVER['HTTP_HOST'] = '127.0.0.1';
+$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+
+$store = new JsonStore($jsonPath);
+$auth = new AuthService($store);
+$auth->loginTenant('erp', 'admin', 'Admin@123');
+
+$controller = new ImportExportController($store, new View($basePath . '/app/Views'), $auth);
+ob_start();
+$controller->{$method}();
+$html = (string) ob_get_clean();
+file_put_contents($resultFile, $html);
+PHP;
+    $code = str_replace(
+        ['%BASE_PATH%', '%JSON_PATH%', '%RESULT_FILE%', '%METHOD%', '%GET%'],
+        [var_export($basePath, true), var_export($jsonPath, true), var_export($resultFile, true), var_export($method, true), var_export($get, true)],
+        $code
+    );
+    file_put_contents($childScript, $code);
+
+    $php = PHP_BINARY ?: 'php';
+    $output = [];
+    $exitCode = 0;
+    exec('"' . $php . '" ' . escapeshellarg($childScript) . ' 2>&1', $output, $exitCode);
+    $html = is_file($resultFile) ? (string) file_get_contents($resultFile) : implode("\n", $output);
+
+    @unlink($childScript);
+    @unlink($resultFile);
+
+    return $html;
 }

@@ -1,7 +1,8 @@
 <?php
-$template = is_array($template ?? null) ? $template : null;
+$template = is_array($exportTemplate ?? null) ? $exportTemplate : (is_array($template ?? null) ? $template : null);
 $fieldGroups = is_array($fieldGroups ?? null) ? $fieldGroups : [];
 $errors = is_array($errors ?? null) ? $errors : [];
+$returnUrl = is_string($returnUrl ?? null) && $returnUrl !== '' ? $returnUrl : '/import-export/non-excel?tenant=' . rawurlencode((string) $tenantKey);
 $columns = array_values((array) ($template['columns'] ?? []));
 // JSON 内嵌 <script>:必须 HEX_TAG 转义,防止列显示名里的 </script> 造成存储型 XSS
 $jsonFlags = JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
@@ -21,6 +22,7 @@ $columnsJson = json_encode($columns, $jsonFlags) ?: '[]';
                 <?= csrf_field() ?>
     <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
     <input type="hidden" name="id" value="<?= e($template['id'] ?? '') ?>">
+    <input type="hidden" name="return" value="<?= e($returnUrl) ?>">
     <input type="hidden" name="columns_json" id="columns-json" value="">
     <div class="panel">
         <div class="panel-head"><span>基本信息</span></div>
@@ -63,7 +65,7 @@ $columnsJson = json_encode($columns, $jsonFlags) ?: '[]';
                 <div class="head-actions" style="justify-content:flex-start;">
                     <button class="btn primary" type="submit">保存模板</button>
                     <button class="btn" type="button" id="preview-btn">导出预览(前3行)</button>
-                    <a class="btn" href="/import-export/non-excel?tenant=<?= e($tenantKey) ?>">返回</a>
+                    <a class="btn" href="<?= e($returnUrl) ?>">返回</a>
                 </div>
                 <div id="preview-area"></div>
             </div>

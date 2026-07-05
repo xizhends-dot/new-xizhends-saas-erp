@@ -154,6 +154,7 @@ final class ImportExportController extends TenantBaseController
         $tenantKey = current_tenant_key();
         $this->requireTenantFeature($tenantKey, 'import_export.center');
         $this->auth->requireTenantPermission($tenantKey, '公司设置');
+        $returnUrl = $this->safeReturn((string) ($_GET['return'] ?? ''), '/import-export/non-excel?tenant=' . rawurlencode($tenantKey));
         $id = trim((string) ($_GET['id'] ?? ''));
         $template = null;
         if ($id !== '') {
@@ -171,8 +172,10 @@ final class ImportExportController extends TenantBaseController
             'title' => $template === null ? '新建导出模板' : '编辑导出模板',
             'active' => 'import_export',
             'template' => $template,
+            'exportTemplate' => $template,
             'fieldGroups' => ExportFieldRegistry::groups(),
             'errors' => [],
+            'returnUrl' => $returnUrl,
         ]);
     }
 
@@ -181,6 +184,7 @@ final class ImportExportController extends TenantBaseController
         $tenantKey = current_tenant_key();
         $this->requireTenantFeature($tenantKey, 'import_export.center');
         $this->auth->requireTenantPermission($tenantKey, '公司设置');
+        $returnUrl = $this->safeReturn((string) ($_POST['return'] ?? ''), '/import-export/non-excel?tenant=' . rawurlencode($tenantKey));
         $columns = json_decode((string) ($_POST['columns_json'] ?? '[]'), true);
         $input = [
             'id' => trim((string) ($_POST['id'] ?? '')),
@@ -194,13 +198,15 @@ final class ImportExportController extends TenantBaseController
                 'title' => '编辑导出模板',
                 'active' => 'import_export',
                 'template' => $input + ['id' => $input['id']],
+                'exportTemplate' => $input + ['id' => $input['id']],
                 'fieldGroups' => ExportFieldRegistry::groups(),
                 'errors' => $result['errors'],
+                'returnUrl' => $returnUrl,
             ]);
             return;
         }
 
-        header('Location: /import-export/non-excel?tenant=' . urlencode($tenantKey) . '&message=' . urlencode('模板已保存。'));
+        header('Location: ' . $returnUrl . (str_contains($returnUrl, '?') ? '&' : '?') . 'message=' . urlencode('模板已保存。'));
         exit;
     }
 
@@ -210,8 +216,9 @@ final class ImportExportController extends TenantBaseController
         $this->requireTenantFeature($tenantKey, 'import_export.center');
         $this->auth->requireTenantPermission($tenantKey, '公司设置');
         $id = trim((string) ($_POST['id'] ?? ''));
+        $returnUrl = $this->safeReturn((string) ($_POST['return'] ?? ''), '/import-export/non-excel?tenant=' . rawurlencode($tenantKey));
         $message = $this->exportTemplateService->delete($tenantKey, $id) ? '模板已删除。' : '模板不存在或为系统预置,无法删除。';
-        header('Location: /import-export/non-excel?tenant=' . urlencode($tenantKey) . '&message=' . urlencode($message));
+        header('Location: ' . $returnUrl . (str_contains($returnUrl, '?') ? '&' : '?') . 'message=' . urlencode($message));
         exit;
     }
 
