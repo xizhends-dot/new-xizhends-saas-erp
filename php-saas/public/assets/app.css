@@ -1231,6 +1231,248 @@ button.order-tool-button:disabled {
   color: #fff;
 }
 
+.export-template-errors .setting-muted {
+  color: #c0392b;
+}
+
+.export-template-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.export-template-basic {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(180px, 240px);
+  gap: 12px;
+  align-items: end;
+}
+
+.export-template-basic label span,
+.export-field-search span,
+.inline-add-panel label span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.export-template-workbench > .panel-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(420px, .92fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.export-template-picker,
+.export-template-selected {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  min-width: 0;
+}
+
+.export-template-picker-head,
+.export-template-selected-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+.export-template-picker-head strong,
+.export-template-selected-head strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.export-field-search {
+  flex: 0 1 300px;
+  margin: 0;
+}
+
+.export-field-groups {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  max-height: 640px;
+  overflow: auto;
+}
+
+.export-field-group {
+  display: grid;
+  gap: 7px;
+}
+
+.export-field-group h3 {
+  margin: 0;
+  color: #374151;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
+.export-field-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.field-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  color: #334155;
+  padding: 5px 10px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background .14s ease, border-color .14s ease, color .14s ease, box-shadow .14s ease;
+}
+
+.field-chip:hover {
+  border-color: var(--green);
+  background: #f0fdf4;
+}
+
+.field-chip.selected {
+  border-color: var(--green);
+  background: var(--green-soft);
+  color: #065f46;
+  box-shadow: inset 0 0 0 1px rgba(7, 193, 96, .18);
+  font-weight: 700;
+}
+
+.field-chip-mark {
+  display: none;
+  font-weight: 900;
+}
+
+.field-chip.selected .field-chip-mark {
+  display: inline;
+}
+
+.export-template-selected {
+  display: grid;
+  gap: 0;
+}
+
+.export-template-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.export-inline-panels {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 0;
+}
+
+.inline-add-panel {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+  border: 1px solid #dbe4ee;
+  background: #f8fafc;
+  padding: 10px;
+}
+
+.inline-add-panel[hidden] {
+  display: none;
+}
+
+.inline-panel-error {
+  grid-column: 1 / -1;
+  color: var(--red);
+  font-size: 12px;
+}
+
+.export-template-table-wrap {
+  padding: 12px;
+  overflow-x: auto;
+}
+
+.export-template-columns-table th:first-child,
+.export-template-columns-table td:first-child {
+  width: 48px;
+  text-align: center;
+}
+
+.export-template-columns-table th:last-child,
+.export-template-columns-table td:last-child {
+  width: 150px;
+}
+
+.export-template-columns-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.column-source {
+  color: #475569;
+  font-size: 13px;
+}
+
+.column-row-actions {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.icon-btn:hover {
+  border-color: var(--green);
+  color: #065f46;
+  background: #f0fdf4;
+}
+
+.icon-btn.danger:hover {
+  border-color: #fecaca;
+  color: var(--red);
+  background: #fee2e2;
+}
+
+.export-template-table-wrap .empty {
+  margin-top: 8px;
+}
+
+.export-template-submit-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 12px 12px;
+  align-items: center;
+}
+
+.export-template-preview {
+  padding: 0 12px 12px;
+}
+
+.export-template-preview-error {
+  color: #c0392b;
+}
+
 .order-filter {
   background: #fff;
   border: 1px solid var(--line);
@@ -4189,6 +4431,15 @@ body.kefu-col-resizing {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .export-template-workbench > .panel-body,
+  .export-template-basic {
+    grid-template-columns: 1fr;
+  }
+
+  .export-field-groups {
+    max-height: none;
+  }
+
   .folder-row {
     grid-template-columns: 1fr;
   }
@@ -4354,6 +4605,27 @@ body.kefu-col-resizing {
 
   .mail-settings-grid .form-row {
     grid-template-columns: 1fr;
+  }
+
+  .export-template-picker-head,
+  .export-template-selected-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .export-field-search,
+  .export-template-inline-actions,
+  .export-template-inline-actions .btn {
+    width: 100%;
+  }
+
+  .inline-add-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .export-template-submit-row {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .mail-sidebar {
