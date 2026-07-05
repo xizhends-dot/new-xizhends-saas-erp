@@ -44,6 +44,48 @@ $logisticsMeta = match ($type) {
     ],
 };
 $columns = $logisticsMeta['columns'];
+$filters = [
+    'order_num' => trim((string) ($_GET['order_num'] ?? '')),
+    'date' => trim((string) ($_GET['date'] ?? '')),
+    'status' => trim((string) ($_GET['status'] ?? '')),
+    'keyword' => trim((string) ($_GET['keyword'] ?? '')),
+];
+if ($filters['date'] !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $filters['date']) !== 1) {
+    $filters['date'] = '';
+}
+if (!in_array($filters['status'], ['', '0', '1'], true)) {
+    $filters['status'] = '';
+}
+$textContains = static function (array $row, string $needle, array $keys): bool {
+    if ($needle === '') {
+        return true;
+    }
+    foreach ($keys as $key) {
+        if (stripos((string) ($row[$key] ?? ''), $needle) !== false) {
+            return true;
+        }
+    }
+
+    return false;
+};
+$rows = array_values(array_filter($rows, static function (array $row) use ($type, $filters, $textContains): bool {
+    if ($filters['date'] !== '' && substr((string) ($row['date'] ?? ''), 0, 10) !== $filters['date']) {
+        return false;
+    }
+    if ($filters['status'] !== '' && (string) ((int) ($row['status_code'] ?? 0)) !== $filters['status']) {
+        return false;
+    }
+    if ($type === '1688' && !$textContains($row, $filters['order_num'], ['sys_orderid', 'real_orderid', 'orderid'])) {
+        return false;
+    }
+    if ($type === 'jp' && !$textContains($row, $filters['keyword'], ['real_orderid', 'sys_orderid', 'orderid'])) {
+        return false;
+    }
+
+    return true;
+}));
+$successCount = count(array_filter($rows, static fn (array $row): bool => ((int) ($row['status_code'] ?? 0)) === 1));
+$failureCount = count($rows) - $successCount;
 ?>
 <div class="page-head">
     <div>
@@ -69,8 +111,44 @@ $columns = $logisticsMeta['columns'];
     <?= e($logisticsMeta['notice']) ?>
 </div>
 
+<form class="filter filter-wide" method="get" action="<?= e($logisticsMeta['return_path']) ?>">
+    <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
+    <?php if ($type === '1688'): ?>
+        <label class="fg">
+            <span>订单号</span>
+            <input name="order_num" value="<?= e($filters['order_num']) ?>" placeholder="订单号 / 1688单号">
+        </label>
+    <?php endif; ?>
+    <label class="fg">
+        <span>日期</span>
+        <input type="date" name="date" value="<?= e($filters['date']) ?>">
+    </label>
+    <label class="fg">
+        <span>状态</span>
+        <select name="status">
+            <option value="" <?= $filters['status'] === '' ? 'selected' : '' ?>>--所有--</option>
+            <option value="0" <?= $filters['status'] === '0' ? 'selected' : '' ?>>失败</option>
+            <option value="1" <?= $filters['status'] === '1' ? 'selected' : '' ?>>成功</option>
+        </select>
+    </label>
+    <?php if ($type === 'jp'): ?>
+        <label class="fg">
+            <span>运单号/订单号</span>
+            <input name="keyword" value="<?= e($filters['keyword']) ?>" placeholder="输入运单号或订单号">
+        </label>
+    <?php endif; ?>
+    <div class="fg">
+        <span>操作</span>
+        <button class="btn primary" type="submit">查询</button>
+    </div>
+    <div class="fg">
+        <span>重置</span>
+        <a class="btn" href="<?= e($logisticsMeta['return_path'] . '?tenant=' . rawurlencode((string) $tenantKey)) ?>">重置</a>
+    </div>
+</form>
+
 <div class="panel">
-    <div class="panel-head"><span>查询日志</span><span class="sub"><?= e(count($rows)) ?> 条</span></div>
+    <div class="panel-head"><span>查询日志</span><span class="sub">处理结果：成功 <?= e($successCount) ?>　失败 <?= e($failureCount) ?>　当前筛选 <?= e(count($rows)) ?> 条</span></div>
     <div class="panel-body">
         <table class="table">
             <thead>
