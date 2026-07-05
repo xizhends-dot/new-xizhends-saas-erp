@@ -20,6 +20,14 @@ $displayLabels = [
     'more' => '更多',
     'hidden' => '隐藏',
 ];
+$platformLabels = [
+    'r' => '乐天',
+    'y' => 'Yahoo购物',
+    'yp' => '雅拍',
+    'w' => 'Wowma',
+    'm' => 'Mercari',
+    'q' => 'Qoo10',
+];
 $displayFor = static function (string $key, string $default) use ($displayConfig): string {
     $value = (string) ($displayConfig[$key] ?? $default);
 
@@ -91,6 +99,7 @@ $renderRadios = static function (string $key, string $current) use ($displayLabe
                     <?php
                     $templateId = (string) ($template['id'] ?? '');
                     $isBuiltin = str_starts_with($templateId, 'builtin_') || !empty($template['builtin']);
+                    $templatePlatforms = array_values(array_filter(array_map('strval', is_array($template['platforms'] ?? null) ? $template['platforms'] : [])));
                     $key = OrderPageConfigRegistry::templateToolKey($templateId);
                     $current = $displayFor($key, 'hidden');
                     $deleteFormId = 'delete-export-template-' . (int) $templateIndex;
@@ -103,6 +112,15 @@ $renderRadios = static function (string $key, string $current) use ($displayLabe
                         <td>
                             <strong><?= e($template['name'] ?? $templateId) ?></strong>
                             <span class="sub"><?= e($templateId) ?><?= !empty($template['builtin']) ? e(' · 预置') : '' ?></span>
+                            <span class="template-platform-tags">
+                                <?php if ($templatePlatforms === []): ?>
+                                    <span class="tag gray">全平台</span>
+                                <?php else: ?>
+                                    <?php foreach ($templatePlatforms as $code): ?>
+                                        <span class="tag blue"><?= e($platformLabels[$code] ?? strtoupper($code)) ?></span>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </span>
                         </td>
                         <td><?= e(strtoupper((string) ($template['format'] ?? 'csv'))) ?></td>
                         <td><span class="tag gray">隐藏</span></td>

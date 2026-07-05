@@ -1188,6 +1188,13 @@ button.order-tool-button:disabled {
   margin-bottom: 3px;
 }
 
+.template-platform-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+
 .seg-control {
   display: inline-grid;
   grid-template-columns: repeat(3, minmax(58px, 1fr));
@@ -1254,6 +1261,38 @@ button.order-tool-button:disabled {
   color: var(--muted);
   font-size: 12px;
   margin-bottom: 4px;
+}
+
+.export-template-platforms {
+  grid-column: 1 / -1;
+  border: 1px solid #dbe4ee;
+  background: #f8fafc;
+  padding: 10px;
+}
+
+.export-template-platforms-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.export-template-platforms-head span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.export-template-platforms-head em {
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.export-platform-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
 }
 
 .export-template-workbench > .panel-body {

@@ -51,10 +51,35 @@ $saved = $templateService->save('erp', [
 ]);
 $templateId = (string) ($saved['template']['id'] ?? '');
 $templateKey = OrderPageConfigRegistry::templateToolKey($templateId);
+$yahooOnly = $templateService->save('erp', [
+    'name' => 'Yahoo专用模板',
+    'format' => 'csv',
+    'platforms' => ['y'],
+    'columns' => [
+        ['type' => 'field', 'key' => 'order.platform_order_id', 'label' => '订单号'],
+    ],
+]);
+$yahooTemplateId = (string) ($yahooOnly['template']['id'] ?? '');
+$yahooTemplateKey = OrderPageConfigRegistry::templateToolKey($yahooTemplateId);
+$legacyTemplateId = 'tpl_legacy_no_platforms';
+$settingsForLegacy = $store->tenantSettings('erp');
+$legacyTemplates = is_array($settingsForLegacy['export_templates'] ?? null) ? $settingsForLegacy['export_templates'] : [];
+$legacyTemplates[] = [
+    'id' => $legacyTemplateId,
+    'name' => '存量无平台模板',
+    'format' => 'csv',
+    'columns' => [
+        ['type' => 'field', 'key' => 'order.platform_order_id', 'label' => '订单号'],
+    ],
+];
+$store->saveTenantSettings('erp', ['export_templates' => $legacyTemplates]);
+$legacyTemplateKey = OrderPageConfigRegistry::templateToolKey($legacyTemplateId);
 $store->saveTenantSettings('erp', ['order_export_tools' => [
     'shipment_export' => 'hidden',
     'finance_export' => 'primary',
     $templateKey => 'primary',
+    $yahooTemplateKey => 'primary',
+    $legacyTemplateKey => 'primary',
 ]]);
 
 $registry = new OrderPageConfigRegistry($store, 'erp');
@@ -72,6 +97,28 @@ $assertSame('财务表导出配置为常驻', 'primary', $toolsByKey['finance_ex
 $assert('模板配置后渲染为工具', isset($toolsByKey[$templateKey]));
 $assertSame('模板工具动作', '/import-export/platform-special/export', $toolsByKey[$templateKey]['action'] ?? null);
 $assertSame('模板工具参数', $templateId, $toolsByKey[$templateKey]['params']['template_id'] ?? null);
+$assert('r页不显示Yahoo专用模板', !isset($toolsByKey[$yahooTemplateKey]));
+$assert('存量无platforms模板仍全平台显示', isset($toolsByKey[$legacyTemplateKey]));
+
+$yahooToolsByKey = [];
+foreach ($registry->exportToolsFor('y', [
+    'role' => '公司管理员',
+    'is_company_admin' => true,
+    'permissions' => ['导入导出', '财务导出', '公司设置'],
+]) as $tool) {
+    $yahooToolsByKey[(string) ($tool['key'] ?? '')] = $tool;
+}
+$assert('y页显示Yahoo专用模板', isset($yahooToolsByKey[$yahooTemplateKey]));
+
+$wowmaToolsByKey = [];
+foreach ($registry->exportToolsFor('w', [
+    'role' => '公司管理员',
+    'is_company_admin' => true,
+    'permissions' => ['导入导出', '财务导出', '公司设置'],
+]) as $tool) {
+    $wowmaToolsByKey[(string) ($tool['key'] ?? '')] = $tool;
+}
+$assert('w页不显示Yahoo专用模板', !isset($wowmaToolsByKey[$yahooTemplateKey]));
 
 $plainTools = $registry->exportToolsFor('r', [
     'role' => '客服',
@@ -105,6 +152,7 @@ $assert('配置页新建入口带回配置页 return', str_contains($orderToolsH
 $assert('配置页自定义模板显示编辑入口', str_contains($orderToolsHtml, '编辑') && str_contains($orderToolsHtml, 'id=' . $templateId));
 $assert('配置页自定义模板显示删除表单', str_contains($orderToolsHtml, '/import-export/export-templates/delete') && str_contains($orderToolsHtml, 'name="id" value="' . $templateId . '"'));
 $assert('配置页预置模板显示复制入口与说明', str_contains($orderToolsHtml, '复制为自定义') && str_contains($orderToolsHtml, '预置模板不可直接修改,复制后可自由编辑字段') && str_contains($orderToolsHtml, 'builtin_riya'));
+$assert('配置页显示模板适用平台标签', str_contains($orderToolsHtml, 'Yahoo购物') && str_contains($orderToolsHtml, '全平台'));
 
 $builtinEditHtml = order_export_tools_controller_html($basePath, $jsonPath, 'exportTemplateEdit', [
     'tenant' => 'erp',

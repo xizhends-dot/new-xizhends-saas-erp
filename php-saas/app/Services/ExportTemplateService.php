@@ -17,6 +17,7 @@ final class ExportTemplateService
     private const MAX_LABEL_LENGTH = 64;
     private const RAW_PREFIXES = ['order.', 'item.', 'customer.'];
     private const LEGACY_VARIANTS = ['riya', 'sx', 'wd', 'qoo10', 'wowma'];
+    private const PLATFORM_CODES = ['r', 'y', 'yp', 'w', 'm', 'q'];
 
     public function __construct(private readonly StoreInterface $store)
     {
@@ -67,6 +68,7 @@ final class ExportTemplateService
             ],
             [
                 'id' => 'builtin_qoo10', 'name' => 'Qoo10出荷表(预置)', 'format' => 'csv', 'builtin' => true,
+                'platforms' => ['q', 'yp'],
                 'columns' => [
                     ['type' => 'field', 'key' => 'item.order_detail_id', 'label' => '订购号码'],
                     ['type' => 'field', 'key' => 'logistics.ship_company', 'label' => '运送公司'],
@@ -76,6 +78,7 @@ final class ExportTemplateService
             ],
             [
                 'id' => 'builtin_wowma', 'name' => 'Wowma出荷表(预置)', 'format' => 'csv', 'builtin' => true,
+                'platforms' => ['w'],
                 'columns' => [
                     ['type' => 'const', 'label' => 'controlType', 'value' => 'U'],
                     ['type' => 'field', 'key' => 'order.platform_order_id', 'label' => 'orderId'],
@@ -158,6 +161,7 @@ final class ExportTemplateService
         $name = trim((string) ($input['name'] ?? ''));
         $format = strtolower(trim((string) ($input['format'] ?? 'xlsx')));
         $columns = is_array($input['columns'] ?? null) ? array_values($input['columns']) : [];
+        [$platforms, $platformErrors] = $this->normalizePlatforms($input['platforms'] ?? []);
 
         if ($name === '' || self::textLength($name) > self::MAX_LABEL_LENGTH) {
             $errors['name'] = '模板名称必填且不超过 ' . self::MAX_LABEL_LENGTH . ' 个字符。';
@@ -170,6 +174,9 @@ final class ExportTemplateService
         }
         foreach ($this->validateColumns($columns) as $index => $message) {
             $errors['columns_' . $index] = $message;
+        }
+        foreach ($platformErrors as $index => $message) {
+            $errors['platforms_' . $index] = $message;
         }
         if ($errors !== []) {
             return ['template' => null, 'errors' => $errors];
@@ -185,6 +192,7 @@ final class ExportTemplateService
                 'id' => 'tpl_' . bin2hex(random_bytes(6)),
                 'name' => $name,
                 'format' => $format,
+                'platforms' => $platforms,
                 'columns' => $this->normalizeColumns($columns),
                 'created_at' => $now,
                 'updated_at' => $now,
@@ -197,6 +205,7 @@ final class ExportTemplateService
                     $custom[$i] = array_replace($existing, [
                         'name' => $name,
                         'format' => $format,
+                        'platforms' => $platforms,
                         'columns' => $this->normalizeColumns($columns),
                         'updated_at' => $now,
                     ]);
@@ -304,6 +313,29 @@ final class ExportTemplateService
 
             return $normalized;
         }, $columns));
+    }
+
+    /**
+     * @return array{0: array<int, string>, 1: array<int, string>}
+     */
+    private function normalizePlatforms(mixed $value): array
+    {
+        $values = is_array($value) ? $value : [$value];
+        $platforms = [];
+        $errors = [];
+        foreach ($values as $index => $item) {
+            $code = strtolower(trim((string) $item));
+            if ($code === '') {
+                continue;
+            }
+            if (!in_array($code, self::PLATFORM_CODES, true)) {
+                $errors[] = '适用平台包含非法代码：' . $code;
+                continue;
+            }
+            $platforms[] = $code;
+        }
+
+        return [array_values(array_unique($platforms)), $errors];
     }
 
     private static function textLength(string $value): int

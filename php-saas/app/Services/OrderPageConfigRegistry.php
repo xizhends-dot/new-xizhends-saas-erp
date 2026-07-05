@@ -206,8 +206,9 @@ final class OrderPageConfigRegistry
      */
     public function exportToolsFor(string $platform, array $user): array
     {
+        $platform = $this->normalizePlatform($platform);
         $tools = $this->applyConfiguredDisplay($this->builtinToolsFor($platform, $user));
-        foreach ($this->templateToolsFor($user) as $tool) {
+        foreach ($this->templateToolsFor($platform, $user) as $tool) {
             $tools[] = $tool;
         }
 
@@ -468,17 +469,22 @@ final class OrderPageConfigRegistry
      * @param array<string, mixed> $user
      * @return array<int, array<string, mixed>>
      */
-    private function templateToolsFor(array $user): array
+    private function templateToolsFor(string $platform, array $user): array
     {
         if ($this->store === null || $this->tenantKey === '' || !Permission::has($user, '导入导出')) {
             return [];
         }
 
+        $platform = $this->normalizePlatform($platform);
         $service = new ExportTemplateService($this->store);
         $tools = [];
         foreach ($service->templatesForTenant($this->tenantKey) as $template) {
             $templateId = trim((string) ($template['id'] ?? ''));
             if ($templateId === '') {
+                continue;
+            }
+            $platforms = array_values(array_filter(array_map('strval', is_array($template['platforms'] ?? null) ? $template['platforms'] : [])));
+            if ($platforms !== [] && !in_array($platform, $platforms, true)) {
                 continue;
             }
             $key = self::templateToolKey($templateId);

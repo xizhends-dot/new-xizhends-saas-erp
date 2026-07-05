@@ -35,6 +35,9 @@ $assert('预置模板5个', count($builtin) === 5);
 $assert('builtin_qoo10为csv', $service->find('t1', 'builtin_qoo10')['format'] === 'csv');
 $assert('builtin_wowma为csv', $service->find('t1', 'builtin_wowma')['format'] === 'csv');
 $assert('builtin_riya为xlsx', $service->find('t1', 'builtin_riya')['format'] === 'xlsx');
+$assert('builtin_qoo10限定q与yp', $service->find('t1', 'builtin_qoo10')['platforms'] === ['q', 'yp']);
+$assert('builtin_wowma限定w', $service->find('t1', 'builtin_wowma')['platforms'] === ['w']);
+$assert('不确定用途预置模板保持全平台', !isset($service->find('t1', 'builtin_riya')['platforms']));
 $assert('variant映射', $service->fromLegacyVariant('wd') === 'builtin_wd');
 $assert('未知variant', $service->fromLegacyVariant('nope') === null);
 
@@ -56,16 +59,19 @@ $result = $service->save('t1', $input);
 $assert('保存成功无错误', $result['errors'] === [] && $result['template'] !== null);
 $id = (string) $result['template']['id'];
 $assert('生成tpl_前缀id', str_starts_with($id, 'tpl_'));
+$assert('缺省platforms保存为空数组', $service->find('t1', $id)['platforms'] === []);
 $assert('可find', $service->find('t1', $id)['name'] === '货代A模板');
 $assert('保存后列表=5预置+1', count($service->templatesForTenant('t1')) === 6);
 
-$update = $service->save('t1', ['id' => $id, 'name' => '货代A改', 'format' => 'csv', 'columns' => $input['columns']]);
+$update = $service->save('t1', ['id' => $id, 'name' => '货代A改', 'format' => 'csv', 'platforms' => ['y', 'yp', 'y'], 'columns' => $input['columns']]);
 $assert('更新不新增', count($service->templatesForTenant('t1')) === 6 && $update['errors'] === []);
 $assert('更新生效', $service->find('t1', $id)['name'] === '货代A改');
+$assert('platforms去重保存', $service->find('t1', $id)['platforms'] === ['y', 'yp']);
 
 // 格式/名称校验
 $assert('非法format拒绝', $service->save('t1', ['name' => 'x', 'format' => 'pdf', 'columns' => $input['columns']])['errors'] !== []);
 $assert('空名拒绝', $service->save('t1', ['name' => ' ', 'format' => 'csv', 'columns' => $input['columns']])['errors'] !== []);
+$assert('非法platform拒绝', $service->save('t1', ['name' => 'x', 'format' => 'csv', 'platforms' => ['evil'], 'columns' => $input['columns']])['errors'] !== []);
 
 // 删除 + 不残留(整体替换语义)
 $r2 = $service->save('t1', ['name' => '货代B', 'format' => 'csv', 'columns' => $input['columns']]);

@@ -190,6 +190,7 @@ final class ImportExportController extends TenantBaseController
             'id' => trim((string) ($_POST['id'] ?? '')),
             'name' => trim((string) ($_POST['name'] ?? '')),
             'format' => (string) ($_POST['format'] ?? 'xlsx'),
+            'platforms' => is_array($_POST['platforms'] ?? null) ? array_values($_POST['platforms']) : [],
             'columns' => is_array($columns) ? $columns : [],
         ];
         $result = $this->exportTemplateService->save($tenantKey, $input);

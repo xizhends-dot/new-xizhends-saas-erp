@@ -4,6 +4,15 @@ $fieldGroups = is_array($fieldGroups ?? null) ? $fieldGroups : [];
 $errors = is_array($errors ?? null) ? $errors : [];
 $returnUrl = is_string($returnUrl ?? null) && $returnUrl !== '' ? $returnUrl : '/import-export/non-excel?tenant=' . rawurlencode((string) $tenantKey);
 $columns = array_values((array) ($template['columns'] ?? []));
+$selectedPlatforms = array_values(array_filter(array_map('strval', is_array($template['platforms'] ?? null) ? $template['platforms'] : [])));
+$platformOptions = [
+    'r' => '乐天',
+    'y' => 'Yahoo购物',
+    'yp' => '雅拍',
+    'w' => 'Wowma',
+    'm' => 'Mercari',
+    'q' => 'Qoo10',
+];
 // JSON 内嵌 <script>:必须 HEX_TAG 转义,防止列显示名里的 </script> 造成存储型 XSS
 $jsonFlags = JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
 $columnsJson = json_encode($columns, $jsonFlags) ?: '[]';
@@ -36,6 +45,32 @@ $fieldGroupsJson = json_encode($fieldGroups, $jsonFlags) ?: '{}';
                     <option value="csv" <?= ($template['format'] ?? '') === 'csv' ? 'selected' : '' ?>>CSV</option>
                 </select>
             </label>
+            <div class="export-template-platforms">
+                <div class="export-template-platforms-head">
+                    <span>适用平台</span>
+                    <em id="platform-empty-hint">不选则全平台通用</em>
+                </div>
+                <div class="export-platform-chip-list" id="platform-chip-list">
+                    <?php foreach ($platformOptions as $code => $label): ?>
+                        <?php $selected = in_array($code, $selectedPlatforms, true); ?>
+                        <button
+                            type="button"
+                            class="field-chip platform-chip<?= $selected ? ' selected' : '' ?>"
+                            data-platform-chip
+                            data-platform="<?= e($code) ?>"
+                            aria-pressed="<?= e($selected ? 'true' : 'false') ?>"
+                        >
+                            <span class="field-chip-mark">✓</span>
+                            <span><?= e($label) ?></span>
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+                <div id="platform-inputs">
+                    <?php foreach ($selectedPlatforms as $code): ?>
+                        <input type="hidden" name="platforms[]" value="<?= e($code) ?>">
+                    <?php endforeach; ?>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -177,6 +212,26 @@ $fieldGroupsJson = json_encode($fieldGroups, $jsonFlags) ?: '{}';
         });
     }
 
+    function syncPlatformChips() {
+        var selected = [];
+        document.querySelectorAll('[data-platform-chip]').forEach(function (chip) {
+            if (chip.classList.contains('selected')) {
+                selected.push(chip.getAttribute('data-platform') || '');
+            }
+            chip.setAttribute('aria-pressed', chip.classList.contains('selected') ? 'true' : 'false');
+        });
+        var inputs = document.getElementById('platform-inputs');
+        inputs.innerHTML = '';
+        selected.filter(Boolean).forEach(function (code) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'platforms[]';
+            input.value = code;
+            inputs.appendChild(input);
+        });
+        document.getElementById('platform-empty-hint').textContent = selected.length === 0 ? '不选则全平台通用' : '仅在所选平台订单页显示';
+    }
+
     function renderRows() {
         tbody.innerHTML = '';
         columns.forEach(function (col, i) {
@@ -227,6 +282,13 @@ $fieldGroupsJson = json_encode($fieldGroups, $jsonFlags) ?: '{}';
     });
 
     searchInput.addEventListener('input', filterChips);
+
+    document.querySelectorAll('[data-platform-chip]').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+            chip.classList.toggle('selected');
+            syncPlatformChips();
+        });
+    });
 
     document.querySelectorAll('[data-panel-toggle]').forEach(function (button) {
         button.addEventListener('click', function () {
@@ -334,5 +396,6 @@ $fieldGroupsJson = json_encode($fieldGroups, $jsonFlags) ?: '{}';
 
     renderRows();
     filterChips();
+    syncPlatformChips();
 })();
 </script>
