@@ -87,6 +87,33 @@ $rows = array_values(array_filter($rows, static function (array $row) use ($type
 $successCount = count(array_filter($rows, static fn (array $row): bool => ((int) ($row['status_code'] ?? 0)) === 1));
 $failureCount = count($rows) - $successCount;
 ?>
+<style>
+.logistics-filter {
+    grid-template-columns: repeat(3, minmax(150px, 1fr)) repeat(2, minmax(82px, 100px));
+    align-items: start;
+}
+.logistics-filter .fg {
+    min-width: 0;
+}
+.logistics-filter .btn {
+    width: 100%;
+}
+.logistics-filter .logistics-filter-action {
+    grid-column: 4;
+}
+.logistics-filter .logistics-filter-reset {
+    grid-column: 5;
+}
+@media (max-width: 720px) {
+    .logistics-filter {
+        grid-template-columns: 1fr;
+    }
+    .logistics-filter .logistics-filter-action,
+    .logistics-filter .logistics-filter-reset {
+        grid-column: auto;
+    }
+}
+</style>
 <div class="page-head">
     <div>
         <h1><?= e($logisticsMeta['title']) ?> <span class="sub">旧系统物流任务迁移入口</span></h1>
@@ -111,7 +138,7 @@ $failureCount = count($rows) - $successCount;
     <?= e($logisticsMeta['notice']) ?>
 </div>
 
-<form class="filter filter-wide" method="get" action="<?= e($logisticsMeta['return_path']) ?>">
+<form class="filter logistics-filter" method="get" action="<?= e($logisticsMeta['return_path']) ?>">
     <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
     <?php if ($type === '1688'): ?>
         <label class="fg">
@@ -137,11 +164,11 @@ $failureCount = count($rows) - $successCount;
             <input name="keyword" value="<?= e($filters['keyword']) ?>" placeholder="输入运单号或订单号">
         </label>
     <?php endif; ?>
-    <div class="fg">
+    <div class="fg logistics-filter-action">
         <span>操作</span>
         <button class="btn primary" type="submit">查询</button>
     </div>
-    <div class="fg">
+    <div class="fg logistics-filter-reset">
         <span>重置</span>
         <a class="btn" href="<?= e($logisticsMeta['return_path'] . '?tenant=' . rawurlencode((string) $tenantKey)) ?>">重置</a>
     </div>
