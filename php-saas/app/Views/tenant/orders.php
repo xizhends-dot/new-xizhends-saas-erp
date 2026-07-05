@@ -82,14 +82,14 @@ $exportTools = array_values(array_filter(
     static fn (mixed $tool): bool => is_array($tool) && !empty($tool['visibleWhen'])
 ));
 $syncTool = null;
-$toolGroups = ['import' => [], 'shipment' => [], 'finance' => [], 'delivery' => []];
+$toolGroups = ['primary' => [], 'more' => []];
 foreach ($exportTools as $tool) {
     $toolKey = (string) ($tool['key'] ?? '');
     if ($toolKey === 'sync_orders') {
         $syncTool = $tool;
         continue;
     }
-    $group = (string) ($tool['group'] ?? '');
+    $group = (string) ($tool['group'] ?? 'primary');
     if (array_key_exists($group, $toolGroups)) {
         $toolGroups[$group][] = $tool;
     }
@@ -346,8 +346,7 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
                     <?php endif; ?>
                 <?php endif; ?>
 
-                <?php foreach ($toolGroups as $tools): ?>
-                    <?php if (!$tools) { continue; } ?>
+                <?php foreach (array_chunk($toolGroups['primary'], 2) as $tools): ?>
                     <div class="order-tool-pair">
                         <?php foreach ($tools as $index => $tool): ?>
                             <?php $renderTool($tool); ?>
@@ -356,7 +355,23 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
                     </div>
                 <?php endforeach; ?>
 
-                <?php if ($syncTool === null && !$toolGroups['import'] && !$toolGroups['shipment'] && !$toolGroups['finance'] && !$toolGroups['delivery']): ?>
+                <?php if ($toolGroups['more']): ?>
+                    <details class="order-tool-more">
+                        <summary><span><?= e('更多导出 ▾') ?></span><em><?= e('低频导出') ?></em></summary>
+                        <div class="order-tool-more-list">
+                            <?php foreach (array_chunk($toolGroups['more'], 2) as $tools): ?>
+                                <div class="order-tool-pair">
+                                    <?php foreach ($tools as $index => $tool): ?>
+                                        <?php $renderTool($tool); ?>
+                                        <?php if ($index === 0 && count($tools) > 1): ?><span class="order-tool-sep">|</span><?php endif; ?>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </details>
+                <?php endif; ?>
+
+                <?php if ($syncTool === null && !$toolGroups['primary'] && !$toolGroups['more']): ?>
                     <div class="order-tool-empty">当前账号没有可用同步、导入或导出工具。</div>
                 <?php endif; ?>
             </div>

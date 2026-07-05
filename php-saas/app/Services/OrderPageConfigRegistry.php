@@ -204,14 +204,17 @@ final class OrderPageConfigRegistry
         $username = strtolower(trim((string) ($user['username'] ?? '')));
         $isCompanyAdmin = (bool) ($user['is_company_admin'] ?? false) || $role === '公司管理员';
         $canSyncOrders = Permission::hasAny($user, ['导入导出', '订单编辑']);
-        $canPlatformImportExport = Permission::has($user, '导入导出');
-        $canPurchaseImport = $platform === 'r' && Permission::has($user, '采购导入导出');
+        $canImportExport = Permission::has($user, '导入导出');
+        $canPlatformImportExport = $canImportExport;
+        $canPurchaseImport = $canImportExport && $platform === 'r' && Permission::has($user, '采购导入导出');
         $isFinanceIdentity = in_array($username, ['caiwu', 'xizhends'], true);
-        $canFinanceExport = $isCompanyAdmin
-            || (Permission::has($user, '财务导出') && Permission::hasAny($user, ['导入导出', '财务导出']))
-            || ($isFinanceIdentity && Permission::hasAny($user, ['导入导出', '财务导出']));
-        $canCustomersExport = $isCompanyAdmin || ($isFinanceIdentity && Permission::has($user, '客户资料'));
-        $canTemplate = $isCompanyAdmin || Permission::has($user, '公司设置');
+        $canFinanceExport = $canImportExport && (
+            $isCompanyAdmin
+            || Permission::has($user, '财务导出')
+            || $isFinanceIdentity
+        );
+        $canCustomersExport = $canImportExport && ($isCompanyAdmin || ($isFinanceIdentity && Permission::has($user, '客户资料')));
+        $canTemplate = $canImportExport && ($isCompanyAdmin || Permission::has($user, '公司设置'));
 
         return [
             [
@@ -229,7 +232,7 @@ final class OrderPageConfigRegistry
                 'action' => '/import-export',
                 'method' => 'get',
                 'job' => 'platform_orders_import',
-                'group' => 'import',
+                'group' => 'primary',
                 'needsDateRange' => false,
                 'visibleWhen' => $canPlatformImportExport,
             ],
@@ -239,7 +242,7 @@ final class OrderPageConfigRegistry
                 'action' => '/import-export',
                 'method' => 'get',
                 'job' => 'purchase_import',
-                'group' => 'import',
+                'group' => 'primary',
                 'needsDateRange' => false,
                 'visibleWhen' => $canPurchaseImport,
             ],
@@ -249,7 +252,7 @@ final class OrderPageConfigRegistry
                 'action' => '/import-export',
                 'method' => 'get',
                 'job' => 'shipping_import',
-                'group' => 'import',
+                'group' => 'primary',
                 'needsDateRange' => false,
                 'visibleWhen' => $canPlatformImportExport,
             ],
@@ -259,7 +262,7 @@ final class OrderPageConfigRegistry
                 'action' => '/orders/export',
                 'method' => 'post',
                 'type' => 'shipment',
-                'group' => 'shipment',
+                'group' => 'primary',
                 'needsDateRange' => true,
                 'visibleWhen' => $canPlatformImportExport,
             ],
@@ -269,7 +272,7 @@ final class OrderPageConfigRegistry
                 'action' => '/orders/export',
                 'method' => 'post',
                 'type' => 'platform',
-                'group' => 'shipment',
+                'group' => 'primary',
                 'needsDateRange' => true,
                 'visibleWhen' => $canPlatformImportExport,
             ],
@@ -278,7 +281,7 @@ final class OrderPageConfigRegistry
                 'label' => '雅拍出荷处理表',
                 'action' => '/import-export/platform-special/export',
                 'method' => 'get',
-                'group' => 'shipment',
+                'group' => 'more',
                 'needsDateRange' => true,
                 'params' => ['template_id' => 'builtin_qoo10'],
                 'visibleWhen' => $platform === 'yp' && $canPlatformImportExport,
@@ -288,7 +291,7 @@ final class OrderPageConfigRegistry
                 'label' => '财务表导出',
                 'action' => '/import-export/finance-placeholder/export',
                 'method' => 'get',
-                'group' => 'finance',
+                'group' => 'more',
                 'needsDateRange' => true,
                 'visibleWhen' => $canFinanceExport,
             ],
@@ -297,7 +300,7 @@ final class OrderPageConfigRegistry
                 'label' => '客户资料导出',
                 'action' => '/import-export/customers/export',
                 'method' => 'get',
-                'group' => 'finance',
+                'group' => 'more',
                 'needsDateRange' => true,
                 'visibleWhen' => $canCustomersExport,
             ],
@@ -307,7 +310,7 @@ final class OrderPageConfigRegistry
                 'action' => '/orders/export',
                 'method' => 'post',
                 'type' => 'delivery_notice',
-                'group' => 'delivery',
+                'group' => 'more',
                 'needsDateRange' => true,
                 'visibleWhen' => $canPlatformImportExport,
             ],
@@ -316,7 +319,7 @@ final class OrderPageConfigRegistry
                 'label' => '西阵发货表导出',
                 'action' => '/orders/xizhen-delivery/export',
                 'method' => 'post',
-                'group' => 'delivery',
+                'group' => 'more',
                 'needsDateRange' => true,
                 'visibleWhen' => $canPlatformImportExport,
             ],
@@ -325,7 +328,7 @@ final class OrderPageConfigRegistry
                 'label' => '发货单导出模板',
                 'action' => '/import-export/export-templates/edit',
                 'method' => 'get',
-                'group' => 'delivery',
+                'group' => 'primary',
                 'needsDateRange' => false,
                 'visibleWhen' => $canTemplate,
             ],
@@ -334,7 +337,7 @@ final class OrderPageConfigRegistry
                 'label' => 'Mercari新版导入',
                 'action' => '',
                 'method' => 'todo',
-                'group' => 'import',
+                'group' => 'primary',
                 'needsDateRange' => false,
                 'visibleWhen' => false,
                 'todo' => $platform === 'm',

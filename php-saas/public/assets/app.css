@@ -1133,6 +1133,52 @@ button.order-tool-button:disabled {
   font-weight: 800;
 }
 
+.order-tool-more {
+  display: grid;
+  gap: 7px;
+}
+
+.order-tool-more summary {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  min-height: 48px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  padding: 7px 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.order-tool-more summary::-webkit-details-marker {
+  display: none;
+}
+
+.order-tool-more summary:hover {
+  border-color: #047857;
+  background: #f8fafc;
+}
+
+.order-tool-more summary span {
+  color: #065f46;
+  font-size: 14px;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.order-tool-more summary em {
+  color: #64748b;
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1.25;
+}
+
+.order-tool-more-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 7px;
+}
+
 .order-filter {
   background: #fff;
   border: 1px solid var(--line);
