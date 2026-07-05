@@ -1,24 +1,49 @@
 <?php
 $logisticsMeta = match ($type) {
     '1688' => [
-        'title' => '1688 物流',
+        'title' => '1688物流查询日志',
         'return_path' => '/logistics/1688',
         'notice' => '已接入 old/plugins/1688api 与 cron/update_1688_logistics.php 的 1688 物流查询规则。',
-        'tracking_label' => '运单 / 1688号',
+        'columns' => [
+            ['key' => 'date', 'label' => '日期'],
+            ['key' => 'user_name', 'label' => '用户'],
+            ['key' => 'platform_name', 'label' => '平台'],
+            ['key' => 'sys_orderid', 'label' => '订单号'],
+            ['key' => 'orderid', 'label' => '1688单号'],
+            ['key' => 'message', 'label' => '说明'],
+            ['key' => 'status_label', 'label' => '状态'],
+        ],
     ],
     'express' => [
-        'title' => 'TB/PDD 物流',
+        'title' => 'Showapi物流查询日志',
         'return_path' => '/logistics/express',
         'notice' => '已接入 old/plugins/express-showapi 的国内快递查询规则；ShowAPI 失败或无轨迹时，可由超管开启百度物流备用查询。',
-        'tracking_label' => '国内运单',
+        'columns' => [
+            ['key' => 'date', 'label' => '日期'],
+            ['key' => 'user_name', 'label' => '用户'],
+            ['key' => 'orderid', 'label' => '单号'],
+            ['key' => 'message', 'label' => '说明'],
+            ['key' => 'related_url', 'label' => '相关链接'],
+            ['key' => 'status_label', 'label' => '状态'],
+        ],
     ],
     default => [
-        'title' => '日本物流',
+        'title' => '国际物流查询日志',
         'return_path' => '/logistics/jp',
         'notice' => '已接入 old/plugins/jpshipinfo、sagawa-shipinfo 与 cron/update_jpship_logistics.php 的日本物流查询规则。',
-        'tracking_label' => '国际运单',
+        'columns' => [
+            ['key' => 'date', 'label' => '日期'],
+            ['key' => 'platform_name', 'label' => '平台'],
+            ['key' => 'user_name', 'label' => '用户'],
+            ['key' => 'real_orderid', 'label' => '订单号'],
+            ['key' => 'orderid', 'label' => '国际运单号'],
+            ['key' => 'message', 'label' => '说明'],
+            ['key' => 'related_url', 'label' => '相关链接'],
+            ['key' => 'status_label', 'label' => '状态'],
+        ],
     ],
 };
+$columns = $logisticsMeta['columns'];
 ?>
 <div class="page-head">
     <div>
@@ -45,21 +70,41 @@ $logisticsMeta = match ($type) {
 </div>
 
 <div class="panel">
-    <div class="panel-head"><span>物流明细</span><span class="sub"><?= e(count($rows)) ?> 条</span></div>
+    <div class="panel-head"><span>查询日志</span><span class="sub"><?= e(count($rows)) ?> 条</span></div>
     <div class="panel-body">
         <table class="table">
-            <thead><tr><th>订单号</th><th>商品</th><th><?= e($logisticsMeta['tracking_label']) ?></th><th>承运商</th><th>状态</th><th>更新时间</th></tr></thead>
+            <thead>
+                <tr>
+                    <?php foreach ($columns as $column): ?>
+                        <th><?= e($column['label']) ?></th>
+                    <?php endforeach; ?>
+                </tr>
+            </thead>
             <tbody>
             <?php foreach ($rows as $row): ?>
                 <tr>
-                    <td class="order-id"><?= e($row['order_no']) ?></td>
-                    <td><?= e($row['item']) ?></td>
-                    <td><?= e($row['tracking_no']) ?></td>
-                    <td><?= e($row['carrier']) ?></td>
-                    <td><span class="tag blue"><?= e($row['status']) ?></span></td>
-                    <td><?= e($row['updated_at']) ?></td>
+                    <?php foreach ($columns as $column): ?>
+                        <?php $key = (string) $column['key']; ?>
+                        <?php if ($key === 'status_label'): ?>
+                            <td><span class="tag <?= ((int) ($row['status_code'] ?? 0)) === 1 ? 'green' : 'red' ?>"><?= e($row[$key] ?? '') ?></span></td>
+                        <?php elseif ($key === 'related_url'): ?>
+                            <?php $url = trim((string) ($row[$key] ?? '')); ?>
+                            <td>
+                                <?php if ($url !== ''): ?>
+                                    <a class="order-id" href="<?= e($url) ?>" target="_blank" rel="noopener"><?= e($url) ?></a>
+                                <?php endif; ?>
+                            </td>
+                        <?php elseif (in_array($key, ['sys_orderid', 'real_orderid', 'orderid'], true)): ?>
+                            <td class="order-id"><?= e($row[$key] ?? '') ?></td>
+                        <?php else: ?>
+                            <td><?= e($row[$key] ?? '') ?></td>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
                 </tr>
             <?php endforeach; ?>
+            <?php if (!$rows): ?>
+                <tr><td colspan="<?= e(count($columns)) ?>" class="sub">暂无查询日志</td></tr>
+            <?php endif; ?>
             </tbody>
         </table>
     </div>

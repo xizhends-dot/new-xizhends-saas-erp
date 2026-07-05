@@ -371,26 +371,163 @@ final class AppService
                 if ($type === 'express' && (($item['source_type'] ?? '') !== 'cn_purchase' || trim((string) ($item['ship_number'] ?? '')) === '')) {
                     continue;
                 }
-                if ($type === 'jp' && ($item['source_type'] ?? '') !== 'jp_stock') {
+                if ($type === 'jp' && !$this->isJapanLogisticsItem($item)) {
                     continue;
                 }
 
+                $log = $this->latestLogisticsLog($item, $type);
+                $trackingNo = $this->logisticsTrackingNo($item, $type);
+                $status = (string) (($item['logistics'] ?? '') ?: ($item['purchase_status'] ?? ''));
+                $date = $this->legacyLogisticsDate($log, $item, $order);
+                $message = $this->legacyLogisticsMessage($log, $status, $trackingNo);
+                $ok = $trackingNo !== '' && ($status !== '' || $this->isSuccessfulLogisticsLog($log));
+                $platformName = $this->legacyPlatformName($type, (string) ($order['platform'] ?? ''));
+
                 $rows[] = [
-                    'order_no' => $order['platform_order_id'] ?? '',
-                    'item' => $item['title'] ?? '',
-                    'tracking_no' => match ($type) {
-                        '1688' => $item['tabaono'] ?? '',
-                        'express' => $item['ship_number'] ?? '',
-                        default => ($item['intl_number'] ?? '') ?: ($item['ship_number'] ?? ''),
-                    },
+                    'date' => $date,
+                    'user_name' => (string) (($log['user'] ?? '') ?: ($item['buyer'] ?? '')),
+                    'platform' => (string) ($order['platform'] ?? ''),
+                    'platform_name' => $platformName,
+                    'sys_orderid' => (string) ($order['platform_order_id'] ?? ''),
+                    'real_orderid' => (string) ($order['platform_order_id'] ?? ''),
+                    'orderid' => $trackingNo,
+                    'message' => $message,
+                    'related_url' => $this->legacyRelatedUrl($item),
+                    'status_code' => $ok ? 1 : 0,
+                    'status_label' => $ok ? '成功' : '失败',
+                    'order_no' => (string) ($order['platform_order_id'] ?? ''),
+                    'item' => (string) ($item['title'] ?? ''),
+                    'tracking_no' => $trackingNo,
                     'carrier' => $item['ship_company'] ?? '',
-                    'status' => ($item['logistics'] ?? '') ?: ($item['purchase_status'] ?? ''),
-                    'updated_at' => $item['purchase_time'] ?: ($order['order_date'] ?? ''),
+                    'status' => $status,
+                    'updated_at' => $date,
                 ];
             }
         }
 
+        usort($rows, static fn (array $left, array $right): int => strcmp((string) ($right['date'] ?? ''), (string) ($left['date'] ?? '')));
+
         return $rows;
+    }
+
+    /** @param array<string, mixed> $item */
+    private function isJapanLogisticsItem(array $item): bool
+    {
+        if (($item['source_type'] ?? '') === 'jp_stock') {
+            return true;
+        }
+
+        if (trim((string) ($item['intl_number'] ?? '')) !== '') {
+            return true;
+        }
+
+        return in_array((string) ($item['purchase_status'] ?? ''), ['已发货代订单', '已发日本', '已发出荷通知', '日本仓库已处理'], true);
+    }
+
+    /** @param array<string, mixed> $item */
+    private function logisticsTrackingNo(array $item, string $type): string
+    {
+        return match ($type) {
+            '1688' => (string) ($item['tabaono'] ?? ''),
+            'express' => (string) ($item['ship_number'] ?? ''),
+            default => (string) (($item['intl_number'] ?? '') ?: ($item['ship_number'] ?? '')),
+        };
+    }
+
+    /** @param array<string, mixed> $item @return array<string, mixed> */
+    private function latestLogisticsLog(array $item, string $type): array
+    {
+        foreach (array_reverse((array) ($item['logs'] ?? [])) as $log) {
+            if (!is_array($log) || !$this->logMatchesLogisticsType($log, $type)) {
+                continue;
+            }
+
+            return $log;
+        }
+
+        return [];
+    }
+
+    /** @param array<string, mixed> $log */
+    private function logMatchesLogisticsType(array $log, string $type): bool
+    {
+        $text = implode(' ', [
+            $log['action'] ?? '',
+            $log['field'] ?? '',
+            $log['old'] ?? '',
+            $log['new'] ?? '',
+        ]);
+
+        return match ($type) {
+            '1688' => str_contains($text, '1688') || str_contains($text, 'logistics') || str_contains($text, '物流'),
+            'express' => str_contains($text, 'ShowAPI') || str_contains($text, '国内物流') || str_contains($text, 'TB/PDD') || str_contains($text, 'logistics'),
+            default => str_contains($text, '日本物流') || str_contains($text, '国际运单') || str_contains($text, 'logistics'),
+        };
+    }
+
+    /** @param array<string, mixed> $log @param array<string, mixed> $item @param array<string, mixed> $order */
+    private function legacyLogisticsDate(array $log, array $item, array $order): string
+    {
+        $value = trim((string) ($log['time'] ?? ''));
+        if (preg_match('/^\d{2}-\d{2}\s+\d{2}:\d{2}$/', $value) === 1) {
+            return date('Y') . '-' . $value;
+        }
+
+        return (string) ($value ?: (($item['purchase_time'] ?? '') ?: ($order['imported_at'] ?? $order['order_date'] ?? '')));
+    }
+
+    /** @param array<string, mixed> $log */
+    private function legacyLogisticsMessage(array $log, string $status, string $trackingNo): string
+    {
+        $action = trim((string) ($log['action'] ?? ''));
+        if ($action !== '') {
+            $old = trim((string) ($log['old'] ?? ''));
+            $new = trim((string) ($log['new'] ?? ''));
+            if ($old !== '' || $new !== '') {
+                return $action . '：' . ($old !== '' ? $old : '-') . ' → ' . ($new !== '' ? $new : '-');
+            }
+
+            return $action;
+        }
+
+        if ($trackingNo === '') {
+            return '单号为空，跳过';
+        }
+
+        if ($status !== '') {
+            return '当前状态：' . $status;
+        }
+
+        return '待查询';
+    }
+
+    /** @param array<string, mixed> $log */
+    private function isSuccessfulLogisticsLog(array $log): bool
+    {
+        $new = trim((string) ($log['new'] ?? ''));
+        $action = trim((string) ($log['action'] ?? ''));
+
+        return $new !== '' || $action !== '';
+    }
+
+    private function legacyPlatformName(string $type, string $platform): string
+    {
+        $maps = [
+            '1688' => ['w' => 'Wowma', 'm' => 'Mercari', 'r' => 'Rakuten', 'y' => 'Yahoo'],
+            'jp' => ['w' => 'Wowma', 'm' => 'Mercari', 'r' => '乐天', 'y' => '雅虎'],
+        ];
+
+        return $maps[$type][$platform] ?? $platform;
+    }
+
+    /** @param array<string, mixed> $item */
+    private function legacyRelatedUrl(array $item): string
+    {
+        if (preg_match('/https?:\/\/\S+/u', (string) ($item['logistic_trace'] ?? ''), $matches) === 1) {
+            return rtrim($matches[0], " \t\r\n。；;，,");
+        }
+
+        return '';
     }
 
 
