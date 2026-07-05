@@ -119,7 +119,7 @@ $uniqueOrders = (int) ($totals['unique_orders'] ?? 0);
 .caigou-card {
   min-height: 112px;
   border: 1px solid #0b1118;
-  background: linear-gradient(135deg, #111827 0%, #26323f 100%);
+  background: #26323f;
   padding: 16px 18px;
 }
 .caigou-card h3 {
@@ -140,16 +140,21 @@ $uniqueOrders = (int) ($totals['unique_orders'] ?? 0);
   margin-left: 4px;
 }
 .caigou-card.highlight {
-  background: linear-gradient(135deg, #064e3b 0%, #047857 100%);
-  border-color: #07c160;
+  background: #07c160;
+  border-color: #059669;
+}
+.caigou-card.highlight h3,
+.caigou-card.highlight .count,
+.caigou-card.highlight .unit {
+  color: #111827;
 }
 .caigou-card.money {
-  background: linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%);
-  border-color: #fca5a5;
+  background: #111827;
+  border-color: #111827;
 }
 .caigou-card.order {
-  background: linear-gradient(135deg, #1e3a8a 0%, #2f6fed 100%);
-  border-color: #93c5fd;
+  background: #374151;
+  border-color: #374151;
 }
 .caigou-section-title {
   color: #4b5563;
