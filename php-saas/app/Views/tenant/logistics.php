@@ -146,6 +146,12 @@ $failureCount = count($rows) - $successCount;
             <input name="order_num" value="<?= e($filters['order_num']) ?>" placeholder="订单号 / 1688单号">
         </label>
     <?php endif; ?>
+    <?php if ($type === 'jp'): ?>
+        <label class="fg">
+            <span>运单号/订单号</span>
+            <input name="keyword" value="<?= e($filters['keyword']) ?>" placeholder="输入运单号或订单号">
+        </label>
+    <?php endif; ?>
     <label class="fg">
         <span>日期</span>
         <input type="date" name="date" value="<?= e($filters['date']) ?>">
@@ -158,12 +164,6 @@ $failureCount = count($rows) - $successCount;
             <option value="1" <?= $filters['status'] === '1' ? 'selected' : '' ?>>成功</option>
         </select>
     </label>
-    <?php if ($type === 'jp'): ?>
-        <label class="fg">
-            <span>运单号/订单号</span>
-            <input name="keyword" value="<?= e($filters['keyword']) ?>" placeholder="输入运单号或订单号">
-        </label>
-    <?php endif; ?>
     <div class="fg logistics-filter-action">
         <span>操作</span>
         <button class="btn primary" type="submit">查询</button>
