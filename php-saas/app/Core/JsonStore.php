@@ -1812,6 +1812,9 @@ final class JsonStore implements StoreInterface
         if (array_key_exists('purchase_statuses', $data)) {
             $settings['purchase_statuses'] = $data['purchase_statuses'];
         }
+        if (array_key_exists('order_export_tools', $data)) {
+            $settings['order_export_tools'] = $data['order_export_tools'];
+        }
         $settings['updated_at'] = date('Y-m-d H:i:s');
         $all['settings']['tenant'][$tenantKey] = $settings;
 

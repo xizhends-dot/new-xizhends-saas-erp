@@ -25,6 +25,7 @@ use Xizhen\Services\LegacyEdgeToolService;
 use Xizhen\Services\MailService;
 use Xizhen\Services\OrderAjaxService;
 use Xizhen\Services\OrderItemSaveRuleService;
+use Xizhen\Services\OrderPageConfigRegistry;
 use Xizhen\Services\PerformanceStatsService;
 use Xizhen\Services\PlatformExportService;
 use Xizhen\Services\PlatformOrderSyncRegistry;
@@ -68,6 +69,46 @@ final class ImportExportController extends TenantBaseController
             'stores' => $this->service->storesForTenant($tenantKey),
             'importMessage' => (string) ($_GET['message'] ?? ''),
         ]);
+    }
+
+    public function orderTools(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'import_export.center');
+        $this->auth->requireTenantPermission($tenantKey, '公司设置');
+        $registry = new OrderPageConfigRegistry($this->store, $tenantKey);
+
+        $this->renderTenant('tenant/order_export_tools', $tenantKey, [
+            'title' => '订单页导出按钮管理',
+            'active' => 'import_export',
+            'builtinTools' => $registry->builtinToolsForConfig(),
+            'templates' => $this->exportTemplateService->templatesForTenant($tenantKey),
+            'displayConfig' => $registry->displayConfig(),
+            'message' => (string) ($_GET['message'] ?? ''),
+        ]);
+    }
+
+    public function saveOrderTools(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'import_export.center');
+        $this->auth->requireTenantPermission($tenantKey, '公司设置');
+        $registry = new OrderPageConfigRegistry($this->store, $tenantKey);
+        $templates = $this->exportTemplateService->templatesForTenant($tenantKey);
+        $allowedKeys = array_map(static fn (array $tool): string => (string) ($tool['key'] ?? ''), $registry->builtinToolsForConfig());
+        foreach ($templates as $template) {
+            $templateId = trim((string) ($template['id'] ?? ''));
+            if ($templateId !== '') {
+                $allowedKeys[] = OrderPageConfigRegistry::templateToolKey($templateId);
+            }
+        }
+
+        $raw = is_array($_POST['tools'] ?? null) ? $_POST['tools'] : [];
+        $config = OrderPageConfigRegistry::normalizeDisplayConfig($raw, $allowedKeys);
+        $this->store->saveTenantSettings($tenantKey, ['order_export_tools' => $config]);
+
+        header('Location: /import-export/order-tools?tenant=' . urlencode($tenantKey) . '&message=' . urlencode('订单页导出按钮设置已保存。'));
+        exit;
     }
 
     public function exportCsv(): void

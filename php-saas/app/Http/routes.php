@@ -97,6 +97,8 @@ return static function (Container $container, Router $router): void {
         $router->post('/mail/rules/apply', [MailController::class, 'applyMailRules']);
         $router->post('/mail/reply', [MailController::class, 'replyMail']);
         $router->get('/import-export', [ImportExportController::class, 'importExport']);
+        $router->get('/import-export/order-tools', [ImportExportController::class, 'orderTools']);
+        $router->post('/import-export/order-tools', [ImportExportController::class, 'saveOrderTools']);
         $router->get('/import-export/non-excel', [ImportExportController::class, 'importExportNonExcel']);
         $router->get('/import-export/export', [ImportExportController::class, 'exportCsv']);
         $router->get('/import-export/platform-special/export', [ImportExportController::class, 'exportPlatformSpecial']);

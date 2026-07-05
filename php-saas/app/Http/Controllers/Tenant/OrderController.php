@@ -67,7 +67,7 @@ final class OrderController extends TenantBaseController
         $platform = trim((string) ($_GET['platform'] ?? ''));
         $this->ensurePlatformFeatureAccess($tenantKey, $platform !== '' ? $platform : null);
         $source = $_GET['source'] ?? 'all';
-        $orderPageConfigRegistry = new OrderPageConfigRegistry();
+        $orderPageConfigRegistry = new OrderPageConfigRegistry($this->store, $tenantKey);
         $query = $orderPageConfigRegistry->normalizeFilterInput($platform, $_GET);
         $keyword = $this->keywordFrom($query);
         $filters = $this->orderFiltersFrom($query, $keyword);

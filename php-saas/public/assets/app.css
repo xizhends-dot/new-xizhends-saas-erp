@@ -1179,6 +1179,58 @@ button.order-tool-button:disabled {
   margin-top: 7px;
 }
 
+.export-tool-config-table td {
+  vertical-align: middle;
+}
+
+.export-tool-config-table strong {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.seg-control {
+  display: inline-grid;
+  grid-template-columns: repeat(3, minmax(58px, 1fr));
+  gap: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.seg-option {
+  position: relative;
+  display: block;
+  min-width: 58px;
+  cursor: pointer;
+}
+
+.seg-option + .seg-option {
+  border-left: 1px solid #cbd5e1;
+}
+
+.seg-option input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.seg-option span {
+  display: block;
+  padding: 7px 10px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.seg-option input:checked + span {
+  background: #065f46;
+  color: #fff;
+}
+
 .order-filter {
   background: #fff;
   border: 1px solid var(--line);

@@ -17,6 +17,7 @@ $exportMap = [
         <h1>导入导出 <span class="sub">CSV / 采购 XLSX / 物流 / 财务 XLSX / 客户资料 XLSX</span></h1>
     </div>
     <div class="head-actions">
+        <a class="btn" href="/import-export/order-tools?tenant=<?= e($tenantKey) ?>">订单页导出按钮管理</a>
         <?php if ($hasImportJobs): ?><a class="btn primary" href="#csv-import-form">上传文件</a><?php endif; ?>
     </div>
 </div>

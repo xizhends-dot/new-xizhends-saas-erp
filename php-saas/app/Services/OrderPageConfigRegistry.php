@@ -5,9 +5,16 @@ declare(strict_types=1);
 namespace Xizhen\Services;
 
 use Xizhen\Core\Permission;
+use Xizhen\Core\StoreInterface;
 
 final class OrderPageConfigRegistry
 {
+    private const DISPLAY_GROUPS = ['primary', 'more', 'hidden'];
+
+    public function __construct(private readonly ?StoreInterface $store = null, private readonly string $tenantKey = '')
+    {
+    }
+
     /**
      * @return array<int, array<string, mixed>>
      */
@@ -199,6 +206,92 @@ final class OrderPageConfigRegistry
      */
     public function exportToolsFor(string $platform, array $user): array
     {
+        $tools = $this->applyConfiguredDisplay($this->builtinToolsFor($platform, $user));
+        foreach ($this->templateToolsFor($user) as $tool) {
+            $tools[] = $tool;
+        }
+
+        return $tools;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function builtinToolsForConfig(): array
+    {
+        return array_values(array_filter(
+            $this->builtinToolsFor('yp', ['role' => '公司管理员', 'is_company_admin' => true]),
+            static fn (array $tool): bool => !in_array((string) ($tool['key'] ?? ''), ['sync_orders', 'mercari_new_import_todo'], true)
+        ));
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function displayConfig(): array
+    {
+        if ($this->store === null || $this->tenantKey === '') {
+            return [];
+        }
+
+        $settings = $this->store->tenantSettings($this->tenantKey);
+        $raw = $settings['order_export_tools'] ?? [];
+        if (!is_array($raw)) {
+            return [];
+        }
+
+        $config = [];
+        foreach ($raw as $key => $value) {
+            $key = trim((string) $key);
+            $value = trim((string) $value);
+            if ($key !== '' && in_array($value, self::DISPLAY_GROUPS, true)) {
+                $config[$key] = $value;
+            }
+        }
+
+        return $config;
+    }
+
+    public function configuredDisplayFor(string $key, string $default): string
+    {
+        $config = $this->displayConfig();
+        $default = in_array($default, self::DISPLAY_GROUPS, true) ? $default : 'hidden';
+        $value = (string) ($config[$key] ?? $default);
+
+        return in_array($value, self::DISPLAY_GROUPS, true) ? $value : $default;
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     * @param array<int, string> $allowedKeys
+     * @return array<string, string>
+     */
+    public static function normalizeDisplayConfig(array $input, array $allowedKeys): array
+    {
+        $allowed = array_flip(array_values(array_filter(array_map('strval', $allowedKeys), static fn (string $key): bool => $key !== '')));
+        $config = [];
+        foreach ($input as $key => $value) {
+            $key = trim((string) $key);
+            $value = trim((string) $value);
+            if (isset($allowed[$key]) && in_array($value, self::DISPLAY_GROUPS, true)) {
+                $config[$key] = $value;
+            }
+        }
+
+        return $config;
+    }
+
+    public static function templateToolKey(string $templateId): string
+    {
+        return 'tpl_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $templateId);
+    }
+
+    /**
+     * @param array<string, mixed> $user
+     * @return array<int, array<string, mixed>>
+     */
+    private function builtinToolsFor(string $platform, array $user): array
+    {
         $platform = $this->normalizePlatform($platform);
         $role = Permission::normalizeRole($user['role'] ?? '');
         $username = strtolower(trim((string) ($user['username'] ?? '')));
@@ -344,5 +437,68 @@ final class OrderPageConfigRegistry
                 'note' => '新系统暂无 orderinsert_new 对应动作，未生成入口。',
             ],
         ];
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $tools
+     * @return array<int, array<string, mixed>>
+     */
+    private function applyConfiguredDisplay(array $tools): array
+    {
+        $result = [];
+        foreach ($tools as $tool) {
+            $key = (string) ($tool['key'] ?? '');
+            if ($key === '' || $key === 'sync_orders') {
+                $result[] = $tool;
+                continue;
+            }
+
+            $display = $this->configuredDisplayFor($key, (string) ($tool['group'] ?? 'primary'));
+            if ($display === 'hidden') {
+                continue;
+            }
+            $tool['group'] = $display;
+            $result[] = $tool;
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array<string, mixed> $user
+     * @return array<int, array<string, mixed>>
+     */
+    private function templateToolsFor(array $user): array
+    {
+        if ($this->store === null || $this->tenantKey === '' || !Permission::has($user, '导入导出')) {
+            return [];
+        }
+
+        $service = new ExportTemplateService($this->store);
+        $tools = [];
+        foreach ($service->templatesForTenant($this->tenantKey) as $template) {
+            $templateId = trim((string) ($template['id'] ?? ''));
+            if ($templateId === '') {
+                continue;
+            }
+            $key = self::templateToolKey($templateId);
+            $display = $this->configuredDisplayFor($key, 'hidden');
+            if (!in_array($display, ['primary', 'more'], true)) {
+                continue;
+            }
+            $tools[] = [
+                'key' => $key,
+                'label' => (string) (($template['name'] ?? '') ?: $templateId),
+                'action' => '/import-export/platform-special/export',
+                'method' => 'get',
+                'group' => $display,
+                'needsDateRange' => true,
+                'params' => ['template_id' => $templateId],
+                'visibleWhen' => true,
+                'template_id' => $templateId,
+            ];
+        }
+
+        return $tools;
     }
 }

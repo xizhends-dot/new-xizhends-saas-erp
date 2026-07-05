@@ -48,6 +48,9 @@ final class SettingsRepository extends BaseRepository
         if (array_key_exists('purchase_statuses', $data)) {
             $settings['purchase_statuses'] = $data['purchase_statuses'];
         }
+        if (array_key_exists('order_export_tools', $data)) {
+            $settings['order_export_tools'] = $data['order_export_tools'];
+        }
         $settings['updated_at'] = date('Y-m-d H:i:s');
 
         $tenantPdo = $this->db->tenantPdo($tenantKey);
@@ -55,7 +58,7 @@ final class SettingsRepository extends BaseRepository
             $stmt = $tenantPdo->prepare(
                 'INSERT INTO tenant_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()'
             );
-            foreach (['company', 'orders', 'profit', 'logistics', 'api_1688', 'notices', 'export_templates', 'purchase_statuses'] as $section) {
+            foreach (['company', 'orders', 'profit', 'logistics', 'api_1688', 'notices', 'export_templates', 'purchase_statuses', 'order_export_tools'] as $section) {
                 $stmt->execute([
                     $section,
                     // INVALID_UTF8_SUBSTITUTE：个别非法字节替换为 U+FFFD，避免 json_encode
