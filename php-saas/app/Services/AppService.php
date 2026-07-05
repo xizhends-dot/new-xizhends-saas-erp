@@ -267,7 +267,7 @@ final class AppService
             ],
             '经营分析' => [
                 ['feature' => 'analytics.profit', 'title' => '利润分析', 'desc' => '对应 old/plugins/profit-analysis。', 'href' => "/analytics/profit?tenant={$tenantKey}", 'status' => '开发数据'],
-                ['feature' => 'stats.purchase', 'title' => '采购统计', 'desc' => '对应 caigou_status / caigou_stats。', 'href' => "/stats/purchase?tenant={$tenantKey}", 'status' => '开发数据'],
+                ['feature' => 'stats.purchase', 'title' => '采购业绩统计', 'desc' => '对应 old/plugins/caigou_stats，按采购员统计完成采购、采购金额和 1688 单号。', 'href' => "/stats/purchase?tenant={$tenantKey}", 'status' => '开发数据'],
                 ['feature' => 'stats.performance', 'title' => '业绩统计', 'desc' => '对应 old/performance，按日、平台、店铺聚合订单和金额。', 'href' => "/performance?tenant={$tenantKey}", 'status' => '已接页面'],
                 ['feature' => 'stats.products', 'title' => '出单商品分析', 'desc' => '对应 old/performance/product_analysis，按商品编码统计热卖排名。', 'href' => "/performance/products?tenant={$tenantKey}", 'status' => '已接页面'],
                 ['feature' => 'stats.shipping_anomaly', 'title' => '异常运费检测', 'desc' => '对应 old/plugins/shipping-anomaly，按商品 ID 与数量聚合对比国际运费。', 'href' => "/stats/shipping-anomaly?tenant={$tenantKey}", 'status' => '已接页面'],

@@ -197,7 +197,7 @@ final class PurchaseStatsService
     }
 
     /**
-     * 采购统计补全：日期维度、采购人维度、状态维度和追溯明细。
+     * 采购业绩统计：沿用旧 caigou_stats 口径，按采购人统计已完成采购记录。
      *
      * @param array<string, mixed> $user
      * @param array<string, mixed> $filters
@@ -205,7 +205,7 @@ final class PurchaseStatsService
      */
     public function purchaseStats(string $tenantKey, ?array $user = null, array $filters = []): array
     {
-        [$startDate, $endDate] = $this->dateRange($filters, date('Y-m-d', strtotime('-13 days')), date('Y-m-d'));
+        [$startDate, $endDate] = $this->dateRange($filters, date('Y-m-d', strtotime('-7 days')), date('Y-m-d'));
         $platformFilter = trim((string) ($filters['platform'] ?? ''));
         $buyerFilter = trim((string) ($filters['buyer'] ?? ''));
         $statusFilter = trim((string) ($filters['status'] ?? ''));
@@ -215,6 +215,9 @@ final class PurchaseStatsService
         $daily = [];
         $platforms = [];
         $traceRows = [];
+        $buyerOrderSets = [];
+        $dailyOrderSets = [];
+        $platformOrderSets = [];
 
         foreach ($this->ordersForUser($tenantKey, $user) as $order) {
             $platform = (string) ($order['platform'] ?? '');
@@ -226,15 +229,15 @@ final class PurchaseStatsService
             }
 
             foreach ($this->items($order) as $item) {
-                if (!$this->isPurchaseItem($item)) {
+                if (!$this->isCompletedPurchaseItem($item)) {
                     continue;
                 }
 
-                $date = $this->purchaseDate($order, $item);
+                $date = $this->purchaseCompletionDate($item);
                 if ($date === '' || $date < $startDate || $date > $endDate) {
                     continue;
                 }
-                $buyer = (string) (($item['buyer'] ?? '') ?: '未分配');
+                $buyer = trim((string) ($item['buyer'] ?? ''));
                 $status = (string) (($item['purchase_status'] ?? '') ?: '待处理');
                 if ($buyerFilter !== '' && $buyer !== $buyerFilter) {
                     continue;
@@ -245,21 +248,30 @@ final class PurchaseStatsService
 
                 $quantity = $this->itemQuantity($item);
                 $amount = $this->purchaseAmount($item);
+                $tabaono = trim((string) ($item['tabaono'] ?? ''));
                 $buyers[$buyer]['buyer'] = $buyer;
                 $buyers[$buyer]['item_count'] = ($buyers[$buyer]['item_count'] ?? 0) + 1;
                 $buyers[$buyer]['quantity'] = ($buyers[$buyer]['quantity'] ?? 0) + $quantity;
-                $buyers[$buyer]['amount'] = ($buyers[$buyer]['amount'] ?? 0.0) + $amount;
+                $buyers[$buyer]['amount'] = (float) ($buyers[$buyer]['amount'] ?? 0.0);
 
                 $statuses[$status] = ($statuses[$status] ?? 0) + 1;
                 $daily[$date]['date'] = $date;
                 $daily[$date]['item_count'] = ($daily[$date]['item_count'] ?? 0) + 1;
                 $daily[$date]['quantity'] = ($daily[$date]['quantity'] ?? 0) + $quantity;
-                $daily[$date]['amount'] = ($daily[$date]['amount'] ?? 0.0) + $amount;
+                $daily[$date]['amount'] = (float) ($daily[$date]['amount'] ?? 0.0);
                 $platforms[$platform]['code'] = $platform;
                 $platforms[$platform]['name'] = $platformNames[$platform] ?? $platform;
                 $platforms[$platform]['item_count'] = ($platforms[$platform]['item_count'] ?? 0) + 1;
                 $platforms[$platform]['quantity'] = ($platforms[$platform]['quantity'] ?? 0) + $quantity;
-                $platforms[$platform]['amount'] = ($platforms[$platform]['amount'] ?? 0.0) + $amount;
+                $platforms[$platform]['amount'] = (float) ($platforms[$platform]['amount'] ?? 0.0);
+                if ($tabaono !== '' && $amount > 0) {
+                    $buyers[$buyer]['amount'] += $amount;
+                    $daily[$date]['amount'] += $amount;
+                    $platforms[$platform]['amount'] += $amount;
+                    $buyerOrderSets[$buyer][$tabaono] = true;
+                    $dailyOrderSets[$date][$tabaono] = true;
+                    $platformOrderSets[$platform][$tabaono] = true;
+                }
 
                 $traceRows[] = [
                     'date' => $date,
@@ -272,12 +284,25 @@ final class PurchaseStatsService
                     'quantity' => $quantity,
                     'buyer' => $buyer,
                     'status' => $status,
-                    'amount' => $amount,
+                    'amount' => $tabaono !== '' ? $amount : 0.0,
                     'purchase_time' => (string) ($item['purchase_time'] ?? ''),
-                    'tabaono' => (string) ($item['tabaono'] ?? ''),
+                    'tabaono' => $tabaono,
                 ];
             }
         }
+
+        foreach ($buyers as $buyer => &$row) {
+            $row['unique_orders'] = count($buyerOrderSets[$buyer] ?? []);
+        }
+        unset($row);
+        foreach ($daily as $date => &$row) {
+            $row['unique_orders'] = count($dailyOrderSets[$date] ?? []);
+        }
+        unset($row);
+        foreach ($platforms as $platform => &$row) {
+            $row['unique_orders'] = count($platformOrderSets[$platform] ?? []);
+        }
+        unset($row);
 
         uasort($buyers, static fn (array $a, array $b): int => [(int) $b['item_count'], (float) $b['amount']] <=> [(int) $a['item_count'], (float) $a['amount']]);
         arsort($statuses);
@@ -308,6 +333,7 @@ final class PurchaseStatsService
                 'item_count' => $total,
                 'quantity' => array_sum(array_column($traceRows, 'quantity')),
                 'amount' => array_sum(array_column($traceRows, 'amount')),
+                'unique_orders' => array_sum(array_column($buyers, 'unique_orders')),
                 'buyer_count' => count($buyers),
                 'status_count' => count($statuses),
             ],
@@ -498,6 +524,14 @@ final class PurchaseStatsService
     }
 
     /** @param array<string, mixed> $item */
+    private function isCompletedPurchaseItem(array $item): bool
+    {
+        return trim((string) ($item['buyer'] ?? '')) !== ''
+            && $this->purchaseCompletionDate($item) !== ''
+            && (string) ($item['source_type'] ?? '') !== 'jp_stock';
+    }
+
+    /** @param array<string, mixed> $item */
     private function isPurchaseItem(array $item): bool
     {
         return (string) ($item['source_type'] ?? '') === 'cn_purchase'
@@ -526,6 +560,12 @@ final class PurchaseStatsService
         }
 
         return '';
+    }
+
+    /** @param array<string, mixed> $item */
+    private function purchaseCompletionDate(array $item): string
+    {
+        return $this->dateOnly((string) ($item['purchase_time'] ?? ''));
     }
 
     /** @param array<string, mixed> $item */

@@ -7,7 +7,7 @@ $money = static fn (mixed $value): string => '￥' . number_format((float) $valu
 ?>
 <div class="page-head">
     <div>
-        <h1>采购统计 <span class="sub">日视图 / 用户追溯</span></h1>
+        <h1>采购业绩统计 <span class="sub">沿用 caigou_stats 口径</span></h1>
     </div>
     <div class="head-actions">
         <a class="btn" href="/stats/purchase/status-daily?tenant=<?= e($tenantKey) ?>">采购状态日报</a>
@@ -26,7 +26,7 @@ $money = static fn (mixed $value): string => '￥' . number_format((float) $valu
                 <?php endforeach; ?>
             </select>
         </label>
-        <label>采购人 <input type="text" name="buyer" value="<?= e($filters['buyer'] ?? '') ?>" placeholder="未分配 / 姓名"></label>
+        <label>采购人 <input type="text" name="buyer" value="<?= e($filters['buyer'] ?? '') ?>" placeholder="姓名"></label>
         <label>状态 <input type="text" name="status" value="<?= e($filters['status'] ?? '') ?>" placeholder="采购状态"></label>
         <label>开始日期 <input type="date" name="start_date" value="<?= e($filters['start_date'] ?? '') ?>"></label>
         <label>结束日期 <input type="date" name="end_date" value="<?= e($filters['end_date'] ?? '') ?>"></label>
@@ -35,18 +35,18 @@ $money = static fn (mixed $value): string => '￥' . number_format((float) $valu
 </form>
 
 <section class="grid stats">
-    <div class="stat"><div class="stat-label">采购子商品</div><div class="stat-value"><?= e($totals['item_count'] ?? 0) ?></div><div class="stat-sub"><?= e($totals['quantity'] ?? 0) ?> 件</div></div>
+    <div class="stat"><div class="stat-label">完成采购</div><div class="stat-value"><?= e($totals['item_count'] ?? 0) ?></div><div class="stat-sub"><?= e($totals['quantity'] ?? 0) ?> 件</div></div>
     <div class="stat"><div class="stat-label">采购金额</div><div class="stat-value"><?= e($money($totals['amount'] ?? 0)) ?></div><div class="stat-sub">按成本字段</div></div>
-    <div class="stat"><div class="stat-label">采购人数</div><div class="stat-value"><?= e($totals['buyer_count'] ?? 0) ?></div><div class="stat-sub">含未分配</div></div>
-    <div class="stat"><div class="stat-label">状态数</div><div class="stat-value"><?= e($totals['status_count'] ?? 0) ?></div><div class="stat-sub">当前筛选</div></div>
+    <div class="stat"><div class="stat-label">1688 单号</div><div class="stat-value"><?= e($totals['unique_orders'] ?? 0) ?></div><div class="stat-sub">去重统计</div></div>
+    <div class="stat"><div class="stat-label">采购员</div><div class="stat-value"><?= e($totals['buyer_count'] ?? 0) ?></div><div class="stat-sub">已完成采购</div></div>
 </section>
 
 <section class="grid two-col">
     <div class="panel">
-        <div class="panel-head"><span>日视图</span><span class="sub">按采购时间 / 订单时间兜底</span></div>
+        <div class="panel-head"><span>每日业绩</span><span class="sub">按采购时间统计</span></div>
         <div class="panel-body">
             <table class="table">
-                <thead><tr><th>日期</th><th>子商品</th><th>件数</th><th>采购金额</th></tr></thead>
+                <thead><tr><th>日期</th><th>完成采购</th><th>件数</th><th>采购金额</th><th>1688 单号</th></tr></thead>
                 <tbody>
                 <?php foreach ((array) ($stats['daily'] ?? []) as $row): ?>
                     <tr>
@@ -54,6 +54,7 @@ $money = static fn (mixed $value): string => '￥' . number_format((float) $valu
                         <td><?= e($row['item_count'] ?? 0) ?></td>
                         <td><?= e($row['quantity'] ?? 0) ?></td>
                         <td><?= e($money($row['amount'] ?? 0)) ?></td>
+                        <td><?= e($row['unique_orders'] ?? 0) ?></td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
@@ -61,10 +62,10 @@ $money = static fn (mixed $value): string => '￥' . number_format((float) $valu
         </div>
     </div>
     <div class="panel">
-        <div class="panel-head"><span>采购人统计</span><span class="sub">用户追溯入口</span></div>
+        <div class="panel-head"><span>采购员排名</span><span class="sub">完成采购口径</span></div>
         <div class="panel-body">
             <table class="table">
-                <thead><tr><th>采购人</th><th>子商品</th><th>件数</th><th>采购金额</th></tr></thead>
+                <thead><tr><th>采购员</th><th>完成采购</th><th>件数</th><th>采购金额</th><th>1688 单号</th></tr></thead>
                 <tbody>
                 <?php foreach ((array) ($stats['buyers'] ?? []) as $buyer): ?>
                     <tr>
@@ -72,6 +73,7 @@ $money = static fn (mixed $value): string => '￥' . number_format((float) $valu
                         <td><?= e($buyer['item_count'] ?? 0) ?></td>
                         <td><?= e($buyer['quantity'] ?? 0) ?></td>
                         <td><?= e($money($buyer['amount'] ?? 0)) ?></td>
+                        <td><?= e($buyer['unique_orders'] ?? 0) ?></td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
@@ -82,10 +84,10 @@ $money = static fn (mixed $value): string => '￥' . number_format((float) $valu
 
 <section class="grid two-col">
     <div class="panel">
-        <div class="panel-head"><span>平台分布</span><span class="sub">采购子商品口径</span></div>
+        <div class="panel-head"><span>平台业绩</span><span class="sub">完成采购口径</span></div>
         <div class="panel-body">
             <table class="table">
-                <thead><tr><th>平台</th><th>子商品</th><th>件数</th><th>采购金额</th></tr></thead>
+                <thead><tr><th>平台</th><th>完成采购</th><th>件数</th><th>采购金额</th><th>1688 单号</th></tr></thead>
                 <tbody>
                 <?php foreach ((array) ($stats['platforms'] ?? []) as $platform): ?>
                     <tr>
@@ -93,6 +95,7 @@ $money = static fn (mixed $value): string => '￥' . number_format((float) $valu
                         <td><?= e($platform['item_count'] ?? 0) ?></td>
                         <td><?= e($platform['quantity'] ?? 0) ?></td>
                         <td><?= e($money($platform['amount'] ?? 0)) ?></td>
+                        <td><?= e($platform['unique_orders'] ?? 0) ?></td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
@@ -100,7 +103,7 @@ $money = static fn (mixed $value): string => '￥' . number_format((float) $valu
         </div>
     </div>
     <div class="panel">
-        <div class="panel-head"><span>采购状态分布</span><span class="sub">当前筛选</span></div>
+        <div class="panel-head"><span>完成状态分布</span><span class="sub">当前筛选</span></div>
         <div class="panel-body">
             <table class="table">
                 <thead><tr><th>状态</th><th>数量</th></tr></thead>
@@ -115,10 +118,10 @@ $money = static fn (mixed $value): string => '￥' . number_format((float) $valu
 </section>
 
 <div class="panel">
-    <div class="panel-head"><span>采购人追溯明细</span><span class="sub">最多显示 500 行</span></div>
+    <div class="panel-head"><span>采购业绩明细</span><span class="sub">最多显示 500 行</span></div>
     <div class="panel-body">
         <table class="table">
-            <thead><tr><th>日期</th><th>采购人</th><th>平台</th><th>店铺</th><th>订单号</th><th>商品</th><th>状态</th><th>数量</th><th>金额</th><th>1688 单号</th></tr></thead>
+            <thead><tr><th>日期</th><th>采购员</th><th>平台</th><th>店铺</th><th>订单号</th><th>商品</th><th>状态</th><th>数量</th><th>金额</th><th>1688 单号</th></tr></thead>
             <tbody>
             <?php foreach ((array) ($stats['trace_rows'] ?? []) as $row): ?>
                 <tr>

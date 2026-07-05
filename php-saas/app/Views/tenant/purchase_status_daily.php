@@ -19,7 +19,7 @@ $changeTag = static function (int $diff): string {
         <h1>采购状态每日统计 <span class="sub">状态分布 / 日环比</span></h1>
     </div>
     <div class="head-actions">
-        <a class="btn" href="/stats/purchase?tenant=<?= e($tenantKey) ?>">采购统计</a>
+        <a class="btn" href="/stats/purchase?tenant=<?= e($tenantKey) ?>">采购业绩统计</a>
         <a class="btn primary" href="/orders?tenant=<?= e($tenantKey) ?>&view=purchase">采购订单</a>
     </div>
 </div>

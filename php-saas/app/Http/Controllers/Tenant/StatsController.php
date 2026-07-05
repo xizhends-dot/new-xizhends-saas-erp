@@ -65,7 +65,7 @@ final class StatsController extends TenantBaseController
         $this->requireTenantFeature($tenantKey, 'stats.purchase');
         $this->auth->requireTenantPermission($tenantKey, '采购统计');
         $this->renderTenant('tenant/purchase_stats_extended', $tenantKey, [
-            'title' => '采购统计',
+            'title' => '采购业绩统计',
             'active' => 'purchase_stats',
             'stats' => $this->purchaseStatsService->purchaseStats($tenantKey, $this->auth->currentTenantUser($tenantKey), $_GET),
         ]);

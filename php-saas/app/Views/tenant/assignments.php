@@ -16,7 +16,7 @@ foreach ($assignments as $assignment) {
     </div>
 </div>
 
-<div class="notice">这里承接旧系统 `ph_userlevel`。采购被分配到客服店铺后，后续订单查询、采购统计、日本仓发货处理都应按这个关系过滤；当前开发模式默认全权限，但关系数据仍先完整建立。</div>
+<div class="notice">这里承接旧系统 `ph_userlevel`。采购被分配到客服店铺后，后续订单查询、采购业绩统计、日本仓发货处理都应按这个关系过滤；当前开发模式默认全权限，但关系数据仍先完整建立。</div>
 
 <div class="grid two-col">
     <div class="panel">

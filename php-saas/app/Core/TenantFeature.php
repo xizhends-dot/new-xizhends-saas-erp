@@ -35,10 +35,10 @@ final class TenantFeature
             [
                 'key' => 'business',
                 'title' => '经营分析',
-                'desc' => '利润核算、采购统计和后续绩效统计。',
+                'desc' => '利润核算、采购业绩统计和后续绩效统计。',
                 'items' => [
                     ['key' => 'analytics.profit', 'name' => '利润核算', 'desc' => '汇率、扣点、国际运费和利润分析。', 'default' => true],
-                    ['key' => 'stats.purchase', 'name' => '采购统计', 'desc' => '采购员和采购状态统计。', 'default' => true],
+                    ['key' => 'stats.purchase', 'name' => '采购业绩统计', 'desc' => '沿用旧 caigou_stats 的采购员业绩、采购金额和 1688 单号统计。', 'default' => true],
                     ['key' => 'stats.performance', 'name' => '业绩统计', 'desc' => '销售业绩统计预留模块。', 'default' => false],
                     ['key' => 'stats.products', 'name' => '出单商品统计', 'desc' => '商品出单排名和趋势预留模块。', 'default' => false],
                     ['key' => 'stats.shipping_anomaly', 'name' => '异常运费统计', 'desc' => '异常运费分析预留模块。', 'default' => false],
