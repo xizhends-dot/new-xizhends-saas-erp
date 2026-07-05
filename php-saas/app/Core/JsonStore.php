@@ -995,7 +995,7 @@ final class JsonStore implements StoreInterface
                 $oldStatus = (string) ($item['purchase_status'] ?? '');
                 $status = match ($source) {
                     'cn_purchase' => '国内采购-准备',
-                    'jp_stock' => '待分配',
+                    'jp_stock' => '日本库存订单',
                     default => '待处理',
                 };
                 $item['source_type'] = $source;
@@ -3741,7 +3741,7 @@ final class JsonStore implements StoreInterface
                     ? $this->normalizePurchaseStatus((string) $changes['purchase_status'])
                     : match ($newValue) {
                     'cn_purchase' => '国内采购-准备',
-                    'jp_stock' => '待分配',
+                    'jp_stock' => '日本库存订单',
                     default => '待处理',
                 };
                 if ($statusOldValue !== $nextStatus) {
@@ -4100,7 +4100,7 @@ final class JsonStore implements StoreInterface
                 'total' => 12800,
                 'items' => [
                     $this->item(501, 'NB-996-BK', 'JP-STOCK-8842', 'New Balance 996 黑色', '26.5cm / 黑色', 1, 'cn_purchase', '国内采购-准备', '王五', 'T2026061700912', '运输中'),
-                    $this->item(502, 'MUJI-BAG-12', 'JP-A12-5520', '无印良品 单肩包', '米色 / L', 1, 'jp_stock', '待分配', '', '', '日本仓库已处理'),
+                    $this->item(502, 'MUJI-BAG-12', 'JP-A12-5520', '无印良品 单肩包', '米色 / L', 1, 'jp_stock', '日本库存订单', '', '', '日本仓库已处理'),
                 ],
             ],
             [
@@ -4138,7 +4138,7 @@ final class JsonStore implements StoreInterface
                 ],
                 'total' => 19800,
                 'items' => [
-                    $this->item(504, 'LOT-3321', 'JP-WH-9033', '中古相机镜头', 'Nikon / 状态A', 1, 'jp_stock', '待分配', '', '', '日本仓库已处理'),
+                    $this->item(504, 'LOT-3321', 'JP-WH-9033', '中古相机镜头', 'Nikon / 状态A', 1, 'jp_stock', '日本库存订单', '', '', '日本仓库已处理'),
                 ],
             ],
             [
@@ -4195,7 +4195,7 @@ final class JsonStore implements StoreInterface
             'ship_number' => $logistics ? '1234-5678-9012' : '',
             'logistics' => $logistics,
             'assignee' => $source === 'jp_stock' ? '' : null,
-            'out_status' => $source === 'jp_stock' ? $purchaseStatus : null,
+            'out_status' => $source === 'jp_stock' ? '待分配' : null,
             'image' => 'https://picsum.photos/seed/' . $id . '/72/72',
             'logs' => [
                 ['time' => '06-17 09:30', 'user' => '系统', 'action' => '导入订单', 'field' => '-', 'old' => '-', 'new' => '来源：平台 API', 'ip' => 'API自动'],

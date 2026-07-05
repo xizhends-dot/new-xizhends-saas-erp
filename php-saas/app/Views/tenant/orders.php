@@ -57,14 +57,31 @@ foreach ($filters as $filterKey => $hiddenFilterValue) {
 }
 
 $statusOptions = array_values(array_filter(array_map('strval', is_array($statusOptions ?? null) ? $statusOptions : [])));
-$statusOptionsFor = static function (mixed $current) use ($statusOptions): array {
+$jpStockStatusOptions = array_values(array_filter(array_map('strval', is_array($jpStockStatusOptions ?? null) ? $jpStockStatusOptions : [])));
+$mergedStatusOptions = array_values(array_unique(array_merge($statusOptions, $jpStockStatusOptions)));
+$statusOptionsForSource = static function (string $sourceType) use ($statusOptions, $jpStockStatusOptions, $mergedStatusOptions): array {
+    return match ($sourceType) {
+        'jp_stock' => $jpStockStatusOptions,
+        'cn_purchase', 'pending' => $statusOptions,
+        default => $mergedStatusOptions,
+    };
+};
+$statusOptionsFor = static function (mixed $current, string $sourceType = 'pending') use ($statusOptionsForSource): array {
+    $options = $statusOptionsForSource($sourceType);
     $current = trim((string) $current);
-    if ($current !== '' && !in_array($current, $statusOptions, true)) {
-        return array_merge([$current], $statusOptions);
+    if ($current !== '' && !in_array($current, $options, true)) {
+        return array_merge([$current], $options);
     }
 
-    return $statusOptions;
+    return $options;
 };
+$jsonFlags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
+$statusFilterOptionsJson = json_encode([
+    'all' => $mergedStatusOptions,
+    'cn_purchase' => $statusOptions,
+    'pending' => $statusOptions,
+    'jp_stock' => $jpStockStatusOptions,
+], $jsonFlags) ?: '{}';
 $filterFields = array_values(array_filter(
     is_array($filterFields ?? null) ? $filterFields : [],
     static fn (mixed $field): bool => is_array($field) && trim((string) ($field['key'] ?? '')) !== ''
@@ -100,7 +117,7 @@ $urlWithQuery = static function (string $path, array $params): string {
     return $path . ($params ? '?' . http_build_query($params) : '');
 };
 $exportUrl = static fn (string $path, array $extra = []): string => $urlWithQuery($path, array_merge($hiddenFilters, $extra));
-$fieldOptions = static function (array $field) use ($statusOptions, $orderView, $storeNames): array {
+$fieldOptions = static function (array $field) use ($statusOptionsForSource, $source, $orderView, $storeNames): array {
     $key = (string) ($field['key'] ?? '');
     if (($field['optionsKey'] ?? '') === 'statusOptions') {
         if ($orderView === 'jp') {
@@ -112,7 +129,7 @@ $fieldOptions = static function (array $field) use ($statusOptions, $orderView, 
             ];
         }
 
-        return array_map(static fn (string $status): array => ['value' => $status, 'label' => $status], $statusOptions);
+        return array_map(static fn (string $status): array => ['value' => $status, 'label' => $status], $statusOptionsForSource((string) ($source ?? 'all')));
     }
     if (($field['optionsKey'] ?? '') === 'storeNames') {
         return array_map(static fn (string $name): array => ['value' => $name, 'label' => $name], $storeNames);
@@ -135,7 +152,7 @@ $fieldCurrentValue = static function (array $field) use ($filterValue, $keyword,
 
     return $filterValue($key);
 };
-$renderFilterField = static function (array $field, string $extraClass = '') use ($fieldOptions, $fieldCurrentValue, $orderView, $checkedFilter): void {
+$renderFilterField = static function (array $field, string $extraClass = '') use ($fieldOptions, $fieldCurrentValue, $statusFilterOptionsJson, $orderView, $checkedFilter): void {
     $key = (string) ($field['key'] ?? '');
     $name = (string) ($field['name'] ?? $key);
     $label = (string) ($field['label'] ?? $key);
@@ -147,12 +164,19 @@ $renderFilterField = static function (array $field, string $extraClass = '') use
     if ($key === 'buyer' && $orderView === 'jp') {
         $label = '发货员';
     }
+    $selectAttrs = '';
+    if ($key === 'status' && $orderView === 'platform') {
+        $selectAttrs = ' data-order-status-filter data-status-options="' . e($statusFilterOptionsJson) . '"';
+    }
+    if ($key === 'source' && $orderView === 'platform') {
+        $selectAttrs = ' data-order-source-filter';
+    }
     $class = trim('fg order-search-field order-search-field-' . $key . ' ' . $extraClass);
     ?>
     <label class="<?= e($class) ?>">
         <span class="lb"><?= e($label) ?></span>
         <?php if ($type === 'select'): ?>
-            <select name="<?= e($name) ?>">
+            <select name="<?= e($name) ?>"<?= $selectAttrs ?>>
                 <?php if ($key === 'status'): ?>
                     <option value=""><?= e($orderView === 'jp' ? '全部状态' : '— 待处理订单 —') ?></option>
                     <?php if ($orderView !== 'jp'): ?>
@@ -163,7 +187,14 @@ $renderFilterField = static function (array $field, string $extraClass = '') use
                 <?php elseif (!in_array($key, ['page_size', 'source'], true)): ?>
                     <option value="">全部</option>
                 <?php endif; ?>
-                <?php foreach ($fieldOptions($field) as $option): ?>
+                <?php
+                $options = $fieldOptions($field);
+                $optionValues = array_map(static fn (array $option): string => (string) ($option['value'] ?? $option['label'] ?? ''), $options);
+                if ($value !== '' && $value !== '__ALL__' && !in_array($value, $optionValues, true)) {
+                    $options[] = ['value' => $value, 'label' => $value];
+                }
+                ?>
+                <?php foreach ($options as $option): ?>
                     <?php
                     $optionValue = (string) ($option['value'] ?? $option['label'] ?? '');
                     $optionLabel = (string) ($option['label'] ?? $optionValue);
@@ -382,6 +413,7 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
         <form id="<?= e($batchFormId) ?>" method="post" action="/orders/batch" class="batch-form">
             <?= csrf_field() ?>
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
+            <input type="hidden" name="view" value="<?= e($orderView) ?>">
             <input type="hidden" name="return" value="<?= e($returnUrl) ?>">
         </form>
     <?php endif; ?>
@@ -437,6 +469,14 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
             <?php if (($orderView === 'jp' && !$canBatchJp) || ($orderView !== 'jp' && !$canBatchPurchase)): ?>
                 <span class="batch-label">当前账号没有批量操作权限</span>
             <?php elseif ($orderView === 'jp'): ?>
+                <span class="batch-label">采购状态</span>
+                <select class="assign-sel" name="purchase_status" form="<?= e($batchFormId) ?>">
+                    <option value="">选择状态</option>
+                    <?php foreach ($jpStockStatusOptions as $statusOption): ?>
+                        <option><?= e($statusOption) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <button class="btn-xs" type="submit" name="batch_action" value="set_purchase_status" form="<?= e($batchFormId) ?>">批量改状态</button>
                 <span class="batch-label">批量分配给</span>
                 <select class="assign-sel" name="assignee" form="<?= e($batchFormId) ?>"><option value="">选择发货员</option><option>李四</option><option>王五</option><option>赵六</option></select>
                 <button class="btn-xs" type="submit" name="batch_action" value="assign_jp" form="<?= e($batchFormId) ?>">分配</button>

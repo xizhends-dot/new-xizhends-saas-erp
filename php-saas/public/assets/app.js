@@ -106,6 +106,14 @@ document.addEventListener('change', function (event) {
     ensureCsrfField(form);
     form.submit();
   }
+
+  if (target.matches('[data-source-status-source]')) {
+    syncPurchaseStatusForSource(target);
+  }
+
+  if (target.matches('[data-order-source-filter]')) {
+    syncOrderStatusFilter(target);
+  }
 });
 
 document.addEventListener('submit', function (event) {
@@ -277,6 +285,79 @@ function ensureCsrfField(form) {
   input.name = '_token';
   input.value = token;
   form.appendChild(input);
+}
+
+function parseStatusOptions(value) {
+  try {
+    var parsed = JSON.parse(value || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (error) {
+    return {};
+  }
+}
+
+function optionValuesForSource(options, source) {
+  var key = source === 'jp_stock' || source === 'cn_purchase' || source === 'pending' ? source : 'all';
+  var values = options[key] || [];
+  return Array.isArray(values) ? values.map(function (value) { return String(value); }).filter(Boolean) : [];
+}
+
+function replaceStatusSelectOptions(select, values, current, includeAllOption, preserveMissing) {
+  if (!(select instanceof HTMLSelectElement)) return;
+  var selected = current == null ? select.value : String(current);
+  var originalValues = values.slice();
+  select.replaceChildren();
+
+  if (includeAllOption) {
+    var blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = '— 待处理订单 —';
+    select.appendChild(blank);
+
+    var all = document.createElement('option');
+    all.value = '__ALL__';
+    all.textContent = '全部订单';
+    select.appendChild(all);
+  }
+
+  if (preserveMissing && selected !== '' && selected !== '__ALL__' && values.indexOf(selected) < 0) {
+    values = [selected].concat(values);
+  }
+
+  values.forEach(function (value) {
+    var option = document.createElement('option');
+    option.value = value;
+    option.textContent = value;
+    select.appendChild(option);
+  });
+
+  if (selected !== '' && selected !== '__ALL__' && (preserveMissing || originalValues.indexOf(selected) >= 0)) {
+    select.value = selected;
+  } else if (selected === '__ALL__' && includeAllOption) {
+    select.value = '__ALL__';
+  } else {
+    select.value = includeAllOption ? '' : (originalValues[0] || '');
+  }
+}
+
+function syncPurchaseStatusForSource(sourceSelect) {
+  if (!(sourceSelect instanceof HTMLSelectElement)) return;
+  var form = sourceSelect.closest('form');
+  if (!(form instanceof HTMLFormElement)) return;
+  var statusSelect = form.querySelector('[data-source-status-target]');
+  if (!(statusSelect instanceof HTMLSelectElement)) return;
+  var options = parseStatusOptions(statusSelect.getAttribute('data-status-options') || '{}');
+  replaceStatusSelectOptions(statusSelect, optionValuesForSource(options, sourceSelect.value), statusSelect.value, false, false);
+}
+
+function syncOrderStatusFilter(sourceSelect) {
+  if (!(sourceSelect instanceof HTMLSelectElement)) return;
+  var form = sourceSelect.closest('form');
+  if (!(form instanceof HTMLFormElement)) return;
+  var statusSelect = form.querySelector('[data-order-status-filter]');
+  if (!(statusSelect instanceof HTMLSelectElement)) return;
+  var options = parseStatusOptions(statusSelect.getAttribute('data-status-options') || '{}');
+  replaceStatusSelectOptions(statusSelect, optionValuesForSource(options, sourceSelect.value), statusSelect.value, true, false);
 }
 
 function initSettingsPane() {

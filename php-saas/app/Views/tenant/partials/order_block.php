@@ -12,14 +12,25 @@ $shipMethod = (string) ($order['ship_method'] ?? '');
 $batchFormId = $batchFormId ?? ('batch-' . $orderView);
 $detailUrl = '/orders/detail?tenant=' . rawurlencode((string) $tenantKey) . '&id=' . rawurlencode((string) ($order['id'] ?? '')) . '&return=' . rawurlencode((string) $returnUrl);
 $statusOptions = array_values(array_filter(array_map('strval', is_array($statusOptions ?? null) ? $statusOptions : [])));
-$statusOptionsFor = static function (mixed $current) use ($statusOptions): array {
+$jpStockStatusOptions = array_values(array_filter(array_map('strval', is_array($jpStockStatusOptions ?? null) ? $jpStockStatusOptions : [])));
+$statusOptionsForSource = static function (string $sourceType) use ($statusOptions, $jpStockStatusOptions): array {
+    return $sourceType === 'jp_stock' ? $jpStockStatusOptions : $statusOptions;
+};
+$statusOptionsFor = static function (mixed $current, string $sourceType = 'pending') use ($statusOptionsForSource): array {
+    $options = $statusOptionsForSource($sourceType);
     $current = trim((string) $current);
-    if ($current !== '' && !in_array($current, $statusOptions, true)) {
-        return array_merge([$current], $statusOptions);
+    if ($current !== '' && !in_array($current, $options, true)) {
+        return array_merge([$current], $options);
     }
 
-    return $statusOptions;
+    return $options;
 };
+$jsonFlags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
+$purchaseStatusOptionsJson = json_encode([
+    'cn_purchase' => $statusOptions,
+    'pending' => $statusOptions,
+    'jp_stock' => $jpStockStatusOptions,
+], $jsonFlags) ?: '{}';
 $canEditOrders = (bool) ($canEditOrders ?? false);
 $canEditPurchase = (bool) ($canEditPurchase ?? false);
 $canEditJp = (bool) ($canEditJp ?? false);
@@ -301,15 +312,15 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                 </div>
 
                 <?php if ($canEditOrders || $canChangeSource): ?>
-                    <label><span>货源地</span><select name="source_type">
+                    <label><span>货源地</span><select name="source_type" data-source-status-source>
                         <option value="cn_purchase" <?= ($item['source_type'] ?? '') === 'cn_purchase' ? 'selected' : '' ?>>国内采购</option>
                         <option value="jp_stock" <?= ($item['source_type'] ?? '') === 'jp_stock' ? 'selected' : '' ?>>日本仓</option>
                         <option value="pending" <?= ($item['source_type'] ?? '') === 'pending' ? 'selected' : '' ?>>待定</option>
                     </select></label>
                 <?php endif; ?>
                 <?php if ($canEditOrders || $canEditPurchase): ?>
-                <label><span>采购状态</span><select name="purchase_status">
-                    <?php foreach ($statusOptionsFor($item['purchase_status'] ?? '') as $statusOption): ?>
+                <label><span>采购状态</span><select name="purchase_status" data-source-status-target data-status-options="<?= e($purchaseStatusOptionsJson) ?>">
+                    <?php foreach ($statusOptionsFor($item['purchase_status'] ?? '', (string) ($item['source_type'] ?? 'pending')) as $statusOption): ?>
                         <option <?= ($item['purchase_status'] ?? '') === $statusOption ? 'selected' : '' ?>><?= e($statusOption) ?></option>
                     <?php endforeach; ?>
                 </select></label>

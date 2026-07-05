@@ -2,14 +2,25 @@
 $platformName = $platformNames[$order['platform'] ?? ''] ?? ($order['platform'] ?? '');
 $returnUrl = $returnUrl ?? "/orders?tenant={$tenantKey}";
 $statusOptions = array_values(array_filter(array_map('strval', is_array($statusOptions ?? null) ? $statusOptions : [])));
-$statusOptionsFor = static function (mixed $current) use ($statusOptions): array {
+$jpStockStatusOptions = array_values(array_filter(array_map('strval', is_array($jpStockStatusOptions ?? null) ? $jpStockStatusOptions : [])));
+$statusOptionsForSource = static function (string $sourceType) use ($statusOptions, $jpStockStatusOptions): array {
+    return $sourceType === 'jp_stock' ? $jpStockStatusOptions : $statusOptions;
+};
+$statusOptionsFor = static function (mixed $current, string $sourceType = 'pending') use ($statusOptionsForSource): array {
+    $options = $statusOptionsForSource($sourceType);
     $current = trim((string) $current);
-    if ($current !== '' && !in_array($current, $statusOptions, true)) {
-        return array_merge([$current], $statusOptions);
+    if ($current !== '' && !in_array($current, $options, true)) {
+        return array_merge([$current], $options);
     }
 
-    return $statusOptions;
+    return $options;
 };
+$jsonFlags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
+$purchaseStatusOptionsJson = json_encode([
+    'cn_purchase' => $statusOptions,
+    'pending' => $statusOptions,
+    'jp_stock' => $jpStockStatusOptions,
+], $jsonFlags) ?: '{}';
 $sourceOptions = ['cn_purchase' => '国内采购', 'jp_stock' => '日本仓', 'pending' => '待定'];
 $outOptions = ['待分配', '已分配', '已出库', '已发货'];
 $canEditOrders = (bool) ($canEditOrders ?? false);
@@ -189,15 +200,15 @@ $priceQuoteAttrs = static function (array $item) use ($canPriceQuote): string {
 
                 <div class="detail-form-grid">
                     <?php if ($canEditOrders || $canChangeSource): ?>
-                        <label><span>货源地</span><select name="source_type">
+                        <label><span>货源地</span><select name="source_type" data-source-status-source>
                             <?php foreach ($sourceOptions as $value => $label): ?>
                                 <option value="<?= e($value) ?>" <?= ($item['source_type'] ?? '') === $value ? 'selected' : '' ?>><?= e($label) ?></option>
                             <?php endforeach; ?>
                         </select></label>
                     <?php endif; ?>
                     <?php if ($canEditOrders || $canEditPurchase): ?>
-                    <label><span>采购状态</span><select name="purchase_status">
-                        <?php foreach ($statusOptionsFor($item['purchase_status'] ?? '') as $status): ?>
+                    <label><span>采购状态</span><select name="purchase_status" data-source-status-target data-status-options="<?= e($purchaseStatusOptionsJson) ?>">
+                        <?php foreach ($statusOptionsFor($item['purchase_status'] ?? '', (string) ($item['source_type'] ?? 'pending')) as $status): ?>
                             <option <?= ($item['purchase_status'] ?? '') === $status ? 'selected' : '' ?>><?= e($status) ?></option>
                         <?php endforeach; ?>
                     </select></label>

@@ -8,6 +8,14 @@ use Xizhen\Core\StoreInterface;
 
 final class PurchaseStatusService
 {
+    /** @var array<int, string> */
+    public const JP_STOCK_STATUSES = [
+        '日本库存订单',
+        '库存缺货订单',
+        '日本仓库已发出荷通知',
+        '日本仓库已处理',
+    ];
+
     /** @var array<string, string> */
     public const SYSTEM_STATUSES = [
         '未处理的订单' => '平台同步与待处理统计依赖',
@@ -35,6 +43,16 @@ final class PurchaseStatusService
     public static function systemStatuses(): array
     {
         return self::SYSTEM_STATUSES;
+    }
+
+    /** @param array<int, string> $customStatuses @return array<int, string> */
+    public static function statusOptionsForSource(string $sourceType, array $customStatuses): array
+    {
+        if ($sourceType === 'jp_stock') {
+            return self::JP_STOCK_STATUSES;
+        }
+
+        return $customStatuses;
     }
 
     /** @return array<int, string> */

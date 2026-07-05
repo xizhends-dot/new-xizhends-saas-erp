@@ -6,6 +6,7 @@ namespace Xizhen\Services;
 
 use Xizhen\Core\StoreInterface;
 use Xizhen\Core\View;
+use Xizhen\Services\PurchaseStatusService;
 
 final class OrderAjaxService
 {
@@ -32,6 +33,7 @@ final class OrderAjaxService
             'returnUrl' => (string) ($context['returnUrl'] ?? tenant_url('/orders', $tenantKey)),
             'orderView' => (string) ($context['orderView'] ?? 'platform'),
             'statusOptions' => $this->app->purchaseStatuses($tenantKey),
+            'jpStockStatusOptions' => PurchaseStatusService::JP_STOCK_STATUSES,
             'currentUser' => $user,
         ]));
 

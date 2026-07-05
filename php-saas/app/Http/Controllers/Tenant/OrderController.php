@@ -94,6 +94,7 @@ final class OrderController extends TenantBaseController
         );
 
         $tenant = $this->store->tenant($tenantKey);
+        $statusOptions = $this->service->purchaseStatuses($tenantKey);
         $this->view->render('tenant/orders', [
             'title' => $this->viewTitle($view),
             'tenantKey' => $tenantKey,
@@ -110,7 +111,8 @@ final class OrderController extends TenantBaseController
             'platformNames' => $this->service->tenantPlatformNames($tenantKey),
             'platformSyncServices' => $this->platformOrderSyncRegistry->names(),
             'stores' => $this->service->storesForTenant($tenantKey),
-            'statusOptions' => $this->service->purchaseStatuses($tenantKey),
+            'statusOptions' => $statusOptions,
+            'jpStockStatusOptions' => PurchaseStatusService::JP_STOCK_STATUSES,
             'filterFields' => $orderPageConfigRegistry->filterFieldsFor($platform),
             'exportTools' => $orderPageConfigRegistry->exportToolsFor($platform, $currentUser ?? []),
             'canEditOrders' => $canEditFeature && $this->auth->tenantCan($tenantKey, '订单编辑'),
@@ -156,13 +158,15 @@ final class OrderController extends TenantBaseController
     {
         $tenantKey = current_tenant_key();
         $action = (string) ($_POST['batch_action'] ?? '');
+        $view = in_array(($_POST['view'] ?? ''), ['platform', 'purchase', 'jp'], true) ? (string) $_POST['view'] : '';
         $this->requireTenantFeature($tenantKey, 'orders.edit');
         $this->requireTenantFeature($tenantKey, match ($action) {
             'delete_orders', 'set_source' => 'orders.platform',
             'assign_jp', 'mark_out' => 'orders.jp',
+            'set_purchase_status' => $view === 'jp' ? 'orders.jp' : 'orders.purchase',
             default => 'orders.purchase',
         });
-        $this->requireBatchActionPermission($tenantKey, $action);
+        $this->requireBatchActionPermission($tenantKey, $action, $view);
         $return = (string) ($_POST['return'] ?? "/orders?tenant={$tenantKey}");
         $itemIds = $this->intList($_POST['item_ids'] ?? []);
         $orderIds = $this->intList($_POST['order_ids'] ?? []);
@@ -241,6 +245,7 @@ final class OrderController extends TenantBaseController
             'attachments' => $this->store->orderAttachments($tenantKey, $orderId),
             'platformNames' => $this->service->tenantPlatformNames($tenantKey),
             'statusOptions' => $this->service->purchaseStatuses($tenantKey),
+            'jpStockStatusOptions' => PurchaseStatusService::JP_STOCK_STATUSES,
             'returnUrl' => (string) ($_GET['return'] ?? "/orders?tenant={$tenantKey}"),
             'canEditOrders' => $canEditFeature && $this->auth->tenantCan($tenantKey, '订单编辑'),
             'canEditPurchase' => $canEditFeature && $this->service->tenantFeatureEnabled($tenantKey, 'orders.purchase') && Permission::hasAny($currentUser, ['订单编辑', '采购状态']),
@@ -418,12 +423,15 @@ final class OrderController extends TenantBaseController
         return null;
     }
 
-    private function requireBatchActionPermission(string $tenantKey, string $action): void
+    private function requireBatchActionPermission(string $tenantKey, string $action, string $view = ''): void
     {
         match ($action) {
             'delete_orders' => $this->auth->requireTenantPermission($tenantKey, '批量操作'),
             'set_source' => $this->auth->requireTenantPermission($tenantKey, '货源改判'),
-            'set_purchase_status', 'assign_buyer' => $this->auth->requireAnyTenantPermission($tenantKey, ['批量操作', '采购状态', '订单编辑']),
+            'set_purchase_status' => $view === 'jp'
+                ? $this->auth->requireAnyTenantPermission($tenantKey, ['批量操作', '日本仓发货', '订单编辑'])
+                : $this->auth->requireAnyTenantPermission($tenantKey, ['批量操作', '采购状态', '订单编辑']),
+            'assign_buyer' => $this->auth->requireAnyTenantPermission($tenantKey, ['批量操作', '采购状态', '订单编辑']),
             'assign_jp', 'mark_out' => $this->auth->requireAnyTenantPermission($tenantKey, ['批量操作', '日本仓发货', '订单编辑']),
             default => $this->auth->requireTenantPermission($tenantKey, '批量操作'),
         };

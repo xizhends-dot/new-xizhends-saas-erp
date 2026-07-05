@@ -26,7 +26,7 @@ final class OrderMutationRepository extends BaseRepository
 
         $status = match ($source) {
             'cn_purchase' => '国内采购-准备',
-            'jp_stock' => '待分配',
+            'jp_stock' => '日本库存订单',
             default => '待处理',
         };
 
@@ -445,7 +445,7 @@ SQL);
                     $statusOldValue = (string) ($snapshot['purchase_status'] ?? '');
                     $nextStatus = match ((string) $newValue) {
                         'cn_purchase' => '国内采购-准备',
-                        'jp_stock' => '待分配',
+                        'jp_stock' => '日本库存订单',
                         default => '待处理',
                     };
                     if (array_key_exists('purchase_status', $changes)) {
