@@ -92,9 +92,12 @@ $assert('列表不出现单项 source 下拉', !str_contains($html, 'name="sourc
 $assert('列表编辑抽屉不提交 source_type', !str_contains($html, 'name="source_type"'));
 $assert('平台订单采购信息默认收起', str_contains($html, 'purchase-info-table table-hidden'));
 $assert('平台订单国际物流默认收起', str_contains($html, 'otable sec-c table-hidden'));
-$assert('订单栏合并客人姓名和片假名表头', str_contains($html, '<th class="c3" colspan="2">客人姓名/片假名</th>'));
+$assert('订单栏合并客人姓名和片假名表头', str_contains($html, '<th class="c3">客人姓名/片假名</th>'));
 $assert('订单栏不再单独显示收件人表头', !str_contains($html, '<th class="c3">收件人</th>'));
 $assert('订单栏不再单独显示假名表头', !str_contains($html, '<th class="c4">假名</th>'));
+$assert('订单栏地址列加宽', str_contains($html, '<th class="c4" colspan="3">地址</th>'));
+$assert('订单栏不再显示付款状态表头', !str_contains($html, '<th class="c12">付款状态</th>'));
+$assert('订单栏不再显示付款日期表头', !str_contains($html, '<th class="c13">付款日期</th>'));
 
 if ($failures !== []) {
     fwrite(STDERR, "Order list source readonly test FAILED:\n - " . implode("\n - ", $failures) . "\n");

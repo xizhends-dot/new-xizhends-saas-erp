@@ -173,16 +173,14 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
             <tr>
                 <th class="c0"><span class="seq-no"><?= e($seq) ?></span></th>
                 <th class="c1" colspan="2">导入时间</th>
-                <th class="c3" colspan="2">客人姓名/片假名</th>
-                <th class="c5">地址</th>
+                <th class="c3">客人姓名/片假名</th>
+                <th class="c4" colspan="3">地址</th>
                 <th class="c6">邮编</th>
                 <th class="c7">电话</th>
                 <th class="c8">邮箱</th>
                 <th class="c9">支付方式</th>
                 <th class="c10">运送方式</th>
                 <th class="c11">订单状态</th>
-                <th class="c12">付款状态</th>
-                <th class="c13">付款日期</th>
                 <th class="c14">邀评/评价</th>
             </tr>
             </thead>
@@ -190,19 +188,17 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
             <tr>
                 <td><?php if ($canBatchOperate): ?><input class="order-check" type="checkbox" name="order_ids[]" value="<?= e($order['id']) ?>" form="<?= e($batchFormId) ?>" aria-label="选择订单"><?php else: ?><span class="seq-no"><?= e($seq) ?></span><?php endif; ?></td>
                 <td colspan="2"><?= e($importedAt) ?></td>
-                <td colspan="2" class="stack-cell">
+                <td class="stack-cell">
                     <span class="stack-main"><?= e($customer['name'] ?? '') ?></span>
                     <?php if (trim((string) ($customer['kana'] ?? '')) !== ''): ?><span class="oid-sub"><?= e($customer['kana']) ?></span><?php endif; ?>
                 </td>
-                <td title="<?= e($customer['address'] ?? '') ?>"><?= e($customer['address'] ?? '') ?></td>
+                <td colspan="3" title="<?= e($customer['address'] ?? '') ?>"><?= e($customer['address'] ?? '') ?></td>
                 <td><?= e($customer['zip'] ?? '') ?></td>
                 <td><?= e($customer['phone'] ?? '') ?></td>
                 <td><?= e($customer['mail'] ?? '') ?></td>
                 <td><?= e($payMethod) ?></td>
                 <td><?= e($shipMethod) ?></td>
                 <td><span class="order-state-tag"><?= e($orderStatus) ?></span></td>
-                <td><?= e($payStatus) ?></td>
-                <td><?= e($payDate) ?></td>
                 <td>
                     <span class="review-tags">
                         <span class="<?= !empty($order['review_invited']) ? 'on' : '' ?>">邀</span>
