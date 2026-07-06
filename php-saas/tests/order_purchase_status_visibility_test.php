@@ -81,10 +81,13 @@ $hiddenOnPlatform = $service->filterOrdersForView($orders, 'platform', null, 'al
 $assertSame('平台页默认待处理筛选仍隐藏已完成状态订单项', [11, 14], array_column($hiddenOnPlatform[0]['items'] ?? [], 'id'));
 
 $explicitAll = $service->filterOrdersForView($orders, 'purchase', null, 'all', null, array_merge($purchaseDefaultFilters, ['status' => '__ALL__', 'all_orders' => '1']));
-$assertSame('采购页显式全部订单显示所有货源地订单项', [11, 12, 13, 14], array_column($explicitAll[0]['items'] ?? [], 'id'));
+$assertSame('采购页显式全部订单只显示国内采购订单项', [11, 12], array_column($explicitAll[0]['items'] ?? [], 'id'));
 
 $legacyAll = $service->filterOrdersForView($orders, 'purchase', null, 'all', null, array_merge($purchaseDefaultFilters, ['status' => '__ALL__']));
-$assertSame('采购页兼容老系统全部订单状态值', [11, 12, 13, 14], array_column($legacyAll[0]['items'] ?? [], 'id'));
+$assertSame('采购页兼容老系统全部订单状态值但不跨货源地', [11, 12], array_column($legacyAll[0]['items'] ?? [], 'id'));
+
+$jpExplicitAll = $service->filterOrdersForView($orders, 'jp', null, 'all', null, array_merge($purchaseDefaultFilters, ['status' => '__ALL__', 'all_orders' => '1']));
+$assertSame('日本仓页显式全部订单只显示日本仓订单项', [13], array_column($jpExplicitAll[0]['items'] ?? [], 'id'));
 
 if ($failures !== []) {
     fwrite(STDERR, "Order purchase status visibility test FAILED:\n - " . implode("\n - ", $failures) . "\n");

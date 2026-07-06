@@ -57,11 +57,10 @@ final class OrderFilterService
                 continue;
             }
 
-            $showAllOrders = $this->showsAllOrders($filters);
             $copy = $order;
-            $copy['items'] = array_values(array_filter($order['items'] ?? [], function (array $item) use ($order, $view, $source, $filters, $showAllOrders): bool {
+            $copy['items'] = array_values(array_filter($order['items'] ?? [], function (array $item) use ($order, $view, $source, $filters): bool {
                 $itemSource = $item['source_type'] ?? 'pending';
-                if ($view === 'purchase' && !$showAllOrders && $itemSource !== 'cn_purchase') {
+                if ($view === 'purchase' && $itemSource !== 'cn_purchase') {
                     return false;
                 }
                 if ($view === 'jp' && $itemSource !== 'jp_stock') {

@@ -306,21 +306,7 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                     <?php if ($shippingRequestMeta !== ''): ?><span class="oid-sub" title="<?= e($shippingRequestMeta) ?>">发货要求 <?= e($shortText($shippingRequestMeta, 32)) ?></span><?php endif; ?>
                 </td>
                 <td class="source-status-cell">
-                    <?php if ($orderView === 'platform' && $canChangeSource): ?>
-                        <form class="source-form compact-source auto-submit-source" method="post" action="/orders/source">
-                <?= csrf_field() ?>
-                            <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
-                            <input type="hidden" name="item_id" value="<?= e($item['id']) ?>">
-                            <input type="hidden" name="return" value="<?= e($returnUrl) ?>">
-                            <select class="src-sel" name="source" aria-label="货源地">
-                                <option value="cn_purchase" <?= $itemSource === 'cn_purchase' ? 'selected' : '' ?>>国内采购</option>
-                                <option value="jp_stock" <?= $itemSource === 'jp_stock' ? 'selected' : '' ?>>日本仓</option>
-                                <option value="pending" <?= $itemSource === 'pending' ? 'selected' : '' ?>>待定</option>
-                            </select>
-                        </form>
-                    <?php else: ?>
-                        <span class="src-tag <?= e($sourceClass($itemSource)) ?>"><?= e($sourceLabel($itemSource)) ?></span>
-                    <?php endif; ?>
+                    <span class="src-tag <?= e($sourceClass($itemSource)) ?>"><?= e($sourceLabel($itemSource)) ?></span>
                     <span class="status <?= e($statusClass((string) ($item['purchase_status'] ?? ''))) ?>"><?= e($item['purchase_status']) ?></span>
                 </td>
                 <td class="stack-cell">
@@ -522,13 +508,6 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                     </div>
                 </div>
 
-                <?php if ($canEditOrders || $canChangeSource): ?>
-                    <label><span>货源地</span><select name="source_type" data-source-status-source>
-                        <option value="cn_purchase" <?= ($item['source_type'] ?? '') === 'cn_purchase' ? 'selected' : '' ?>>国内采购</option>
-                        <option value="jp_stock" <?= ($item['source_type'] ?? '') === 'jp_stock' ? 'selected' : '' ?>>日本仓</option>
-                        <option value="pending" <?= ($item['source_type'] ?? '') === 'pending' ? 'selected' : '' ?>>待定</option>
-                    </select></label>
-                <?php endif; ?>
                 <?php if ($canEditOrders || $canEditPurchase): ?>
                 <label><span>采购状态</span><select name="purchase_status" data-source-status-target data-status-options="<?= e($purchaseStatusOptionsJson) ?>">
                     <?php foreach ($statusOptionsFor($item['purchase_status'] ?? '', (string) ($item['source_type'] ?? 'pending')) as $statusOption): ?>
