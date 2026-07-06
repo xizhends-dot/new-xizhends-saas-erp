@@ -130,10 +130,18 @@ $assert('采购信息表物流公司不再显示状态表头', !str_contains($pu
 $assert('采购信息表国内运单号改为签收地并继续收窄一格', !str_contains($purchaseInfoHtml, '国内运单号 / 物流轨迹') && str_contains($purchaseInfoHtml, '<th class="c13" colspan="2">国内运单号 / 签收地</th>'));
 $assert('采购信息表显示签收地', str_contains($purchaseInfoHtml, 'CN123456 / 义乌'));
 $assert('采购信息表不再显示物流状态和轨迹内容', !str_contains($purchaseInfoHtml, '运输中') && !str_contains($purchaseInfoHtml, '轨迹内容') && !str_contains($purchaseInfoHtml, '物流轨迹'));
-$assert('编辑抽屉改为老系统左侧编辑结构', str_contains($html, 'editor-drawer legacy-sidebar-editor') && str_contains($html, '<div class="drawer-section-title">编辑订单</div>') && str_contains($html, '<div class="drawer-section-title">运单信息</div>'));
-$assert('编辑抽屉表单使用老系统行结构', str_contains($html, '<div class="drawer-form-group"><label>OrderId：</label>') && str_contains($html, '<div class="drawer-form-group"><label>1688订单号：</label>'));
+$assert('编辑抽屉保持右侧编辑器结构', str_contains($html, 'class="editor-drawer"') && !str_contains($html, 'legacy-sidebar-editor') && str_contains($html, '<strong>编辑子商品</strong>') && str_contains($html, 'drawer-product'));
+$assert('编辑抽屉没有货源地选项', !str_contains($html, 'name="source_type"') && !str_contains($html, '货源地</span>'));
+$assert('编辑抽屉没有老系统基础订单块和SKU上传', !str_contains($html, 'OrderId：') && !str_contains($html, 'SKU产品图') && !str_contains($html, 'drawer-section-title'));
 $assert('编辑抽屉签收地可选择并保留当前值', str_contains($html, '<select name="receipt_city"') && preg_match('/<option value="义乌"[^>]*selected[^>]*>义乌<\/option>/', $html) === 1);
-$assert('编辑抽屉不再使用旧卡片栅格结构', !str_contains($html, 'drawer-product') && !str_contains($html, 'drawer-split'));
+preg_match('/data-status-options="([^"]+)"/', $html, $statusJsonMatch);
+$statusOptionsJson = html_entity_decode($statusJsonMatch[1] ?? '', ENT_QUOTES, 'UTF-8');
+$drawerStatusOptions = json_decode($statusOptionsJson, true) ?: [];
+$assert('待定货源地采购状态不硬塞国内采购状态', in_array('日本仓待处理', $drawerStatusOptions['pending'] ?? [], true));
+$assert('平台订单右侧栏采购状态实际包含日本仓状态', str_contains($html, '<option >日本仓待处理</option>'));
+
+$css = (string) file_get_contents($basePath . '/public/assets/app.css');
+$assert('编辑抽屉仍从右侧滑入', str_contains($css, 'right: 0;') && str_contains($css, 'translateX(104%)') && str_contains($css, 'width: min(520px, 92vw)'));
 
 if ($failures !== []) {
     fwrite(STDERR, "Order list source readonly test FAILED:\n - " . implode("\n - ", $failures) . "\n");
