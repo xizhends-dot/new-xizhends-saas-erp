@@ -90,6 +90,8 @@ $assert('列表展示国内采购货源地标签', str_contains($html, '<span cl
 $assert('列表不出现单项货源地修改表单', !str_contains($html, 'action="/orders/source"'));
 $assert('列表不出现单项 source 下拉', !str_contains($html, 'name="source" aria-label="货源地"'));
 $assert('列表编辑抽屉不提交 source_type', !str_contains($html, 'name="source_type"'));
+$assert('平台订单采购信息默认收起', str_contains($html, 'purchase-info-table table-hidden'));
+$assert('平台订单国际物流默认收起', str_contains($html, 'otable sec-c table-hidden'));
 
 if ($failures !== []) {
     fwrite(STDERR, "Order list source readonly test FAILED:\n - " . implode("\n - ", $failures) . "\n");

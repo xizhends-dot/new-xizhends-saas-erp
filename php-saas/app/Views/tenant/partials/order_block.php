@@ -4,7 +4,7 @@ $customer = $order['customer'] ?? [];
 $seq = $seq ?? 1;
 $showA = $orderView === 'platform';
 $hiddenB2Class = $orderView === 'platform' ? ' table-hidden' : '';
-$hiddenCClass = '';
+$hiddenCClass = $orderView === 'platform' ? ' table-hidden' : '';
 $isRakuten = ($order['platform'] ?? '') === 'r';
 $orderExtra = is_array($order['platform_extra'] ?? null) ? $order['platform_extra'] : [];
 $importedAt = (string) (($order['imported_at'] ?? '') ?: ($order['order_date'] ?? ''));
