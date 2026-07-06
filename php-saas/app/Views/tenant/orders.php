@@ -431,15 +431,6 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
             <?php endforeach; ?>
         </form>
     <?php endif; ?>
-    <?php if ($canBatchPurchase): ?>
-        <form id="send-jp-form" method="post" action="/orders/send-jp" class="batch-form">
-            <?= csrf_field() ?>
-            <?php foreach ($hiddenFilters as $name => $value): ?>
-                <input type="hidden" name="<?= e($name) ?>" value="<?= e($value) ?>">
-            <?php endforeach; ?>
-            <input type="hidden" name="return" value="<?= e($returnUrl) ?>">
-        </form>
-    <?php endif; ?>
     <?php if ($can1688Logistics || $canExpressLogistics || $canJpLogistics): ?>
         <form id="order-logistics-form" method="post" action="/orders/logistics/update" class="batch-form">
             <?= csrf_field() ?>
@@ -462,9 +453,6 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
             <?php endif; ?>
             <?php if ($canJpLogistics): ?>
                 <button class="btn-xs" type="submit" name="type" value="jp" form="order-logistics-form">更新国际物流</button>
-            <?php endif; ?>
-            <?php if ($canBatchPurchase): ?>
-                <button class="btn-xs" type="submit" form="send-jp-form">批量已发日本</button>
             <?php endif; ?>
             <?php if (($orderView === 'jp' && !$canBatchJp) || ($orderView !== 'jp' && !$canBatchPurchase)): ?>
                 <span class="batch-label">当前账号没有批量操作权限</span>
