@@ -57,10 +57,11 @@ final class OrderFilterService
                 continue;
             }
 
+            $showAllOrders = $this->showsAllOrders($filters);
             $copy = $order;
-            $copy['items'] = array_values(array_filter($order['items'] ?? [], function (array $item) use ($order, $view, $source, $filters): bool {
+            $copy['items'] = array_values(array_filter($order['items'] ?? [], function (array $item) use ($order, $view, $source, $filters, $showAllOrders): bool {
                 $itemSource = $item['source_type'] ?? 'pending';
-                if ($view === 'purchase' && $itemSource !== 'cn_purchase') {
+                if ($view === 'purchase' && !$showAllOrders && $itemSource !== 'cn_purchase') {
                     return false;
                 }
                 if ($view === 'jp' && $itemSource !== 'jp_stock') {
@@ -441,12 +442,12 @@ final class OrderFilterService
 
     private function usesDefaultPendingStatus(array $filters): bool
     {
-        if (empty($filters['default_pending'])) {
+        if (empty($filters['default_pending']) || $this->showsAllOrders($filters)) {
             return false;
         }
 
         foreach ($filters as $key => $value) {
-            if (in_array((string) $key, ['status', 'page_size', 'date_scope', 'default_pending'], true)) {
+            if (in_array((string) $key, ['status', 'page_size', 'date_scope', 'default_pending', 'all_orders'], true)) {
                 continue;
             }
             if (trim((string) $value) !== '') {
@@ -455,6 +456,13 @@ final class OrderFilterService
         }
 
         return true;
+    }
+
+
+    private function showsAllOrders(array $filters): bool
+    {
+        return trim((string) ($filters['status'] ?? '')) === '__ALL__'
+            || trim((string) ($filters['all_orders'] ?? '')) === '1';
     }
 
 

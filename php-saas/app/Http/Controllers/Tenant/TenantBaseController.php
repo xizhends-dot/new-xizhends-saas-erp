@@ -339,10 +339,13 @@ abstract class TenantBaseController
             return '';
         };
 
+        $status = $first(['status', 'beizhu']);
+        $allOrders = strtolower($first(['all_orders', 'show_all_orders']));
+
         return [
             'order_no' => $first(['order_no', 'orderId', 'ziid']),
             'tabaono' => $first(['tabaono']),
-            'status' => $first(['status', 'beizhu']),
+            'status' => $status,
             'store' => $first(['store', 'shop_select']),
             'item_id' => $first(['item_id', 'ItemId']),
             'lot_number' => $first(['lot_number', 'lotnumber']),
@@ -384,6 +387,7 @@ abstract class TenantBaseController
             'delivered' => $first(['delivered', 'haitatsukanryo']),
             'page_size' => (string) $this->boundedInt($source['page_size'] ?? $source['npage'] ?? 200, 20, 1000),
             'keyword' => $keyword,
+            'all_orders' => $status === '__ALL__' || in_array($allOrders, ['1', 'on', 'true', 'yes'], true) ? '1' : '',
         ];
     }
 
