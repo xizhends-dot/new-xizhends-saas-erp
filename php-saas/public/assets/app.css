@@ -1885,7 +1885,7 @@ label.ck.warn { color: #475569; }
 }
 
 .order-page .order-search-panel .order-filter-modern {
-  background: var(--green-soft);
+  background: #fff;
 }
 
 .order-page .order-filter-modern .order-search-field > .lb,
