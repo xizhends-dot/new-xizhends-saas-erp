@@ -3,7 +3,7 @@ $logId = 'logs-' . (int) $order['id'];
 $customer = $order['customer'] ?? [];
 $seq = $seq ?? 1;
 $showA = $orderView === 'platform';
-$hiddenB2Class = '';
+$hiddenB2Class = $orderView === 'platform' ? ' table-hidden' : '';
 $hiddenCClass = '';
 $isRakuten = ($order['platform'] ?? '') === 'r';
 $orderExtra = is_array($order['platform_extra'] ?? null) ? $order['platform_extra'] : [];
@@ -167,7 +167,7 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
 ?>
 <article class="order-block">
     <?php if ($showA): ?>
-        <table class="otable sec-a">
+        <table class="otable sec-a order-info-table">
             <colgroup><?php for ($i = 0; $i < 15; $i++): ?><col class="c<?= e($i) ?>"><?php endfor; ?></colgroup>
             <thead>
             <tr>
@@ -213,7 +213,7 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
         </table>
     <?php endif; ?>
 
-    <table class="otable sec-b<?= !$showA ? ' with-seq-col' : '' ?>">
+    <table class="otable sec-b item-info-table<?= !$showA ? ' with-seq-col' : '' ?>">
         <colgroup><?php for ($i = 0; $i < 15; $i++): ?><col class="c<?= e($i) ?>"><?php endfor; ?></colgroup>
         <thead>
         <tr>
@@ -356,7 +356,7 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
         </tbody>
     </table>
 
-    <table class="otable sec-b<?= e($hiddenB2Class) ?>">
+    <table class="otable sec-b purchase-info-table<?= e($hiddenB2Class) ?>">
         <colgroup><?php for ($i = 0; $i < 15; $i++): ?><col class="c<?= e($i) ?>"><?php endfor; ?></colgroup>
         <thead>
         <?php if ($orderView === 'jp'): ?>

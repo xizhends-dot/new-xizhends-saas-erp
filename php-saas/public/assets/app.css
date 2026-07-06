@@ -1978,17 +1978,17 @@ label.ck.warn { color: #475569; }
 }
 
 .order-page .sec-a thead th {
-  background: #d1fae5;
-  color: #064e3b;
+  background: var(--sidebar);
+  color: #fff;
 }
 
 .order-page .sec-b thead th {
-  background: #bbf7d0;
-  color: #064e3b;
+  background: var(--green);
+  color: #fff;
 }
 
-.order-page .order-block > .sec-b + .sec-b thead th {
-  background: #a7f3d0;
+.order-page .purchase-info-table thead th {
+  background: #d1fae5;
   color: #064e3b;
 }
 
