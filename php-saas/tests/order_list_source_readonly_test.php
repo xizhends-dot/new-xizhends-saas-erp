@@ -95,7 +95,7 @@ $assert('平台订单国际物流默认收起', str_contains($html, 'otable sec-
 $assert('订单栏合并客人姓名和片假名表头', str_contains($html, '<th class="c3">客人姓名/片假名</th>'));
 $assert('订单栏不再单独显示收件人表头', !str_contains($html, '<th class="c3">收件人</th>'));
 $assert('订单栏不再单独显示假名表头', !str_contains($html, '<th class="c4">假名</th>'));
-$assert('订单栏地址列加宽', str_contains($html, '<th class="c4" colspan="3">地址</th>'));
+$assert('订单栏地址列加宽', str_contains($html, '<th class="c4" colspan="4">地址</th>'));
 $assert('订单栏不再显示付款状态表头', !str_contains($html, '<th class="c12">付款状态</th>'));
 $assert('订单栏不再显示付款日期表头', !str_contains($html, '<th class="c13">付款日期</th>'));
 

@@ -174,7 +174,7 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                 <th class="c0"><span class="seq-no"><?= e($seq) ?></span></th>
                 <th class="c1" colspan="2">导入时间</th>
                 <th class="c3">客人姓名/片假名</th>
-                <th class="c4" colspan="3">地址</th>
+                <th class="c4" colspan="4">地址</th>
                 <th class="c6">邮编</th>
                 <th class="c7">电话</th>
                 <th class="c8">邮箱</th>
@@ -192,7 +192,7 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                     <span class="stack-main"><?= e($customer['name'] ?? '') ?></span>
                     <?php if (trim((string) ($customer['kana'] ?? '')) !== ''): ?><span class="oid-sub"><?= e($customer['kana']) ?></span><?php endif; ?>
                 </td>
-                <td colspan="3" title="<?= e($customer['address'] ?? '') ?>"><?= e($customer['address'] ?? '') ?></td>
+                <td colspan="4" title="<?= e($customer['address'] ?? '') ?>"><?= e($customer['address'] ?? '') ?></td>
                 <td><?= e($customer['zip'] ?? '') ?></td>
                 <td><?= e($customer['phone'] ?? '') ?></td>
                 <td><?= e($customer['mail'] ?? '') ?></td>
