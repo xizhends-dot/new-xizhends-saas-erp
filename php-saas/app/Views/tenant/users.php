@@ -31,7 +31,7 @@
                 <option value="purchase">采购订单</option>
                 <option value="jp">日本仓发货</option>
                 <option value="mail">邮件中心</option>
-                <option value="profit">利润分析</option>
+                <option value="profit">利润核算分析</option>
             </select></label>
             <div class="wide">
                 <span class="detail-lb">店铺范围</span>

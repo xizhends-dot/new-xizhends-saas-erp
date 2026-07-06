@@ -21,7 +21,7 @@ $purchaseStatusOptionsJson = json_encode([
     'pending' => $statusOptions,
     'jp_stock' => $jpStockStatusOptions,
 ], $jsonFlags) ?: '{}';
-$sourceOptions = ['cn_purchase' => '国内采购', 'jp_stock' => '日本仓', 'pending' => '待定'];
+$sourceOptions = ['cn_purchase' => '国内采购', 'jp_stock' => '日本仓'];
 $outOptions = ['待分配', '已分配', '已出库', '已发货'];
 $canEditOrders = (bool) ($canEditOrders ?? false);
 $canEditPurchase = (bool) ($canEditPurchase ?? false);
@@ -204,6 +204,9 @@ $priceQuoteAttrs = static function (array $item) use ($canPriceQuote): string {
                             <?php foreach ($sourceOptions as $value => $label): ?>
                                 <option value="<?= e($value) ?>" <?= ($item['source_type'] ?? '') === $value ? 'selected' : '' ?>><?= e($label) ?></option>
                             <?php endforeach; ?>
+                            <?php if (($item['source_type'] ?? '') === 'pending'): ?>
+                                <option value="pending" selected>待定</option>
+                            <?php endif; ?>
                         </select></label>
                     <?php endif; ?>
                     <?php if ($canEditOrders || $canEditPurchase): ?>

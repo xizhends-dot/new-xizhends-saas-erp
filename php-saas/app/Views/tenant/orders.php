@@ -59,6 +59,12 @@ foreach ($filters as $filterKey => $hiddenFilterValue) {
 $statusOptions = array_values(array_filter(array_map('strval', is_array($statusOptions ?? null) ? $statusOptions : [])));
 $jpStockStatusOptions = array_values(array_filter(array_map('strval', is_array($jpStockStatusOptions ?? null) ? $jpStockStatusOptions : [])));
 $mergedStatusOptions = array_values(array_unique(array_merge($statusOptions, $jpStockStatusOptions)));
+$groupedStatusOptions = [
+    ['value' => '', 'label' => '---国内采购---', 'disabled' => true],
+    ...array_map(static fn (string $status): array => ['value' => $status, 'label' => $status], $statusOptions),
+    ['value' => '', 'label' => '---日本仓---', 'disabled' => true],
+    ...array_map(static fn (string $status): array => ['value' => $status, 'label' => $status], $jpStockStatusOptions),
+];
 $statusOptionsForSource = static function (string $sourceType) use ($statusOptions, $jpStockStatusOptions, $mergedStatusOptions): array {
     return match ($sourceType) {
         'jp_stock' => $jpStockStatusOptions,
@@ -77,7 +83,12 @@ $statusOptionsFor = static function (mixed $current, string $sourceType = 'pendi
 };
 $jsonFlags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
 $statusFilterOptionsJson = json_encode([
-    'all' => $mergedStatusOptions,
+    'all' => [
+        ['label' => '---国内采购---', 'disabled' => true],
+        ...array_map(static fn (string $status): array => ['value' => $status, 'label' => $status], $statusOptions),
+        ['label' => '---日本仓---', 'disabled' => true],
+        ...array_map(static fn (string $status): array => ['value' => $status, 'label' => $status], $jpStockStatusOptions),
+    ],
     'cn_purchase' => $statusOptions,
     'pending' => $statusOptions,
     'jp_stock' => $jpStockStatusOptions,
@@ -86,13 +97,18 @@ $filterFields = array_values(array_filter(
     is_array($filterFields ?? null) ? $filterFields : [],
     static fn (mixed $field): bool => is_array($field) && trim((string) ($field['key'] ?? '')) !== ''
 ));
+$receiptCityOptions = array_values(array_filter(array_map('strval', is_array($receiptCityOptions ?? null) ? $receiptCityOptions : []), static fn (string $place): bool => trim($place) !== ''));
 $visibleForView = static function (array $field) use ($orderView): bool {
     $views = is_array($field['views'] ?? null) ? $field['views'] : ['platform', 'purchase', 'jp'];
 
     return in_array($orderView, array_map('strval', $views), true);
 };
-$basicFields = array_values(array_filter($filterFields, static fn (array $field): bool => ($field['section'] ?? 'basic') === 'basic' && $visibleForView($field)));
-$advancedFields = array_values(array_filter($filterFields, static fn (array $field): bool => ($field['section'] ?? 'basic') === 'advanced' && $visibleForView($field)));
+$pageSizeFields = array_values(array_filter($filterFields, static fn (array $field): bool => ($field['key'] ?? '') === 'page_size' && $visibleForView($field)));
+$pageSizeField = $pageSizeFields[0] ?? null;
+$basicFields = array_values(array_filter($filterFields, static fn (array $field): bool => ($field['section'] ?? 'basic') === 'basic' && ($field['key'] ?? '') !== 'page_size' && $visibleForView($field)));
+$dateRangeFields = array_values(array_filter($filterFields, static fn (array $field): bool => ($field['key'] ?? '') === 'date_range' && $visibleForView($field)));
+$dateRangeField = $dateRangeFields[0] ?? null;
+$advancedFields = array_values(array_filter($filterFields, static fn (array $field): bool => ($field['section'] ?? 'basic') === 'advanced' && ($field['key'] ?? '') !== 'date_range' && $visibleForView($field)));
 $flagFields = array_values(array_filter($filterFields, static fn (array $field): bool => ($field['section'] ?? 'basic') === 'flags' && $visibleForView($field)));
 $exportTools = array_values(array_filter(
     is_array($exportTools ?? null) ? $exportTools : [],
@@ -117,16 +133,14 @@ $urlWithQuery = static function (string $path, array $params): string {
     return $path . ($params ? '?' . http_build_query($params) : '');
 };
 $exportUrl = static fn (string $path, array $extra = []): string => $urlWithQuery($path, array_merge($hiddenFilters, $extra));
-$fieldOptions = static function (array $field) use ($statusOptionsForSource, $source, $orderView, $storeNames): array {
+$fieldOptions = static function (array $field) use ($statusOptionsForSource, $source, $orderView, $storeNames, $receiptCityOptions, $groupedStatusOptions): array {
     $key = (string) ($field['key'] ?? '');
     if (($field['optionsKey'] ?? '') === 'statusOptions') {
         if ($orderView === 'jp') {
-            return [
-                ['value' => '待分配', 'label' => '待分配'],
-                ['value' => '已分配', 'label' => '已分配'],
-                ['value' => '已出库', 'label' => '已出库'],
-                ['value' => '已发货', 'label' => '已发货'],
-            ];
+            return array_map(static fn (string $status): array => ['value' => $status, 'label' => $status], $statusOptionsForSource('jp_stock'));
+        }
+        if ($orderView === 'platform' && (string) ($source ?? 'all') === 'all') {
+            return $groupedStatusOptions;
         }
 
         return array_map(static fn (string $status): array => ['value' => $status, 'label' => $status], $statusOptionsForSource((string) ($source ?? 'all')));
@@ -134,8 +148,20 @@ $fieldOptions = static function (array $field) use ($statusOptionsForSource, $so
     if (($field['optionsKey'] ?? '') === 'storeNames') {
         return array_map(static fn (string $name): array => ['value' => $name, 'label' => $name], $storeNames);
     }
+    if (($field['optionsKey'] ?? '') === 'receiptCityOptions') {
+        return array_map(static fn (string $place): array => ['value' => $place, 'label' => $place], $receiptCityOptions);
+    }
     if (is_array($field['options'] ?? null)) {
-        return is_array($field['options'] ?? null) ? $field['options'] : [];
+        $options = is_array($field['options'] ?? null) ? $field['options'] : [];
+        if ($key === 'source') {
+            $sourceOrder = ['all' => 0, 'cn_purchase' => 1, 'jp_stock' => 2, 'pending' => 3];
+            usort($options, static function (array $left, array $right) use ($sourceOrder): int {
+                $leftValue = (string) ($left['value'] ?? $left['label'] ?? '');
+                $rightValue = (string) ($right['value'] ?? $right['label'] ?? '');
+                return ($sourceOrder[$leftValue] ?? 99) <=> ($sourceOrder[$rightValue] ?? 99);
+            });
+        }
+        return $options;
     }
 
     return [];
@@ -152,15 +178,12 @@ $fieldCurrentValue = static function (array $field) use ($filterValue, $keyword,
 
     return $filterValue($key);
 };
-$renderFilterField = static function (array $field, string $extraClass = '') use ($fieldOptions, $fieldCurrentValue, $statusFilterOptionsJson, $orderView, $checkedFilter): void {
+$renderFilterField = static function (array $field, string $extraClass = '') use ($fieldOptions, $fieldCurrentValue, $statusFilterOptionsJson, $orderView, $source, $checkedFilter): void {
     $key = (string) ($field['key'] ?? '');
     $name = (string) ($field['name'] ?? $key);
     $label = (string) ($field['label'] ?? $key);
     $type = (string) ($field['type'] ?? 'text');
     $value = $fieldCurrentValue($field);
-    if ($key === 'status' && $orderView === 'jp') {
-        $label = '出库状态';
-    }
     if ($key === 'buyer' && $orderView === 'jp') {
         $label = '发货员';
     }
@@ -171,7 +194,7 @@ $renderFilterField = static function (array $field, string $extraClass = '') use
     if ($key === 'source' && $orderView === 'platform') {
         $selectAttrs = ' data-order-source-filter';
     }
-    $class = trim('fg order-search-field order-search-field-' . $key . ' ' . $extraClass);
+    $class = trim('fg order-search-field order-search-field-' . $key . ($type === 'date_range' ? ' order-date-range-field' : '') . ' ' . $extraClass);
     ?>
     <label class="<?= e($class) ?>">
         <span class="lb"><?= e($label) ?></span>
@@ -189,7 +212,7 @@ $renderFilterField = static function (array $field, string $extraClass = '') use
                 <?php endif; ?>
                 <?php
                 $options = $fieldOptions($field);
-                $optionValues = array_map(static fn (array $option): string => (string) ($option['value'] ?? $option['label'] ?? ''), $options);
+                $optionValues = array_map(static fn (array $option): string => (string) ($option['value'] ?? $option['label'] ?? ''), array_filter($options, static fn (array $option): bool => empty($option['disabled'])));
                 if ($value !== '' && $value !== '__ALL__' && !in_array($value, $optionValues, true)) {
                     $options[] = ['value' => $value, 'label' => $value];
                 }
@@ -199,7 +222,7 @@ $renderFilterField = static function (array $field, string $extraClass = '') use
                     $optionValue = (string) ($option['value'] ?? $option['label'] ?? '');
                     $optionLabel = (string) ($option['label'] ?? $optionValue);
                     ?>
-                    <option value="<?= e($optionValue) ?>" <?= e($value === $optionValue ? 'selected' : '') ?>><?= e($optionLabel) ?></option>
+                    <option value="<?= e($optionValue) ?>" <?= !empty($option['disabled']) ? 'disabled' : e($value === $optionValue ? 'selected' : '') ?>><?= e($optionLabel) ?></option>
                 <?php endforeach; ?>
             </select>
         <?php elseif ($type === 'checkbox'): ?>
@@ -211,10 +234,10 @@ $renderFilterField = static function (array $field, string $extraClass = '') use
             $fromValueKey = $orderView === 'platform' ? 'order_date_from' : 'date_from';
             $toValueKey = $orderView === 'platform' ? 'order_date_to' : 'date_to';
             ?>
-            <span class="dwrap">
-                <input type="date" name="<?= e($fromName) ?>" value="<?= e($fieldCurrentValue(['key' => $fromValueKey])) ?>">
-                <span>至</span>
-                <input type="date" name="<?= e($toName) ?>" value="<?= e($fieldCurrentValue(['key' => $toValueKey])) ?>">
+            <span class="order-date-range-control">
+                <input class="order-date-input" type="date" name="<?= e($fromName) ?>" value="<?= e($fieldCurrentValue(['key' => $fromValueKey])) ?>">
+                <span class="order-date-range-sep">至</span>
+                <input class="order-date-input" type="date" name="<?= e($toName) ?>" value="<?= e($fieldCurrentValue(['key' => $toValueKey])) ?>">
             </span>
         <?php else: ?>
             <input type="<?= e($type === 'date' ? 'date' : 'text') ?>" name="<?= e($name) ?>" value="<?= e($value) ?>" placeholder="<?= e($label) ?>">
@@ -295,7 +318,7 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
         <div class="order-workbench-panel order-search-panel">
             <div class="order-panel-head">
                 <span>搜索</span>
-                <span class="sub">当前 <?= e($platformLabel) ?> · <?= e($resultTotal) ?> <?= e($resultLabel) ?></span>
+                <span class="sub">当前 <?= e($platformLabel) ?></span>
             </div>
             <form class="order-filter order-filter-modern" method="get" action="/orders">
                 <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
@@ -305,20 +328,30 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
                     <input type="hidden" name="source" value="<?= e((string) ($source ?? 'all')) ?>">
                 <?php endif; ?>
 
+                <div class="order-search-summary">
+                    <div class="fsum">共 <strong><?= e($resultTotal) ?></strong> <?= e($resultLabel) ?></div>
+                    <?php if (is_array($pageSizeField)): ?>
+                        <?php $renderFilterField($pageSizeField, 'order-page-size-field'); ?>
+                    <?php endif; ?>
+                </div>
+
                 <div class="order-search-grid">
                     <?php foreach ($basicFields as $field): ?>
-                        <?php $renderFilterField($field, ((string) ($field['key'] ?? '') === 'status') ? 'order-status-filter-row' : ''); ?>
+                        <?php $renderFilterField($field); ?>
                     <?php endforeach; ?>
                 </div>
 
                 <?php if ($advancedFields || $flagFields): ?>
                     <div class="filter-adv" id="<?= e($advancedId) ?>">
                         <div class="filter-adv-title">更多筛选</div>
-                        <?php if ($advancedFields): ?>
+                        <?php if ($advancedFields || is_array($dateRangeField)): ?>
                             <div class="order-search-grid">
                                 <?php foreach ($advancedFields as $field): ?>
-                                    <?php $renderFilterField($field, ((string) ($field['type'] ?? '') === 'date_range') ? 'col2' : ''); ?>
+                                    <?php $renderFilterField($field); ?>
                                 <?php endforeach; ?>
+                                <?php if (is_array($dateRangeField)): ?>
+                                    <?php $renderFilterField($dateRangeField); ?>
+                                <?php endif; ?>
                             </div>
                         <?php endif; ?>
                         <?php if ($flagFields): ?>
@@ -341,7 +374,6 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
                     <?php if ($advancedFields || $flagFields): ?>
                         <button class="more-btn" type="button" data-adv="<?= e($advancedId) ?>">更多筛选 <span class="arr">▾</span></button>
                     <?php endif; ?>
-                    <div class="fsum">共 <strong><?= e($resultTotal) ?></strong> <?= e($resultLabel) ?></div>
                     <div class="fsp"></div>
                     <button class="btn btn-p search-btn" type="submit">搜索</button>
                     <a class="btn reset-btn" href="/orders?tenant=<?= e($tenantKey) ?>&view=<?= e($orderView) ?><?= e($platform ? '&platform=' . (string) $platform : '') ?>">重置</a>
@@ -523,8 +555,6 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
 
     <div class="pager">
         <div class="pager-info">
-            <span>每页</span>
-            <select><option>50</option><option>100</option><option selected>200</option></select>
             <span>第 <?= count($orders) ? '1-' . e(count($orders)) : '0' ?> 条，共 <?= e(count($orders)) ?> 条</span>
         </div>
         <div class="pager-btns">

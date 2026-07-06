@@ -13,6 +13,7 @@ use Xizhen\Services\AuthService;
 use Xizhen\Services\CsvImportService;
 use Xizhen\Services\CustomerExportService;
 use Xizhen\Services\CustomerServiceDeductionService;
+use Xizhen\Services\ExchangeRateService;
 use Xizhen\Services\ExpressLogisticsService;
 use Xizhen\Services\FinanceExportRequirementService;
 use Xizhen\Services\FinanceImportMatcherService;
@@ -58,6 +59,7 @@ abstract class TenantBaseController
     protected PerformanceStatsService $performanceStatsService;
     protected PurchaseStatsService $purchaseStatsService;
     protected PriceCalculatorService $priceCalculatorService;
+    protected ExchangeRateService $exchangeRateService;
     protected PlatformExportService $platformExportService;
     protected ExportTemplateService $exportTemplateService;
     protected FinanceImportMatcherService $financeImportMatcherService;
@@ -91,6 +93,7 @@ abstract class TenantBaseController
         $this->performanceStatsService = new PerformanceStatsService($store);
         $this->purchaseStatsService = new PurchaseStatsService($store);
         $this->priceCalculatorService = new PriceCalculatorService($store);
+        $this->exchangeRateService = new ExchangeRateService();
         $this->platformExportService = new PlatformExportService();
         $this->exportTemplateService = new ExportTemplateService($store);
         $this->financeImportMatcherService = new FinanceImportMatcherService();

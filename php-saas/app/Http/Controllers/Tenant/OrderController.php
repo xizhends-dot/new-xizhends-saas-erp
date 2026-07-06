@@ -95,6 +95,14 @@ final class OrderController extends TenantBaseController
 
         $tenant = $this->store->tenant($tenantKey);
         $statusOptions = $this->service->purchaseStatuses($tenantKey);
+        $jpStockStatusOptions = $this->purchaseStatusService->jpStockStatusesFor($tenantKey);
+        $settings = $this->store->tenantSettings($tenantKey);
+        $logisticsSettings = is_array($settings['logistics'] ?? null) ? $settings['logistics'] : [];
+        $receiptCityOptions = $this->receiptCityOptionsFromSettings((string) ($logisticsSettings['domestic_receive_places'] ?? ''));
+        $stores = $this->service->storesForTenant($tenantKey);
+        if ($platform !== '') {
+            $stores = array_values(array_filter($stores, static fn (array $store): bool => (string) ($store['platform'] ?? '') === $platform));
+        }
         $this->view->render('tenant/orders', [
             'title' => $this->viewTitle($view),
             'tenantKey' => $tenantKey,
@@ -110,9 +118,10 @@ final class OrderController extends TenantBaseController
             'filters' => $filters,
             'platformNames' => $this->service->tenantPlatformNames($tenantKey),
             'platformSyncServices' => $this->platformOrderSyncRegistry->names(),
-            'stores' => $this->service->storesForTenant($tenantKey),
+            'stores' => $stores,
             'statusOptions' => $statusOptions,
-            'jpStockStatusOptions' => PurchaseStatusService::JP_STOCK_STATUSES,
+            'jpStockStatusOptions' => $jpStockStatusOptions,
+            'receiptCityOptions' => $receiptCityOptions,
             'filterFields' => $orderPageConfigRegistry->filterFieldsFor($platform),
             'exportTools' => $orderPageConfigRegistry->exportToolsFor($platform, $currentUser ?? []),
             'canEditOrders' => $canEditFeature && $this->auth->tenantCan($tenantKey, '订单编辑'),
@@ -134,6 +143,17 @@ final class OrderController extends TenantBaseController
             'tenantNotices' => $this->tenantNoticeService->orderPageNotices($tenantKey, $currentUser),
             'currentUser' => $currentUser,
         ]);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function receiptCityOptionsFromSettings(string $places): array
+    {
+        return array_values(array_unique(array_filter(
+            array_map('trim', preg_split('/[\r\n,，、]+/u', $places) ?: []),
+            static fn (string $place): bool => $place !== ''
+        )));
     }
 
     public function changeSource(): void
@@ -245,7 +265,7 @@ final class OrderController extends TenantBaseController
             'attachments' => $this->store->orderAttachments($tenantKey, $orderId),
             'platformNames' => $this->service->tenantPlatformNames($tenantKey),
             'statusOptions' => $this->service->purchaseStatuses($tenantKey),
-            'jpStockStatusOptions' => PurchaseStatusService::JP_STOCK_STATUSES,
+            'jpStockStatusOptions' => $this->purchaseStatusService->jpStockStatusesFor($tenantKey),
             'returnUrl' => (string) ($_GET['return'] ?? "/orders?tenant={$tenantKey}"),
             'canEditOrders' => $canEditFeature && $this->auth->tenantCan($tenantKey, '订单编辑'),
             'canEditPurchase' => $canEditFeature && $this->service->tenantFeatureEnabled($tenantKey, 'orders.purchase') && Permission::hasAny($currentUser, ['订单编辑', '采购状态']),

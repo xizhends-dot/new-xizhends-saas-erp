@@ -48,6 +48,9 @@ final class SettingsRepository extends BaseRepository
         if (array_key_exists('purchase_statuses', $data)) {
             $settings['purchase_statuses'] = $data['purchase_statuses'];
         }
+        if (array_key_exists('jp_stock_purchase_statuses', $data)) {
+            $settings['jp_stock_purchase_statuses'] = $data['jp_stock_purchase_statuses'];
+        }
         if (array_key_exists('order_export_tools', $data)) {
             $settings['order_export_tools'] = $data['order_export_tools'];
         }
@@ -58,7 +61,7 @@ final class SettingsRepository extends BaseRepository
             $stmt = $tenantPdo->prepare(
                 'INSERT INTO tenant_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()'
             );
-            foreach (['company', 'orders', 'profit', 'logistics', 'api_1688', 'notices', 'export_templates', 'purchase_statuses', 'order_export_tools'] as $section) {
+            foreach (['company', 'orders', 'profit', 'logistics', 'api_1688', 'notices', 'export_templates', 'purchase_statuses', 'jp_stock_purchase_statuses', 'order_export_tools'] as $section) {
                 $stmt->execute([
                     $section,
                     // INVALID_UTF8_SUBSTITUTE：个别非法字节替换为 U+FFFD，避免 json_encode
@@ -311,6 +314,7 @@ final class SettingsRepository extends BaseRepository
                     'yp' => 70,
                 ],
                 'store_deduction_enabled' => true,
+                'excluded_purchase_statuses' => ['已取消', '客人取消订单'],
             ],
             'logistics' => [
                 'domestic_receive_places' => '',
@@ -325,6 +329,7 @@ final class SettingsRepository extends BaseRepository
                 'config_file' => 'storage/tenants/' . $this->tenantStorageKey((string) ($tenant['key'] ?? '')) . '/config/1688/apikeys.conf',
                 'config_content' => '',
             ],
+            'jp_stock_purchase_statuses' => [],
             'updated_at' => '',
         ];
     }

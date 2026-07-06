@@ -75,6 +75,10 @@ $check('采购状态字段选项来源', $rakutenFields['status']['optionsKey'] 
 $check('店铺字段选项来源', $rakutenFields['store']['optionsKey'] ?? null, 'storeNames');
 $check('客人姓名字段标签', $rakutenFields['customer_name']['label'] ?? null, '客人姓名');
 $check('采购状态字段位于基础区', $rakutenFields['status']['section'] ?? null, 'basic');
+$check('ItemId 查询字段位于基础区', $rakutenFields['item_id']['section'] ?? null, 'basic');
+$check('ItemId 查询字段标签', $rakutenFields['item_id']['label'] ?? null, 'ItemId查询');
+$check('国内签收地字段类型', $rakutenFields['receipt_city']['type'] ?? null, 'select');
+$check('国内签收地字段选项来源', $rakutenFields['receipt_city']['optionsKey'] ?? null, 'receiptCityOptions');
 $check('国内物流超时发货字段标签', $rakutenFields['late_ship']['label'] ?? null, '【国内物流】超时发货');
 $check('超时发货字段位于标记区', $rakutenFields['late_ship']['section'] ?? null, 'flags');
 $check('国际运单状态字段类型', $rakutenFields['intl_ship_empty']['type'] ?? null, 'select');
@@ -88,6 +92,7 @@ $check('日期范围字段类型', $rakutenFields['date_range']['type'] ?? null,
 $check('乐天日期开始字段名', $rakutenFields['date_range']['from'] ?? null, 'OrderTime');
 $check('乐天日期结束字段名', $rakutenFields['date_range']['to'] ?? null, 'OrderTime2');
 $check('每页显示字段类型', $rakutenFields['page_size']['type'] ?? null, 'select');
+$check('每页显示字段位于控制区', $rakutenFields['page_size']['section'] ?? null, 'control');
 $check('每页显示选项数', count($rakutenFields['page_size']['options'] ?? []), 4);
 
 $checkTrue('Yahoo购物显示邀评', $has('y', 'review_invited'));

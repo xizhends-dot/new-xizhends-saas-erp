@@ -52,9 +52,9 @@ final class StatsController extends TenantBaseController
         $this->auth->requireTenantPermission($tenantKey, '利润分析');
         $currentUser = $this->auth->currentTenantUser($tenantKey);
         $this->renderTenant('tenant/profit', $tenantKey, [
-            'title' => '利润分析',
+            'title' => '利润核算分析',
             'active' => 'profit',
-            'summary' => $this->service->profitSummary($tenantKey, $currentUser),
+            'analysis' => $this->service->profitAnalysis($tenantKey, $currentUser, $_GET),
             'legacySettings' => $this->legacySettings->summary(),
         ]);
     }

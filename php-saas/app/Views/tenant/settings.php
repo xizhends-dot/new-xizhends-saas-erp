@@ -5,7 +5,10 @@ $profit = is_array($settings['profit'] ?? null) ? $settings['profit'] : [];
 $logistics = is_array($settings['logistics'] ?? null) ? $settings['logistics'] : [];
 $api1688 = is_array($settings['api_1688'] ?? null) ? $settings['api_1688'] : [];
 $platformDeductions = is_array($profit['platform_deductions'] ?? null) ? $profit['platform_deductions'] : [];
+$excludedProfitStatuses = array_flip(array_values(array_filter(array_map('strval', is_array($profit['excluded_purchase_statuses'] ?? null) ? $profit['excluded_purchase_statuses'] : ['已取消', '客人取消订单']))));
 $purchaseStatuses = array_values(array_filter(array_map('strval', is_array($purchaseStatuses ?? null) ? $purchaseStatuses : [])));
+$profitExclusionStatusOptions = array_values(array_unique(array_merge($purchaseStatuses, array_keys($excludedProfitStatuses))));
+$jpStockPurchaseStatuses = array_values(array_filter(array_map('strval', is_array($jpStockPurchaseStatuses ?? null) ? $jpStockPurchaseStatuses : [])));
 $systemPurchaseStatuses = is_array($systemPurchaseStatuses ?? null) ? $systemPurchaseStatuses : [];
 $purchaseStatusSaved = ($saved ?? '') === 'purchase_statuses';
 $settingsSaved = ($saved ?? '') === '1';
@@ -14,7 +17,7 @@ $settingsTabs = [
     ['key' => 'company', 'title' => '公司资料', 'desc' => '登录页、侧栏与租户资料'],
     ['key' => 'orders', 'title' => '订单参数', 'desc' => '查询默认值与归档策略'],
     ['key' => 'purchase-statuses', 'title' => '采购状态', 'desc' => '状态清单与显示顺序'],
-    ['key' => 'profit', 'title' => '利润参数', 'desc' => '利润分析与财务导出口径'],
+    ['key' => 'profit', 'title' => '利润参数', 'desc' => '利润核算分析与财务导出口径'],
     ['key' => 'logistics', 'title' => '国内快递', 'desc' => '签收地与国内物流口径'],
     ['key' => 'api1688', 'title' => '1688 接口', 'desc' => '租户业务接口配置'],
 ];
@@ -29,7 +32,7 @@ $settingsTabs = [
 </div>
 
 <?php if ($settingsSaved): ?>
-    <div class="notice">设置已保存，利润分析和导出报表会使用新的口径。</div>
+    <div class="notice">设置已保存，利润核算分析和导出报表会使用新的口径。</div>
 <?php endif; ?>
 <?php if ($purchaseStatusSaved): ?>
     <div class="notice">采购状态已保存，订单页和导出模板会使用新的清单顺序。</div>
@@ -89,38 +92,64 @@ $settingsTabs = [
 
             <section class="panel settings-pane" id="settings-pane-purchase-statuses" data-settings-pane="purchase-statuses" role="tabpanel" hidden>
                 <div class="panel-head"><span>采购状态</span><span class="sub">删除状态不会改动历史订单；历史值仍会在编辑时保留</span></div>
-                <div class="panel-body purchase-status-editor" data-purchase-status-editor>
-                    <div class="purchase-status-list" data-purchase-status-list>
-                        <?php foreach ($purchaseStatuses as $status): ?>
-                            <?php
-                            $lockReason = (string) ($systemPurchaseStatuses[$status] ?? '');
-                            $locked = $lockReason !== '';
-                            ?>
-                            <div class="purchase-status-row" data-purchase-status-row data-locked="<?= $locked ? '1' : '0' ?>">
-                                <input class="purchase-status-name" value="<?= e($status) ?>" <?= $locked ? 'readonly' : '' ?> maxlength="32" data-purchase-status-name>
-                                <?php if ($locked): ?>
-                                    <span class="status-lock-tag" title="<?= e($lockReason) ?>">系统状态·自动化依赖</span>
-                                <?php endif; ?>
-                                <div class="purchase-status-actions">
-                                    <button class="btn-xs" type="button" data-purchase-status-move="up">上移</button>
-                                    <button class="btn-xs" type="button" data-purchase-status-move="down">下移</button>
-                                    <button class="btn-xs danger-text" type="button" data-purchase-status-delete <?= $locked ? 'disabled' : '' ?>>删除</button>
+                <div class="panel-body">
+                    <div class="purchase-status-editor" data-purchase-status-editor="statuses_json">
+                        <div class="setting-section-title">国内采购</div>
+                        <div class="purchase-status-list" data-purchase-status-list>
+                            <?php foreach ($profitExclusionStatusOptions as $status): ?>
+                                <?php
+                                $lockReason = (string) ($systemPurchaseStatuses[$status] ?? '');
+                                $locked = $lockReason !== '';
+                                ?>
+                                <div class="purchase-status-row" data-purchase-status-row data-locked="<?= $locked ? '1' : '0' ?>">
+                                    <input class="purchase-status-name" value="<?= e($status) ?>" <?= $locked ? 'readonly' : '' ?> maxlength="32" data-purchase-status-name>
+                                    <?php if ($locked): ?>
+                                        <span class="status-lock-tag" title="<?= e($lockReason) ?>">系统状态·自动化依赖</span>
+                                    <?php endif; ?>
+                                    <div class="purchase-status-actions">
+                                        <button class="btn-xs" type="button" data-purchase-status-move="up">上移</button>
+                                        <button class="btn-xs" type="button" data-purchase-status-move="down">下移</button>
+                                        <button class="btn-xs danger-text" type="button" data-purchase-status-delete <?= $locked ? 'disabled' : '' ?>>删除</button>
+                                    </div>
                                 </div>
-                            </div>
-                        <?php endforeach; ?>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="purchase-status-add">
+                            <input type="text" maxlength="32" placeholder="新增状态名称" data-purchase-status-new>
+                            <button class="btn" type="button" data-purchase-status-add>新增状态</button>
+                            <button class="btn primary" type="submit" form="purchase-status-form">保存两套采购状态</button>
+                            <button class="btn" type="submit" name="reset_purchase_statuses" value="1" form="purchase-status-form" onclick="return confirm('确定恢复默认国内采购状态清单?')">恢复国内默认</button>
+                        </div>
+                        <div class="setting-muted">系统状态可移动顺序，但不能改名或删除；服务端会再次校验完整清单。</div>
                     </div>
-                    <div class="purchase-status-add">
-                        <input type="text" maxlength="32" placeholder="新增状态名称" data-purchase-status-new>
-                        <button class="btn" type="button" data-purchase-status-add>新增状态</button>
-                        <button class="btn primary" type="submit" form="purchase-status-form">保存采购状态</button>
-                        <button class="btn" type="submit" name="reset" value="1" form="purchase-status-form" onclick="return confirm('确定恢复默认采购状态清单?')">恢复默认</button>
+
+                    <div class="purchase-status-editor" data-purchase-status-editor="jp_stock_statuses_json">
+                        <div class="setting-section-title">日本仓</div>
+                        <div class="purchase-status-list" data-purchase-status-list>
+                            <?php foreach ($jpStockPurchaseStatuses as $status): ?>
+                                <div class="purchase-status-row" data-purchase-status-row data-locked="0">
+                                    <input class="purchase-status-name" value="<?= e($status) ?>" maxlength="32" data-purchase-status-name>
+                                    <div class="purchase-status-actions">
+                                        <button class="btn-xs" type="button" data-purchase-status-move="up">上移</button>
+                                        <button class="btn-xs" type="button" data-purchase-status-move="down">下移</button>
+                                        <button class="btn-xs danger-text" type="button" data-purchase-status-delete>删除</button>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="purchase-status-add">
+                            <input type="text" maxlength="32" placeholder="新增日本仓状态名称" data-purchase-status-new>
+                            <button class="btn" type="button" data-purchase-status-add>新增状态</button>
+                            <button class="btn primary" type="submit" form="purchase-status-form">保存两套采购状态</button>
+                            <button class="btn" type="submit" name="reset_jp_stock_statuses" value="1" form="purchase-status-form" onclick="return confirm('确定恢复默认日本仓采购状态清单?')">恢复日本仓默认</button>
+                        </div>
+                        <div class="setting-muted">日本仓采购状态可自由新增、改名、删除和排序；不参与上方系统状态锁定。</div>
                     </div>
-                    <div class="setting-muted">系统状态可移动顺序，但不能改名或删除；服务端会再次校验完整清单。</div>
                 </div>
             </section>
 
             <section class="panel settings-pane" id="settings-pane-profit" data-settings-pane="profit" role="tabpanel" hidden>
-                <div class="panel-head"><span>利润参数</span><span class="sub">利润分析与财务导出口径</span></div>
+                <div class="panel-head"><span>利润参数</span><span class="sub">利润核算分析与财务导出口径</span></div>
                 <div class="panel-body form-grid">
                     <label><span>汇率</span><input type="number" step="0.0001" min="0.0001" name="exchange_rate" value="<?= e($profit['exchange_rate'] ?? 0.046) ?>"></label>
                     <label><span>汇率模式</span><select name="exchange_rate_mode">
@@ -133,6 +162,18 @@ $settingsTabs = [
                     <?php foreach (($platformNames ?? []) as $code => $name): ?>
                         <label><span><?= e($name) ?> 扣点/回款率</span><input type="number" step="0.01" min="0" max="100" name="platform_deductions[<?= e($code) ?>]" value="<?= e($platformDeductions[$code] ?? 70) ?>"></label>
                     <?php endforeach; ?>
+                    <div class="wide profit-status-exclusions">
+                        <span>不进入利润核算的采购状态</span>
+                        <div class="profit-status-exclusion-list">
+                            <?php foreach ($purchaseStatuses as $status): ?>
+                                <label>
+                                    <input type="checkbox" name="excluded_purchase_statuses[]" value="<?= e($status) ?>" <?= isset($excludedProfitStatuses[$status]) ? 'checked' : '' ?>>
+                                    <?= e($status) ?>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="setting-muted">被勾选的采购状态不会进入利润核算分析；即使页面选择“全部状态”，这些状态也会被排除。</div>
+                    </div>
                 </div>
             </section>
 
@@ -172,5 +213,6 @@ $settingsTabs = [
 <form id="purchase-status-form" method="post" action="/settings/purchase-statuses/save">
                 <?= csrf_field() ?>
     <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
-    <input type="hidden" name="statuses_json" value="" data-purchase-status-json>
+    <input type="hidden" name="statuses_json" value="" data-purchase-status-json="statuses_json">
+    <input type="hidden" name="jp_stock_statuses_json" value="" data-purchase-status-json="jp_stock_statuses_json">
 </form>

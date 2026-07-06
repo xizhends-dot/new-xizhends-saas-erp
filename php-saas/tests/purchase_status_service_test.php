@@ -119,6 +119,7 @@ file_put_contents($jsonPath, json_encode([
 $store = new JsonStore($jsonPath);
 $service = new PurchaseStatusService($store);
 $assertSame('设置缺失回退默认', $defaults, $service->statusesFor('erp'));
+$assertSame('日本仓设置缺失回退默认四项', PurchaseStatusService::defaultJpStockStatuses(), $service->jpStockStatusesFor('erp'));
 
 $save = $service->saveStatuses('erp', $withAaa);
 $assert('JsonStore 保存成功', ($save['ok'] ?? false) === true);
@@ -134,9 +135,27 @@ $assertSame('JsonStore 整体替换无旧值', $next, $freshStatuses);
 $assert('JsonStore 无 AAA 残留', !in_array('AAA', $freshStatuses, true));
 $assert('JsonStore 无刷单订单残留', !in_array('刷单订单', $freshStatuses, true));
 
+$jpCustom = ['JP-A', 'JP-B', 'JP-C'];
+$jpSave = $fresh->saveJpStockStatuses('erp', $jpCustom);
+$assert('日本仓状态保存成功', ($jpSave['ok'] ?? false) === true);
+$jpReadBack = (new PurchaseStatusService(new JsonStore($jsonPath)))->jpStockStatusesFor('erp');
+$assertSame('日本仓状态读回自定义清单', $jpCustom, $jpReadBack);
+$assertSame('日本仓 source 选项使用自定义清单', $jpCustom, PurchaseStatusService::statusOptionsForSource('jp_stock', $next, $jpCustom));
+$assertSame('国内 source 选项仍使用国内清单', $next, PurchaseStatusService::statusOptionsForSource('cn_purchase', $next, $jpCustom));
+$assert('日本仓空清单拒绝保存', $fresh->saveJpStockStatuses('erp', [])['ok'] === false);
+$jpNext = ['JP-B', 'JP-D'];
+$jpSave2 = $fresh->saveJpStockStatuses('erp', $jpNext);
+$assert('日本仓状态二次保存成功', ($jpSave2['ok'] ?? false) === true);
+$jpFreshStatuses = (new PurchaseStatusService(new JsonStore($jsonPath)))->jpStockStatusesFor('erp');
+$assertSame('日本仓状态整体替换无旧值', $jpNext, $jpFreshStatuses);
+$assert('日本仓状态无 JP-A 残留', !in_array('JP-A', $jpFreshStatuses, true));
+
 $fresh->resetStatuses('erp');
 $resetStatuses = (new PurchaseStatusService(new JsonStore($jsonPath)))->statusesFor('erp');
 $assertSame('JsonStore 恢复默认回退', $defaults, $resetStatuses);
+$fresh->resetJpStockStatuses('erp');
+$resetJpStatuses = (new PurchaseStatusService(new JsonStore($jsonPath)))->jpStockStatusesFor('erp');
+$assertSame('JsonStore 日本仓恢复默认回退', PurchaseStatusService::defaultJpStockStatuses(), $resetJpStatuses);
 
 @unlink($jsonPath);
 

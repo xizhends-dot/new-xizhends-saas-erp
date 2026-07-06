@@ -24,7 +24,7 @@ $number = static fn (mixed $value, int $decimals = 2): string => number_format((
     </div>
     <div class="head-actions">
         <a class="btn" href="/settings?tenant=<?= e($tenantKey) ?>">利润设置</a>
-        <a class="btn primary" href="/analytics/profit?tenant=<?= e($tenantKey) ?>">利润分析</a>
+        <a class="btn primary" href="/analytics/profit?tenant=<?= e($tenantKey) ?>">利润核算分析</a>
     </div>
 </div>
 

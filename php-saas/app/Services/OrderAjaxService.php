@@ -33,7 +33,7 @@ final class OrderAjaxService
             'returnUrl' => (string) ($context['returnUrl'] ?? tenant_url('/orders', $tenantKey)),
             'orderView' => (string) ($context['orderView'] ?? 'platform'),
             'statusOptions' => $this->app->purchaseStatuses($tenantKey),
-            'jpStockStatusOptions' => PurchaseStatusService::JP_STOCK_STATUSES,
+            'jpStockStatusOptions' => (new PurchaseStatusService($this->store))->jpStockStatusesFor($tenantKey),
             'currentUser' => $user,
         ]));
 
@@ -56,6 +56,7 @@ final class OrderAjaxService
             'order' => $order,
             'attachments' => $this->store->orderAttachments($tenantKey, $orderId),
             'statusOptions' => $this->app->purchaseStatuses($tenantKey),
+            'jpStockStatusOptions' => (new PurchaseStatusService($this->store))->jpStockStatusesFor($tenantKey),
         ]);
 
         return ['ok' => true, 'status' => 200, 'message' => '订单详情已刷新。', 'html' => $html, 'order' => $order];

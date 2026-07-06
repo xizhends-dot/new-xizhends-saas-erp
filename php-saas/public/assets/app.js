@@ -114,6 +114,10 @@ document.addEventListener('change', function (event) {
   if (target.matches('[data-order-source-filter]')) {
     syncOrderStatusFilter(target);
   }
+
+  if (target.matches('[data-batch-status-source]')) {
+    syncBatchStatusForSource(target);
+  }
 });
 
 document.addEventListener('submit', function (event) {
@@ -299,35 +303,56 @@ function parseStatusOptions(value) {
 function optionValuesForSource(options, source) {
   var key = source === 'jp_stock' || source === 'cn_purchase' || source === 'pending' ? source : 'all';
   var values = options[key] || [];
-  return Array.isArray(values) ? values.map(function (value) { return String(value); }).filter(Boolean) : [];
+  return Array.isArray(values) ? values.map(function (value) {
+    if (value && typeof value === 'object') {
+      return {
+        value: value.value === undefined || value.value === null ? '' : String(value.value),
+        label: value.label === undefined || value.label === null ? '' : String(value.label),
+        disabled: Boolean(value.disabled)
+      };
+    }
+    return String(value);
+  }).filter(function (value) {
+    return typeof value === 'string' ? value !== '' : value.label !== '';
+  }) : [];
 }
 
-function replaceStatusSelectOptions(select, values, current, includeAllOption, preserveMissing) {
+function replaceStatusSelectOptions(select, values, current, includeAllOption, preserveMissing, blankText) {
   if (!(select instanceof HTMLSelectElement)) return;
   var selected = current == null ? select.value : String(current);
-  var originalValues = values.slice();
+  var originalValues = values.map(function (value) {
+    return typeof value === 'string' ? value : String(value.value || '');
+  }).filter(Boolean);
   select.replaceChildren();
 
   if (includeAllOption) {
     var blank = document.createElement('option');
     blank.value = '';
-    blank.textContent = '— 待处理订单 —';
+    blank.textContent = blankText || '全部状态';
     select.appendChild(blank);
 
-    var all = document.createElement('option');
-    all.value = '__ALL__';
-    all.textContent = '全部订单';
-    select.appendChild(all);
+    if (blankText === '— 待处理订单 —') {
+      var all = document.createElement('option');
+      all.value = '__ALL__';
+      all.textContent = '全部订单';
+      select.appendChild(all);
+    }
   }
 
-  if (preserveMissing && selected !== '' && selected !== '__ALL__' && values.indexOf(selected) < 0) {
+  if (preserveMissing && selected !== '' && selected !== '__ALL__' && originalValues.indexOf(selected) < 0) {
     values = [selected].concat(values);
   }
 
   values.forEach(function (value) {
     var option = document.createElement('option');
-    option.value = value;
-    option.textContent = value;
+    if (value && typeof value === 'object') {
+      option.value = value.value || '';
+      option.textContent = value.label || value.value || '';
+      option.disabled = Boolean(value.disabled);
+    } else {
+      option.value = value;
+      option.textContent = value;
+    }
     select.appendChild(option);
   });
 
@@ -347,7 +372,7 @@ function syncPurchaseStatusForSource(sourceSelect) {
   var statusSelect = form.querySelector('[data-source-status-target]');
   if (!(statusSelect instanceof HTMLSelectElement)) return;
   var options = parseStatusOptions(statusSelect.getAttribute('data-status-options') || '{}');
-  replaceStatusSelectOptions(statusSelect, optionValuesForSource(options, sourceSelect.value), statusSelect.value, false, false);
+  replaceStatusSelectOptions(statusSelect, optionValuesForSource(options, sourceSelect.value), statusSelect.value, false, false, '');
 }
 
 function syncOrderStatusFilter(sourceSelect) {
@@ -357,7 +382,23 @@ function syncOrderStatusFilter(sourceSelect) {
   var statusSelect = form.querySelector('[data-order-status-filter]');
   if (!(statusSelect instanceof HTMLSelectElement)) return;
   var options = parseStatusOptions(statusSelect.getAttribute('data-status-options') || '{}');
-  replaceStatusSelectOptions(statusSelect, optionValuesForSource(options, sourceSelect.value), statusSelect.value, true, false);
+  statusSelect.disabled = false;
+  statusSelect.title = '';
+  replaceStatusSelectOptions(statusSelect, optionValuesForSource(options, sourceSelect.value), statusSelect.value, true, false, '全部状态');
+}
+
+function syncBatchStatusForSource(sourceSelect) {
+  if (!(sourceSelect instanceof HTMLSelectElement)) return;
+  var formId = sourceSelect.getAttribute('form') || '';
+  var form = formId ? document.getElementById(formId) : sourceSelect.closest('form');
+  if (!(form instanceof HTMLFormElement)) return;
+  var statusSelect = document.querySelector('[data-batch-status-target][form="' + form.id + '"]');
+  if (!(statusSelect instanceof HTMLSelectElement)) return;
+  var options = parseStatusOptions(statusSelect.getAttribute('data-status-options') || '{}');
+  var hasSpecificSource = sourceSelect.value === 'jp_stock' || sourceSelect.value === 'cn_purchase' || sourceSelect.value === 'pending';
+  statusSelect.disabled = !hasSpecificSource;
+  statusSelect.title = hasSpecificSource ? '' : '请先选择状态适用货源地';
+  replaceStatusSelectOptions(statusSelect, optionValuesForSource(options, sourceSelect.value), statusSelect.value, true, false, hasSpecificSource ? '选择状态' : '请先选择货源');
 }
 
 function initSettingsPane() {
@@ -419,15 +460,19 @@ function addPurchaseStatusRow(editor) {
 }
 
 function serializePurchaseStatuses(form) {
-  var output = form.querySelector('[data-purchase-status-json]');
-  var list = document.querySelector('[data-purchase-status-list]');
-  if (!(output instanceof HTMLInputElement) || !(list instanceof HTMLElement)) return;
-  var statuses = Array.prototype.map.call(list.querySelectorAll('[data-purchase-status-name]'), function (field) {
-    return field instanceof HTMLInputElement ? field.value.trim() : '';
-  }).filter(function (value) {
-    return value !== '';
+  document.querySelectorAll('[data-purchase-status-editor]').forEach(function (editor) {
+    if (!(editor instanceof HTMLElement)) return;
+    var key = editor.getAttribute('data-purchase-status-editor') || '';
+    var output = form.querySelector('[data-purchase-status-json="' + key + '"]');
+    var list = editor.querySelector('[data-purchase-status-list]');
+    if (!(output instanceof HTMLInputElement) || !(list instanceof HTMLElement)) return;
+    var statuses = Array.prototype.map.call(list.querySelectorAll('[data-purchase-status-name]'), function (field) {
+      return field instanceof HTMLInputElement ? field.value.trim() : '';
+    }).filter(function (value) {
+      return value !== '';
+    });
+    output.value = JSON.stringify(statuses);
   });
-  output.value = JSON.stringify(statuses);
 }
 
 if (document.readyState === 'loading') {
@@ -907,4 +952,61 @@ window.addEventListener('hashchange', initSettingsPane);
 
     hideOrderImagePreview();
   });
+})();
+
+(function () {
+  var urls = [
+    'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/jpy.json',
+    'https://latest.currency-api.pages.dev/v1/currencies/jpy.json'
+  ];
+
+  function pad(number) {
+    return String(number).padStart(2, '0');
+  }
+
+  function currentTimeText() {
+    var now = new Date();
+    return now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) + ' ' +
+      pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+  }
+
+  function fetchRate(index) {
+    if (index >= urls.length) return Promise.reject(new Error('rate fetch failed'));
+    return fetch(urls[index], { headers: { Accept: 'application/json' }, cache: 'no-store' })
+      .then(function (response) {
+        if (!response.ok) throw new Error('rate response ' + response.status);
+        return response.json();
+      })
+      .then(function (data) {
+        var rate = data && data.jpy ? Number(data.jpy.cny) : 0;
+        if (!rate || rate <= 0) throw new Error('rate payload invalid');
+        return rate;
+      })
+      .catch(function () {
+        return fetchRate(index + 1);
+      });
+  }
+
+  function refreshDashboardRate() {
+    var card = document.querySelector('[data-realtime-rate-card]');
+    if (!(card instanceof HTMLElement)) return;
+    var value = card.querySelector('[data-realtime-rate-value]');
+    var meta = card.querySelector('[data-realtime-rate-meta]');
+    var error = card.querySelector('[data-realtime-rate-error]');
+
+    fetchRate(0).then(function (rate) {
+      if (value) {
+        value.textContent = rate.toFixed(6);
+        value.classList.remove('is-fallback');
+      }
+      if (meta) meta.textContent = '1 JPY = CNY · FawazCurrencyAPI · ' + currentTimeText();
+      if (error) error.remove();
+    }).catch(function () {});
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', refreshDashboardRate);
+  } else {
+    refreshDashboardRate();
+  }
 })();

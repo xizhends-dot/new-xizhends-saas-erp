@@ -10,7 +10,7 @@
 </div>
 
 <?php
-$priceDefaults = is_array($priceDefaults ?? null) ? $priceDefaults : [];
+$realtimeRate = is_array($realtimeRate ?? null) ? $realtimeRate : ['rate' => 0.048, 'success' => false, 'source' => 'FawazCurrencyAPI', 'time' => '', 'error' => '实时汇率获取失败，显示默认汇率'];
 $formatNumber = static fn (mixed $value, int $decimals = 2): string => number_format((float) $value, $decimals, '.', '');
 ?>
 
@@ -18,20 +18,13 @@ $formatNumber = static fn (mixed $value, int $decimals = 2): string => number_fo
     <div class="stat"><div class="stat-label">待处理订单</div><div class="stat-value"><?= e($stats['pending_orders']) ?></div><div class="stat-sub">平台订单入口</div></div>
     <div class="stat"><div class="stat-label">国内采购子商品</div><div class="stat-value"><?= e($stats['purchase_items']) ?></div><div class="stat-sub">进入采购订单</div></div>
     <div class="stat"><div class="stat-label">日本仓发货</div><div class="stat-value"><?= e($stats['jp_stock_items']) ?></div><div class="stat-sub">进入日本仓队列</div></div>
-    <div class="stat"><div class="stat-label">待判定货源</div><div class="stat-value"><?= e($stats['pending_source_items']) ?></div><div class="stat-sub">需要客服改判</div></div>
-</section>
-
-<section class="panel dashboard-rate-panel" style="margin-top:14px;">
-    <div class="panel-head"><span>实时汇率</span><span class="sub">订单核价默认口径</span></div>
-    <div class="dashboard-rate-grid">
-        <div class="dashboard-rate-main">
-            <span>当前汇率</span>
-            <strong><?= e($formatNumber($priceDefaults['exchange_rate'] ?? 0.048, 4)) ?></strong>
-            <em><?= e((string) ($priceDefaults['exchange_rate_source'] ?? '固定汇率')) ?></em>
-        </div>
-        <div class="dashboard-rate-meta"><span>默认运费</span><strong>￥<?= e($formatNumber($priceDefaults['shipping'] ?? 40, 2)) ?></strong></div>
-        <div class="dashboard-rate-meta"><span>默认扣点</span><strong><?= e($formatNumber($priceDefaults['deduction'] ?? 70, 0)) ?>%</strong></div>
-        <a class="btn" href="/settings?tenant=<?= e($tenantKey) ?>#profit">调整利润参数</a>
+    <div class="stat stat-rate" data-realtime-rate-card>
+        <div class="stat-label">实时汇率</div>
+        <div class="stat-value <?= !empty($realtimeRate['success']) ? '' : 'is-fallback' ?>" data-realtime-rate-value><?= e($formatNumber($realtimeRate['rate'] ?? 0.048, 6)) ?></div>
+        <div class="stat-sub" data-realtime-rate-meta>1 JPY = CNY · <?= e((string) ($realtimeRate['source'] ?? 'FawazCurrencyAPI')) ?></div>
+        <?php if (empty($realtimeRate['success']) && !empty($realtimeRate['error'])): ?>
+            <div class="stat-sub stat-rate-error" data-realtime-rate-error><?= e((string) $realtimeRate['error']) ?></div>
+        <?php endif; ?>
     </div>
 </section>
 

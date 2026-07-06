@@ -1,0 +1,1070 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>订单页展示方案预览</title>
+  <style>
+    :root {
+      --green: #047857;
+      --green-dark: #003d00;
+      --green-deep: #064e3b;
+      --green-soft: #d9ecdf;
+      --line: #bcbcbc;
+      --head-khaki: #cccc99;
+      --head-blue: #99ccff;
+      --cell: #f6f6f6;
+      --page: #eaeaea;
+      --text: #1f2933;
+      --muted: #5f6b76;
+      --black: #111827;
+      --danger: #b91c1c;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--text);
+      font: 12px/1.45 "Microsoft YaHei", "Yu Gothic", "Meiryo", sans-serif;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .preview-shell {
+      min-width: 1240px;
+      padding-bottom: 40px;
+    }
+
+    .preview-top {
+      background: var(--green-dark);
+      color: #fff;
+      border-bottom: 4px solid #99cc99;
+    }
+
+    .preview-top-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      width: 99%;
+      margin: 0 auto;
+      min-height: 44px;
+    }
+
+    .preview-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .preview-title span {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 2px 8px;
+      background: #99cc99;
+      color: #003d00;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .preview-nav {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .preview-nav a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 28px;
+      padding: 0 12px;
+      border: 1px solid rgba(255,255,255,.45);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .preview-nav a:hover {
+      background: #99cc99;
+      color: #003d00;
+    }
+
+    .preview-note {
+      width: 99%;
+      margin: 12px auto;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+    }
+
+    .proposal {
+      width: 99%;
+      margin: 14px auto 22px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .proposal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 40px;
+      padding: 8px 10px;
+      background: #99cc99;
+      color: #003d00;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .proposal-head h2 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .proposal-head p {
+      margin: 0;
+      color: #064e3b;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .old-frame {
+      padding: 8px;
+      background: #fff;
+    }
+
+    .legacy-layout {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 1px;
+      background: var(--line);
+    }
+
+    .legacy-layout > tbody > tr > td {
+      background: #fff;
+      padding: 5px;
+      vertical-align: top;
+    }
+
+    .legacy-filter {
+      width: 100%;
+      border-collapse: collapse;
+      background: #d9ecff;
+    }
+
+    .legacy-filter td {
+      height: 30px;
+      padding: 3px 6px;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
+    .legacy-filter .label {
+      width: 82px;
+      text-align: right;
+      color: #223;
+      font-weight: 700;
+    }
+
+    .legacy-filter input,
+    .legacy-filter select {
+      height: 24px;
+      border: 1px solid #8a8f98;
+      background: #fff;
+      padding: 2px 5px;
+      font: inherit;
+      vertical-align: middle;
+    }
+
+    .legacy-filter .text-sm { width: 120px; }
+    .legacy-filter .text-md { width: 170px; }
+    .legacy-filter .date { width: 112px; }
+
+    .legacy-actions {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 34px;
+      padding: 5px 7px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #333;
+    }
+
+    .btn-old,
+    .btn-dark,
+    .btn-line {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 24px;
+      border: 1px solid #1e7e34;
+      background: #218838;
+      color: #fff;
+      padding: 3px 9px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn-dark {
+      border-color: #111827;
+      background: #111827;
+    }
+
+    .btn-line {
+      border-color: var(--green);
+      background: #fff;
+      color: var(--green);
+    }
+
+    .count-line {
+      margin-left: auto;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .order-group {
+      margin-top: 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .order-table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: separate;
+      border-spacing: 1px;
+      background: #fff;
+    }
+
+    .order-table th,
+    .order-table td {
+      padding: 5px;
+      text-align: center;
+      vertical-align: middle;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .order-table th {
+      color: #1f2933;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .order-table td {
+      background: var(--cell);
+      color: #2f3a45;
+    }
+
+    .order-table .khaki { background: var(--head-khaki); }
+    .order-table .blue { background: var(--head-blue); }
+    .order-table .left { text-align: left; }
+    .order-table .nowrap { white-space: nowrap; }
+    .order-table .money { color: #8a1c1c; font-weight: 800; }
+    .order-table .order-id { color: #003d00; font-weight: 900; }
+
+    .thumb {
+      display: inline-grid;
+      place-items: center;
+      width: 58px;
+      height: 58px;
+      border: 1px solid #9aa4b2;
+      background:
+        linear-gradient(0deg, rgba(4,120,87,.12), rgba(4,120,87,.12)),
+        #fff;
+      color: #065f46;
+      font-weight: 900;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 22px;
+      padding: 2px 8px;
+      border: 1px solid var(--green);
+      background: var(--green);
+      color: #fff;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .status-pill.black {
+      border-color: #111827;
+      background: #111827;
+    }
+
+    .status-pill.warn {
+      border-color: #92400e;
+      background: #92400e;
+    }
+
+    .status-pill.red {
+      border-color: #991b1b;
+      background: #991b1b;
+    }
+
+    .proposal-b .old-frame {
+      padding: 10px;
+      background: #f5f7f8;
+    }
+
+    .b-workbar {
+      display: grid;
+      grid-template-columns: minmax(720px, 1fr) minmax(330px, 390px);
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .b-panel {
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .b-panel-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 31px;
+      padding: 6px 8px;
+      background: var(--green-dark);
+      color: #fff;
+      font-weight: 800;
+    }
+
+    .b-filter-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 7px 9px;
+      padding: 8px;
+      background: #d9ecff;
+    }
+
+    .b-field {
+      display: grid;
+      grid-template-columns: 88px minmax(0, 1fr);
+      align-items: center;
+      gap: 5px;
+    }
+
+    .b-field span {
+      color: #25313b;
+      font-weight: 700;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .b-field input,
+    .b-field select {
+      width: 100%;
+      height: 25px;
+      border: 1px solid #87909b;
+      background: #fff;
+      padding: 2px 5px;
+      font: inherit;
+    }
+
+    .b-tools {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+      padding: 8px;
+    }
+
+    .b-tool {
+      min-height: 31px;
+      border: 1px solid #047857;
+      background: #fff;
+      color: #065f46;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .b-order-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 30px;
+      padding: 4px 7px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-bottom: 0;
+    }
+
+    .b-order-head strong {
+      color: var(--green-deep);
+      font-size: 13px;
+    }
+
+    .b-order-head .spacer { flex: 1; }
+
+    .b-order-table {
+      border: 1px solid var(--line);
+      border-top: 0;
+    }
+
+    .b-order-table .order-table {
+      border-spacing: 1px;
+    }
+
+    .b-order-table th {
+      background: #99ccff;
+    }
+
+    .b-order-table .buyer-head th {
+      background: #cccc99;
+    }
+
+    .b-order-table .purchase-head th {
+      background: #c6ded0;
+    }
+
+    .proposal-c .old-frame {
+      background: #eef2f1;
+      padding: 10px;
+    }
+
+    .c-shell {
+      display: grid;
+      grid-template-columns: 230px minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    .c-sidebar {
+      border: 1px solid #1f2937;
+      background: #111827;
+      color: #fff;
+    }
+
+    .c-sidebar h3 {
+      margin: 0;
+      padding: 9px 10px;
+      border-bottom: 1px solid rgba(255,255,255,.18);
+      font-size: 13px;
+    }
+
+    .c-stat {
+      display: grid;
+      gap: 3px;
+      padding: 10px;
+      border-bottom: 1px solid rgba(255,255,255,.13);
+    }
+
+    .c-stat span {
+      color: #b8c2cc;
+      font-size: 11px;
+    }
+
+    .c-stat strong {
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .c-filter {
+      display: grid;
+      gap: 7px;
+      padding: 10px;
+    }
+
+    .c-filter input,
+    .c-filter select {
+      width: 100%;
+      height: 28px;
+      border: 1px solid #51606e;
+      background: #fff;
+      padding: 3px 6px;
+      font: inherit;
+    }
+
+    .c-main {
+      display: grid;
+      gap: 8px;
+    }
+
+    .c-command {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 36px;
+      padding: 5px 7px;
+      border: 1px solid #1f2937;
+      background: #fff;
+    }
+
+    .c-command .spacer { flex: 1; }
+
+    .c-order {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr) 220px;
+      border: 1px solid #1f2937;
+      background: #fff;
+    }
+
+    .c-order-left {
+      display: grid;
+      place-items: center;
+      gap: 4px;
+      padding: 8px 5px;
+      background: #003d00;
+      color: #fff;
+      text-align: center;
+      font-weight: 800;
+    }
+
+    .c-order-mid {
+      min-width: 0;
+      border-right: 1px solid #1f2937;
+    }
+
+    .c-order-meta {
+      display: grid;
+      grid-template-columns: 160px 120px minmax(0, 1fr) 120px;
+      border-bottom: 1px solid #1f2937;
+    }
+
+    .c-order-meta div {
+      min-height: 30px;
+      padding: 5px 7px;
+      border-right: 1px solid #cbd5e1;
+      background: #f6f6f6;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .c-order-meta div:last-child { border-right: 0; }
+
+    .c-lines {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .c-lines th,
+    .c-lines td {
+      padding: 5px 6px;
+      border-right: 1px solid #cbd5e1;
+      border-bottom: 1px solid #cbd5e1;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .c-lines th {
+      background: #99ccff;
+      font-weight: 800;
+    }
+
+    .c-lines td {
+      background: #fff;
+    }
+
+    .c-lines .left { text-align: left; }
+
+    .c-order-side {
+      display: grid;
+      align-content: start;
+      gap: 6px;
+      padding: 8px;
+      background: #f6f6f6;
+    }
+
+    .c-side-row {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr);
+      gap: 5px;
+      align-items: center;
+    }
+
+    .c-side-row span {
+      color: var(--muted);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .c-side-row strong {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .compare {
+      width: 99%;
+      margin: 0 auto 16px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .compare table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .compare th,
+    .compare td {
+      padding: 7px 9px;
+      border: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .compare th {
+      background: #99cc99;
+      color: #003d00;
+      font-weight: 900;
+    }
+
+    @media (max-width: 900px) {
+      .preview-shell { min-width: 1180px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-shell">
+    <header class="preview-top">
+      <div class="preview-top-inner">
+        <div class="preview-title">订单页展示方案预览 <span>只看效果，不影响正式系统</span></div>
+        <nav class="preview-nav" aria-label="方案导航">
+          <a href="#proposal-a">方案一</a>
+          <a href="#proposal-b">方案二</a>
+          <a href="#proposal-c">方案三</a>
+        </nav>
+      </div>
+    </header>
+
+    <div class="preview-note">
+      同一笔订单用三种展示方式输出。颜色取老系统和当前订单系统的翠绿色、深绿色、黑色、灰色表格线，不使用渐变。
+    </div>
+
+    <section class="compare">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:18%">方案</th>
+            <th>适合方向</th>
+            <th style="width:30%">主要变化</th>
+            <th style="width:18%">推荐程度</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>方案一：老系统还原</strong></td>
+            <td>最像原来的老系统订单页，适合先消除“不像”的感觉。</td>
+            <td>搜索区、操作条、收件人表、商品表、采购物流表都按老系统表格感处理。</td>
+            <td><span class="status-pill black">还原最高</span></td>
+          </tr>
+          <tr>
+            <td><strong>方案二：融合改良</strong></td>
+            <td>保留新系统功能，同时让订单块明显回到老系统视觉。</td>
+            <td>顶部仍是新系统工作区，但压缩高度；订单列表使用老系统色块和网格。</td>
+            <td><span class="status-pill">建议优先</span></td>
+          </tr>
+          <tr>
+            <td><strong>方案三：采购效率</strong></td>
+            <td>更强调采购、国内物流、日本物流的操作效率。</td>
+            <td>左侧筛选统计，中间商品行，右侧采购/物流状态，适合长期高频处理。</td>
+            <td><span class="status-pill warn">效率优先</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="proposal proposal-a" id="proposal-a">
+      <div class="proposal-head">
+        <h2>方案一：老系统还原版</h2>
+        <p>重点：尽量还原旧系统的表格密度、色块、操作条和订单块层级</p>
+      </div>
+      <div class="old-frame">
+        <table class="legacy-layout">
+          <tbody>
+            <tr>
+              <td>
+                <table class="legacy-filter">
+                  <tr>
+                    <td class="label">订单号：</td>
+                    <td><input class="text-md" value="R-250706-001">　1688订单号： <input class="text-sm" value="1688-778899"></td>
+                    <td class="label">收件人：</td>
+                    <td><input class="text-sm" value="田中"></td>
+                    <td class="label">采购状态：</td>
+                    <td>
+                      <select class="text-md">
+                        <option>－－待处理订单－－</option>
+                        <option selected>国内采购-准备</option>
+                        <option>国内采购-已采购</option>
+                        <option>已发日本</option>
+                      </select>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="label">订单时间：</td>
+                    <td><input class="date" value="2026-07-01"> 至 <input class="date" value="2026-07-06"></td>
+                    <td class="label">ItemId：</td>
+                    <td><input class="text-sm" value="ITEM-7788"></td>
+                    <td class="label">国际发货单号：</td>
+                    <td><input class="text-md" value="3680001112223"></td>
+                  </tr>
+                  <tr>
+                    <td class="label">标记：</td>
+                    <td colspan="5">
+                      <label><input type="checkbox" checked> 【国内物流】超时发货</label>　
+                      <label><input type="checkbox"> 【日本】配達中</label>　
+                      <label><input type="checkbox"> 【日本】配達完了</label>　
+                      <button class="btn-old">搜索</button>
+                      <button class="btn-line">重置</button>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="legacy-actions">
+                  <label>全选 <input type="checkbox"></label>
+                  <button class="btn-old">删除</button>
+                  <button class="btn-old">设置订单状态</button>
+                  <button class="btn-old">下载订单图</button>
+                  <button class="btn-old">更新1688物流</button>
+                  <button class="btn-old">更新国际物流</button>
+                  <span class="count-line">共 128 单，当前显示 100 单</span>
+                </div>
+
+                <div class="order-group">
+                  <table class="order-table">
+                    <colgroup>
+                      <col style="width:42px"><col style="width:132px"><col style="width:110px"><col style="width:96px">
+                      <col><col style="width:86px"><col style="width:108px"><col style="width:160px"><col style="width:90px">
+                      <col style="width:90px"><col style="width:64px"><col style="width:64px">
+                    </colgroup>
+                    <tr>
+                      <th class="khaki">1</th>
+                      <th class="khaki">导入时间</th>
+                      <th class="khaki">senderName</th>
+                      <th class="khaki">senderKana</th>
+                      <th class="khaki">地址</th>
+                      <th class="khaki">邮编</th>
+                      <th class="khaki">电话</th>
+                      <th class="khaki">邮箱</th>
+                      <th class="khaki">支付方式</th>
+                      <th class="khaki">运送方式</th>
+                      <th class="khaki">已邀评</th>
+                      <th class="khaki">已评价</th>
+                    </tr>
+                    <tr>
+                      <td><input type="checkbox"></td>
+                      <td>2026-07-06 09:18</td>
+                      <td>田中 太郎</td>
+                      <td>タナカ</td>
+                      <td class="left">東京都渋谷区神南1-2-3 サンプルマンション 502</td>
+                      <td>1500001</td>
+                      <td>09012345678</td>
+                      <td class="left">tanaka@example.jp</td>
+                      <td>クレジット</td>
+                      <td>宅配便</td>
+                      <td><input type="checkbox" checked></td>
+                      <td><input type="checkbox"></td>
+                    </tr>
+                  </table>
+
+                  <table class="order-table">
+                    <colgroup>
+                      <col style="width:70px"><col style="width:150px"><col style="width:110px"><col style="width:105px">
+                      <col style="width:120px"><col style="width:130px"><col><col style="width:56px"><col style="width:88px">
+                      <col style="width:100px"><col style="width:100px"><col style="width:82px">
+                    </colgroup>
+                    <tr>
+                      <th class="blue">采购图片</th>
+                      <th class="blue">订单ID</th>
+                      <th class="blue">订单时间</th>
+                      <th class="blue">ItemId</th>
+                      <th class="blue">商品日本仓ID</th>
+                      <th class="blue">商品属性</th>
+                      <th class="blue">項目・選択肢</th>
+                      <th class="blue">数量</th>
+                      <th class="blue">单价</th>
+                      <th class="blue">运费/手续费</th>
+                      <th class="blue">请求金额</th>
+                      <th class="blue">操作</th>
+                    </tr>
+                    <tr>
+                      <td><span class="thumb">商品图</span></td>
+                      <td class="order-id">R-250706-001</td>
+                      <td>2026-07-05 22:10</td>
+                      <td>ITEM-7788</td>
+                      <td>JP-A12-03</td>
+                      <td>黑色 / L</td>
+                      <td class="left">レディース ワンピース 夏用 サンプル商品</td>
+                      <td><strong>×2</strong></td>
+                      <td class="money">¥3,980</td>
+                      <td class="money">¥660 / ¥0</td>
+                      <td class="money">¥8,620</td>
+                      <td><button class="btn-line">详情</button></td>
+                    </tr>
+                  </table>
+
+                  <table class="order-table">
+                    <colgroup>
+                      <col style="width:130px"><col style="width:90px"><col style="width:120px"><col><col style="width:90px">
+                      <col style="width:150px"><col style="width:120px"><col style="width:170px"><col style="width:170px">
+                    </colgroup>
+                    <tr>
+                      <th class="khaki">采购状态</th>
+                      <th class="khaki">采购人</th>
+                      <th class="khaki">采购时间</th>
+                      <th class="khaki">采购链接</th>
+                      <th class="khaki">采购金额</th>
+                      <th class="khaki">1688订单号</th>
+                      <th class="khaki">物流公司</th>
+                      <th class="khaki">国内运单号</th>
+                      <th class="khaki">国际运单号 / 状态</th>
+                    </tr>
+                    <tr>
+                      <td><span class="status-pill">国内采购-准备</span></td>
+                      <td>王五</td>
+                      <td>2026-07-06</td>
+                      <td class="left">https://detail.1688.com/offer/7788.html</td>
+                      <td class="money">¥4,200</td>
+                      <td>1688-778899</td>
+                      <td>申通</td>
+                      <td>77300012345</td>
+                      <td><span class="status-pill black">3680001112223 / 配達中</span></td>
+                    </tr>
+                  </table>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="proposal proposal-b" id="proposal-b">
+      <div class="proposal-head">
+        <h2>方案二：融合改良版</h2>
+        <p>重点：保留新系统功能，但订单块视觉、颜色、密度向老系统靠拢</p>
+      </div>
+      <div class="old-frame">
+        <div class="b-workbar">
+          <div class="b-panel">
+            <div class="b-panel-title"><span>搜索</span><span>乐天订单 · 当前 128 单</span></div>
+            <div class="b-filter-row">
+              <label class="b-field"><span>订单号</span><input value="R-250706-001"></label>
+              <label class="b-field"><span>1688订单号</span><input value="1688-778899"></label>
+              <label class="b-field"><span>收件人</span><input value="田中"></label>
+              <label class="b-field"><span>采购状态</span><select><option>国内采购-准备</option></select></label>
+              <label class="b-field"><span>订单日期</span><input value="2026-07-01"></label>
+              <label class="b-field"><span>至</span><input value="2026-07-06"></label>
+              <label class="b-field"><span>国内物流</span><select><option>超时发货</option></select></label>
+              <label class="b-field"><span>日本物流</span><select><option>配達中</option></select></label>
+            </div>
+          </div>
+          <div class="b-panel">
+            <div class="b-panel-title"><span>同步 / 导入导出</span><span>常用工具</span></div>
+            <div class="b-tools">
+              <button class="b-tool">同步订单</button>
+              <button class="b-tool">导入订单</button>
+              <button class="b-tool">采购导入</button>
+              <button class="b-tool">导出订单</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="legacy-actions">
+          <label>已选择 <strong>0</strong> / <strong>128</strong> 单 <input type="checkbox"></label>
+          <button class="btn-dark">批量改状态</button>
+          <button class="btn-dark">分配采购人</button>
+          <button class="btn-dark">更新1688物流</button>
+          <button class="btn-dark">更新国际物流</button>
+          <span class="count-line">订单块保留新系统编辑、日志、权限控制</span>
+        </div>
+
+        <div class="order-group b-order-table">
+          <div class="b-order-head">
+            <strong>R-250706-001</strong>
+            <span>乐天一号店</span>
+            <span class="status-pill">国内采购-准备</span>
+            <span class="status-pill black">【日本】配達中</span>
+            <span class="spacer"></span>
+            <button class="btn-line">编辑</button>
+            <button class="btn-line">日志</button>
+          </div>
+          <table class="order-table">
+            <colgroup>
+              <col style="width:120px"><col style="width:120px"><col><col style="width:88px"><col style="width:110px">
+              <col style="width:150px"><col style="width:88px"><col style="width:88px"><col style="width:70px">
+            </colgroup>
+            <tr class="buyer-head">
+              <th>导入时间</th>
+              <th>收件人</th>
+              <th>地址</th>
+              <th>邮编</th>
+              <th>电话</th>
+              <th>邮箱</th>
+              <th>支付方式</th>
+              <th>运送方式</th>
+              <th>评价</th>
+            </tr>
+            <tr>
+              <td>2026-07-06 09:18</td>
+              <td>田中 太郎</td>
+              <td class="left">東京都渋谷区神南1-2-3 サンプルマンション 502</td>
+              <td>1500001</td>
+              <td>09012345678</td>
+              <td class="left">tanaka@example.jp</td>
+              <td>クレジット</td>
+              <td>宅配便</td>
+              <td>邀评 ✓</td>
+            </tr>
+            <tr>
+              <th>图片</th>
+              <th>订单ID</th>
+              <th>商品名 / 规格</th>
+              <th>数量</th>
+              <th>ItemId</th>
+              <th>日本仓ID</th>
+              <th>单价</th>
+              <th>运费</th>
+              <th>金额</th>
+            </tr>
+            <tr>
+              <td><span class="thumb">商品图</span></td>
+              <td class="order-id">R-250706-001</td>
+              <td class="left">レディース ワンピース 夏用 サンプル商品<br>黑色 / L</td>
+              <td><strong>×2</strong></td>
+              <td>ITEM-7788</td>
+              <td>JP-A12-03</td>
+              <td class="money">¥3,980</td>
+              <td class="money">¥660</td>
+              <td class="money">¥8,620</td>
+            </tr>
+            <tr class="purchase-head">
+              <th>采购状态</th>
+              <th>采购人</th>
+              <th>采购链接</th>
+              <th>采购金额</th>
+              <th>1688订单号</th>
+              <th>国内运单</th>
+              <th colspan="2">国际运单</th>
+              <th>操作</th>
+            </tr>
+            <tr>
+              <td><span class="status-pill">准备</span></td>
+              <td>王五</td>
+              <td class="left">detail.1688.com/offer/7788.html</td>
+              <td class="money">¥4,200</td>
+              <td>1688-778899</td>
+              <td>申通 77300012345</td>
+              <td colspan="2"><span class="status-pill black">3680001112223 / 配達中</span></td>
+              <td><button class="btn-dark">处理</button></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="proposal proposal-c" id="proposal-c">
+      <div class="proposal-head">
+        <h2>方案三：采购效率版</h2>
+        <p>重点：把采购状态、国内物流、日本物流放到最容易处理的位置</p>
+      </div>
+      <div class="old-frame">
+        <div class="c-shell">
+          <aside class="c-sidebar">
+            <h3>订单处理</h3>
+            <div class="c-stat"><span>待处理订单</span><strong>128</strong></div>
+            <div class="c-stat"><span>国内物流超时</span><strong>17</strong></div>
+            <div class="c-stat"><span>日本配達中</span><strong>42</strong></div>
+            <div class="c-filter">
+              <input value="运单号 / 订单号">
+              <select><option>国内采购-准备</option></select>
+              <select><option>【国内物流】超时发货</option></select>
+              <button class="btn-old">搜索</button>
+              <button class="btn-line">重置</button>
+            </div>
+          </aside>
+
+          <main class="c-main">
+            <div class="c-command">
+              <label><input type="checkbox"> 全选</label>
+              <button class="btn-dark">批量改状态</button>
+              <button class="btn-dark">分配采购人</button>
+              <button class="btn-dark">更新物流</button>
+              <span class="spacer"></span>
+              <span>按采购处理顺序展示：订单 → 商品 → 采购 → 国内物流 → 日本物流</span>
+            </div>
+
+            <article class="c-order">
+              <div class="c-order-left">
+                <input type="checkbox">
+                <span>#1</span>
+                <span>乐天</span>
+              </div>
+              <div class="c-order-mid">
+                <div class="c-order-meta">
+                  <div><strong>R-250706-001</strong></div>
+                  <div>田中 太郎</div>
+                  <div>東京都渋谷区神南1-2-3 サンプルマンション 502</div>
+                  <div>09012345678</div>
+                </div>
+                <table class="c-lines">
+                  <colgroup>
+                    <col style="width:68px"><col><col style="width:86px"><col style="width:94px"><col style="width:84px"><col style="width:110px">
+                  </colgroup>
+                  <tr>
+                    <th>图片</th>
+                    <th>商品 / 规格</th>
+                    <th>数量</th>
+                    <th>金额</th>
+                    <th>采购人</th>
+                    <th>采购状态</th>
+                  </tr>
+                  <tr>
+                    <td><span class="thumb">图</span></td>
+                    <td class="left">レディース ワンピース 夏用 サンプル商品 / 黑色 L / ITEM-7788</td>
+                    <td><strong>×2</strong></td>
+                    <td class="money">¥8,620</td>
+                    <td>王五</td>
+                    <td><span class="status-pill">准备</span></td>
+                  </tr>
+                  <tr>
+                    <th colspan="2">1688订单 / 采购链接</th>
+                    <th colspan="2">国内物流</th>
+                    <th colspan="2">日本物流</th>
+                  </tr>
+                  <tr>
+                    <td colspan="2" class="left">1688-778899　detail.1688.com/offer/7788.html</td>
+                    <td colspan="2"><span class="status-pill red">超时发货</span> 申通 77300012345</td>
+                    <td colspan="2"><span class="status-pill black">配達中</span> 3680001112223</td>
+                  </tr>
+                </table>
+              </div>
+              <aside class="c-order-side">
+                <div class="c-side-row"><span>导入</span><strong>2026-07-06 09:18</strong></div>
+                <div class="c-side-row"><span>店铺</span><strong>乐天一号店</strong></div>
+                <div class="c-side-row"><span>仓位</span><strong>JP-A12-03</strong></div>
+                <div class="c-side-row"><span>采购金额</span><strong>¥4,200</strong></div>
+                <div class="c-side-row"><span>备注</span><strong>客户指定周末配送</strong></div>
+                <button class="btn-dark">编辑</button>
+                <button class="btn-line">日志</button>
+              </aside>
+            </article>
+          </main>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

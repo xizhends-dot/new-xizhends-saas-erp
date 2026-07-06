@@ -59,7 +59,7 @@ $userStores = $user['stores'] ?? [];
             <label>
                 <span>首选入口</span>
                 <select name="preference_module">
-                    <?php foreach (['' => '默认首页', 'platform' => '平台订单', 'purchase' => '采购订单', 'jp' => '日本仓发货', 'mail' => '邮件中心', 'profit' => '利润分析'] as $value => $label): ?>
+                    <?php foreach (['' => '默认首页', 'platform' => '平台订单', 'purchase' => '采购订单', 'jp' => '日本仓发货', 'mail' => '邮件中心', 'profit' => '利润核算分析'] as $value => $label): ?>
                         <option value="<?= e($value) ?>" <?= ($user['preference_module'] ?? '') === $value ? 'selected' : '' ?>><?= e($label) ?></option>
                     <?php endforeach; ?>
                 </select>

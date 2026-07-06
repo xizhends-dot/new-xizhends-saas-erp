@@ -266,7 +266,7 @@ final class AppService
                 ['feature' => 'media.library', 'title' => '租户图片库', 'desc' => '按公司隔离订单主图、SKU 图、上传凭证和旧图清理策略。', 'href' => "/media?tenant={$tenantKey}", 'status' => '页面已接'],
             ],
             '经营分析' => [
-                ['feature' => 'analytics.profit', 'title' => '利润分析', 'desc' => '对应 old/plugins/profit-analysis。', 'href' => "/analytics/profit?tenant={$tenantKey}", 'status' => '开发数据'],
+                ['feature' => 'analytics.profit', 'title' => '利润核算分析', 'desc' => '对应 old/plugins/profit-analysis。', 'href' => "/analytics/profit?tenant={$tenantKey}", 'status' => '已接核算明细'],
                 ['feature' => 'stats.purchase', 'title' => '采购业绩统计', 'desc' => '对应 old/plugins/caigou_stats，按采购员统计完成采购、采购金额和 1688 单号。', 'href' => "/stats/purchase?tenant={$tenantKey}", 'status' => '开发数据'],
                 ['feature' => 'stats.performance', 'title' => '业绩统计', 'desc' => '对应 old/performance，按日、平台、店铺聚合订单和金额。', 'href' => "/performance?tenant={$tenantKey}", 'status' => '已接页面'],
                 ['feature' => 'stats.products', 'title' => '出单商品分析', 'desc' => '对应 old/performance/product_analysis，按商品编码统计热卖排名。', 'href' => "/performance/products?tenant={$tenantKey}", 'status' => '已接页面'],
@@ -327,6 +327,16 @@ final class AppService
     public function profitSummaryForOrders(string $tenantKey, array $orders): array
     {
         return $this->profitService->profitSummaryForOrders($tenantKey, $orders);
+    }
+
+    /**
+     * @param array<string, mixed>|null $user
+     * @param array<string, mixed> $source
+     * @return array<string, mixed>
+     */
+    public function profitAnalysis(string $tenantKey, ?array $user = null, array $source = []): array
+    {
+        return $this->profitService->profitAnalysis($tenantKey, $user, $source);
     }
 
 

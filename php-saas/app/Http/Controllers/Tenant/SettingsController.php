@@ -177,6 +177,7 @@ final class SettingsController extends TenantBaseController
             'settings' => $settings,
             'platformNames' => $this->service->tenantPlatformNames($tenantKey, true),
             'purchaseStatuses' => $this->purchaseStatusService->statusesFor($tenantKey),
+            'jpStockPurchaseStatuses' => $this->purchaseStatusService->jpStockStatusesFor($tenantKey),
             'systemPurchaseStatuses' => PurchaseStatusService::systemStatuses(),
             'saved' => (string) ($_GET['saved'] ?? ''),
             'error' => (string) ($_GET['error'] ?? ''),
@@ -216,6 +217,7 @@ final class SettingsController extends TenantBaseController
                 'default_intl_fee' => $this->boundedFloat($_POST['default_intl_fee'] ?? 820, 0, 999999),
                 'platform_deductions' => $this->platformDeductionsFromPost(),
                 'store_deduction_enabled' => isset($_POST['store_deduction_enabled']),
+                'excluded_purchase_statuses' => $this->excludedPurchaseStatusesFromPost(),
             ],
             'logistics' => [
                 'domestic_receive_places' => trim((string) ($_POST['domestic_receive_places'] ?? '')),
@@ -236,13 +238,18 @@ final class SettingsController extends TenantBaseController
         $this->requireTenantFeature($tenantKey, 'management.settings');
         $this->auth->requireAnyTenantPermission($tenantKey, ['公司设置', '系统设置']);
 
-        if (isset($_POST['reset'])) {
+        if (isset($_POST['reset_purchase_statuses'])) {
             $result = $this->purchaseStatusService->resetStatuses($tenantKey);
+        } elseif (isset($_POST['reset_jp_stock_statuses'])) {
+            $result = $this->purchaseStatusService->resetJpStockStatuses($tenantKey);
         } else {
             $decoded = json_decode((string) ($_POST['statuses_json'] ?? '[]'), true);
-            $result = is_array($decoded)
-                ? $this->purchaseStatusService->saveStatuses($tenantKey, $decoded)
-                : ['ok' => false, 'message' => '采购状态数据格式错误。'];
+            $jpDecoded = json_decode((string) ($_POST['jp_stock_statuses_json'] ?? '[]'), true);
+            if (!is_array($decoded) || !is_array($jpDecoded)) {
+                $result = ['ok' => false, 'message' => '采购状态数据格式错误。'];
+            } else {
+                $result = $this->purchaseStatusService->saveAllStatuses($tenantKey, $decoded, $jpDecoded);
+            }
         }
 
         $queryKey = ($result['ok'] ?? false) ? 'saved' : 'error';
@@ -288,6 +295,21 @@ final class SettingsController extends TenantBaseController
         }
 
         return $deductions;
+    }
+
+    /** @return array<int, string> */
+    private function excludedPurchaseStatusesFromPost(): array
+    {
+        $statuses = [];
+        $input = is_array($_POST['excluded_purchase_statuses'] ?? null) ? $_POST['excluded_purchase_statuses'] : [];
+        foreach ($input as $status) {
+            $status = trim((string) $status);
+            if ($status !== '' && !isset($statuses[$status])) {
+                $statuses[$status] = true;
+            }
+        }
+
+        return array_keys($statuses);
     }
 
     private function boundedFloat(mixed $value, float $min, float $max): float

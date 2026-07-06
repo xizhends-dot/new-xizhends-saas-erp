@@ -58,6 +58,7 @@ final class DashboardController extends TenantBaseController
             'tenantFeatures' => $this->service->tenantFeatureMap($tenantKey),
             'stats' => $this->service->dashboard($tenantKey, $currentUser),
             'priceDefaults' => $this->priceCalculatorService->defaults($tenantKey),
+            'realtimeRate' => $this->exchangeRateService->jpyToCny(),
             'announcements' => $this->store->announcements(),
             'tenantNotices' => $this->tenantNoticeService->dashboardNotices($tenantKey, $currentUser),
             'groups' => $this->service->featureGroups($tenantKey),

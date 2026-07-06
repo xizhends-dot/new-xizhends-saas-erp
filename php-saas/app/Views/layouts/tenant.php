@@ -64,7 +64,7 @@ $tenantUrl = static fn (string $path, array $params = []): string => $path . '?'
         <?php if ($featureEnabled('logistics.express') && $canAny(['1688物流', '物流查看'])): ?><a class="<?= ($active ?? '') === 'logistics_express' ? 'active' : '' ?>" href="/logistics/express?tenant=<?= e($tenantKey) ?>">Showapi物流查询日志</a><?php endif; ?>
         <?php if ($featureEnabled('logistics.jp') && $canAny(['日本物流日志', '物流查看'])): ?><a class="<?= ($active ?? '') === 'logistics_jp' ? 'active' : '' ?>" href="/logistics/jp?tenant=<?= e($tenantKey) ?>">国际物流查询日志</a><?php endif; ?>
         <div class="nav-section">经营</div>
-        <?php if ($featureEnabled('analytics.profit') && $can('利润分析')): ?><a class="<?= ($active ?? '') === 'profit' ? 'active' : '' ?>" href="/analytics/profit?tenant=<?= e($tenantKey) ?>">利润分析</a><?php endif; ?>
+        <?php if ($featureEnabled('analytics.profit') && $can('利润分析')): ?><a class="<?= ($active ?? '') === 'profit' ? 'active' : '' ?>" href="/analytics/profit?tenant=<?= e($tenantKey) ?>">利润核算分析</a><?php endif; ?>
         <?php if ($featureEnabled('stats.performance') && $can('业绩统计')): ?><a class="<?= ($active ?? '') === 'performance' ? 'active' : '' ?>" href="/performance?tenant=<?= e($tenantKey) ?>">业绩面板</a><?php endif; ?>
         <?php if ($featureEnabled('stats.products') && $can('出单商品统计')): ?><a class="<?= ($active ?? '') === 'product_analysis' ? 'active' : '' ?>" href="/performance/products?tenant=<?= e($tenantKey) ?>">出单商品分析</a><?php endif; ?>
         <?php if ($featureEnabled('stats.purchase') && $can('采购统计')): ?><a class="<?= ($active ?? '') === 'purchase_stats' ? 'active' : '' ?>" href="/stats/purchase?tenant=<?= e($tenantKey) ?>">采购业绩统计</a><?php endif; ?>

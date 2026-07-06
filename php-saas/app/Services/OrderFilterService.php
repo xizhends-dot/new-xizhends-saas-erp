@@ -246,13 +246,11 @@ final class OrderFilterService
     {
         $status = trim((string) ($filters['status'] ?? ''));
         if ($status !== '' && $status !== '__ALL__') {
-            $currentStatus = $view === 'jp'
-                ? (string) ($item['out_status'] ?? '')
-                : (string) ($item['purchase_status'] ?? '');
+            $currentStatus = (string) ($item['purchase_status'] ?? '');
             if ($currentStatus !== $status) {
                 return false;
             }
-        } elseif ($status === '' && $view !== 'jp' && $this->usesDefaultPendingStatus($filters)) {
+        } elseif ($status === '' && in_array($view, ['platform', 'purchase'], true) && $this->usesDefaultPendingStatus($filters)) {
             if (in_array((string) ($item['purchase_status'] ?? ''), self::DEFAULT_HIDDEN_PURCHASE_STATUSES, true)) {
                 return false;
             }

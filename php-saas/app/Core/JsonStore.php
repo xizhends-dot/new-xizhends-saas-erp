@@ -1812,6 +1812,9 @@ final class JsonStore implements StoreInterface
         if (array_key_exists('purchase_statuses', $data)) {
             $settings['purchase_statuses'] = $data['purchase_statuses'];
         }
+        if (array_key_exists('jp_stock_purchase_statuses', $data)) {
+            $settings['jp_stock_purchase_statuses'] = $data['jp_stock_purchase_statuses'];
+        }
         if (array_key_exists('order_export_tools', $data)) {
             $settings['order_export_tools'] = $data['order_export_tools'];
         }
@@ -3602,6 +3605,7 @@ final class JsonStore implements StoreInterface
                     'yp' => 70,
                 ],
                 'store_deduction_enabled' => true,
+                'excluded_purchase_statuses' => ['已取消', '客人取消订单'],
             ],
             'logistics' => [
                 'domestic_receive_places' => '',
@@ -3616,6 +3620,7 @@ final class JsonStore implements StoreInterface
                 'config_file' => 'storage/tenants/' . $this->tenantStorageKey((string) ($tenant['key'] ?? '')) . '/config/1688/apikeys.conf',
                 'config_content' => '',
             ],
+            'jp_stock_purchase_statuses' => [],
             'updated_at' => '',
         ];
     }

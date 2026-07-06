@@ -45,11 +45,21 @@ final class PurchaseStatusService
         return self::SYSTEM_STATUSES;
     }
 
-    /** @param array<int, string> $customStatuses @return array<int, string> */
-    public static function statusOptionsForSource(string $sourceType, array $customStatuses): array
+    /** @return array<int, string> */
+    public static function defaultJpStockStatuses(): array
+    {
+        return self::JP_STOCK_STATUSES;
+    }
+
+    /**
+     * @param array<int, string> $customStatuses
+     * @param array<int, string> $jpStockStatuses
+     * @return array<int, string>
+     */
+    public static function statusOptionsForSource(string $sourceType, array $customStatuses, array $jpStockStatuses = self::JP_STOCK_STATUSES): array
     {
         if ($sourceType === 'jp_stock') {
-            return self::JP_STOCK_STATUSES;
+            return $jpStockStatuses;
         }
 
         return $customStatuses;
@@ -68,6 +78,19 @@ final class PurchaseStatusService
         return $result['ok'] ? $result['statuses'] : self::defaultStatuses();
     }
 
+    /** @return array<int, string> */
+    public function jpStockStatusesFor(string $tenantKey): array
+    {
+        $settings = $this->store->tenantSettings($tenantKey);
+        $statuses = $settings['jp_stock_purchase_statuses'] ?? null;
+        if (!is_array($statuses) || $statuses === []) {
+            return self::defaultJpStockStatuses();
+        }
+
+        $result = self::validateCustomStatuses($statuses, '日本仓采购状态');
+        return $result['ok'] ? $result['statuses'] : self::defaultJpStockStatuses();
+    }
+
     /**
      * @param array<int|string, mixed> $names
      * @return array{ok: bool, message: string, statuses: array<int, string>}
@@ -83,11 +106,57 @@ final class PurchaseStatusService
         return ['ok' => true, 'message' => '采购状态已保存。', 'statuses' => $result['statuses']];
     }
 
+    /**
+     * @param array<int|string, mixed> $names
+     * @return array{ok: bool, message: string, statuses: array<int, string>}
+     */
+    public function saveJpStockStatuses(string $tenantKey, array $names): array
+    {
+        $result = self::validateCustomStatuses($names, '日本仓采购状态');
+        if (!$result['ok']) {
+            return ['ok' => false, 'message' => $result['message'], 'statuses' => []];
+        }
+
+        $this->store->saveTenantSettings($tenantKey, ['jp_stock_purchase_statuses' => $result['statuses']]);
+        return ['ok' => true, 'message' => '日本仓采购状态已保存。', 'statuses' => $result['statuses']];
+    }
+
+    /**
+     * @param array<int|string, mixed> $names
+     * @param array<int|string, mixed> $jpStockNames
+     * @return array{ok: bool, message: string, statuses: array<int, string>}
+     */
+    public function saveAllStatuses(string $tenantKey, array $names, array $jpStockNames): array
+    {
+        $result = self::validateStatuses($names);
+        if (!$result['ok']) {
+            return ['ok' => false, 'message' => $result['message'], 'statuses' => []];
+        }
+
+        $jpResult = self::validateCustomStatuses($jpStockNames, '日本仓采购状态');
+        if (!$jpResult['ok']) {
+            return ['ok' => false, 'message' => $jpResult['message'], 'statuses' => []];
+        }
+
+        $this->store->saveTenantSettings($tenantKey, [
+            'purchase_statuses' => $result['statuses'],
+            'jp_stock_purchase_statuses' => $jpResult['statuses'],
+        ]);
+        return ['ok' => true, 'message' => '采购状态已保存。', 'statuses' => $result['statuses']];
+    }
+
     /** @return array{ok: bool, message: string, statuses: array<int, string>} */
     public function resetStatuses(string $tenantKey): array
     {
         $this->store->saveTenantSettings($tenantKey, ['purchase_statuses' => []]);
         return ['ok' => true, 'message' => '采购状态已恢复默认。', 'statuses' => self::defaultStatuses()];
+    }
+
+    /** @return array{ok: bool, message: string, statuses: array<int, string>} */
+    public function resetJpStockStatuses(string $tenantKey): array
+    {
+        $this->store->saveTenantSettings($tenantKey, ['jp_stock_purchase_statuses' => []]);
+        return ['ok' => true, 'message' => '日本仓采购状态已恢复默认。', 'statuses' => self::defaultJpStockStatuses()];
     }
 
     /**
@@ -124,6 +193,56 @@ final class PurchaseStatusService
             if (!isset($seen[$systemStatus])) {
                 return self::invalid("系统状态「{$systemStatus}」不可删除或改名。", $statuses);
             }
+        }
+
+        return ['ok' => true, 'message' => '', 'statuses' => $statuses];
+    }
+
+    /**
+     * @param array<int|string, mixed> $names
+     * @return array{ok: bool, message: string, statuses: array<int, string>}
+     */
+    public static function validateCustomStatuses(array $names, string $label = '采购状态'): array
+    {
+        $result = self::normalizeStatusNames($names);
+        if (!$result['ok']) {
+            return $result;
+        }
+        if ($result['statuses'] === []) {
+            return self::invalid($label . '至少保留 1 个。', []);
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array<int|string, mixed> $names
+     * @return array{ok: bool, message: string, statuses: array<int, string>}
+     */
+    private static function normalizeStatusNames(array $names): array
+    {
+        $statuses = [];
+        $seen = [];
+        foreach ($names as $name) {
+            $status = trim((string) $name);
+            if ($status === '') {
+                return self::invalid('状态名称不能为空。', $statuses);
+            }
+            if (str_contains($status, "\n") || str_contains($status, "\r")) {
+                return self::invalid('状态名称不能包含换行。', $statuses);
+            }
+            if (self::length($status) > 32) {
+                return self::invalid("状态名称「{$status}」不能超过 32 个字符。", $statuses);
+            }
+            if (isset($seen[$status])) {
+                return self::invalid("状态名称「{$status}」重复。", $statuses);
+            }
+            $seen[$status] = true;
+            $statuses[] = $status;
+        }
+
+        if (count($statuses) > 50) {
+            return self::invalid('采购状态最多保留 50 个。', $statuses);
         }
 
         return ['ok' => true, 'message' => '', 'statuses' => $statuses];
