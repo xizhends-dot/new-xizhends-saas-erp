@@ -2103,6 +2103,63 @@ label.ck.warn { color: #475569; }
   color: #9ca3af;
   margin-top: 1px;
 }
+.order-page .oid-sub {
+  color: #4b5563;
+  font-weight: 650;
+}
+
+.order-page a.oid-sub,
+.order-page .accent-link.oid-sub {
+  color: #047857;
+}
+
+.stack-cell {
+  white-space: normal;
+}
+
+.stack-main {
+  display: block;
+}
+
+.product-title-cell .stack-main {
+  text-align: left;
+}
+
+.order-state-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  border: 1px solid #047857;
+  background: #059669;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.review-tags {
+  display: inline-flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.review-tags span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.review-tags span.on {
+  border-color: #047857;
+  background: #047857;
+  color: #fff;
+}
 
 .order-page .order-img {
   display: block;

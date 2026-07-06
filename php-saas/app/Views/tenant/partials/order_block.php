@@ -3,12 +3,16 @@ $logId = 'logs-' . (int) $order['id'];
 $customer = $order['customer'] ?? [];
 $seq = $seq ?? 1;
 $showA = $orderView === 'platform';
-$hiddenB2Class = $orderView === 'platform' ? ' table-hidden' : '';
-$hiddenCClass = $orderView === 'platform' ? ' table-hidden' : ' table-hidden';
+$hiddenB2Class = '';
+$hiddenCClass = '';
 $isRakuten = ($order['platform'] ?? '') === 'r';
+$orderExtra = is_array($order['platform_extra'] ?? null) ? $order['platform_extra'] : [];
 $importedAt = (string) (($order['imported_at'] ?? '') ?: ($order['order_date'] ?? ''));
 $payMethod = (string) ($order['pay_method'] ?? '');
 $shipMethod = (string) ($order['ship_method'] ?? '');
+$orderStatus = (string) (($order['status'] ?? '') ?: ($orderExtra['OrderStatus'] ?? $orderExtra['orderStatus'] ?? '-'));
+$payStatus = (string) (($order['pay_status'] ?? $order['payment_status'] ?? '') ?: ($orderExtra['PayStatus'] ?? $orderExtra['payStatus'] ?? '-'));
+$payDate = (string) (($order['pay_date'] ?? $order['payment_date'] ?? '') ?: ($orderExtra['PayDate'] ?? $orderExtra['payDate'] ?? '-'));
 $batchFormId = $batchFormId ?? ('batch-' . $orderView);
 $detailUrl = '/orders/detail?tenant=' . rawurlencode((string) $tenantKey) . '&id=' . rawurlencode((string) ($order['id'] ?? '')) . '&return=' . rawurlencode((string) $returnUrl);
 $statusOptions = array_values(array_filter(array_map('strval', is_array($statusOptions ?? null) ? $statusOptions : [])));
@@ -48,6 +52,99 @@ $safeHttpUrl = static function (mixed $url): string {
     $scheme = strtolower((string) (parse_url($url, PHP_URL_SCHEME) ?? ''));
     return in_array($scheme, ['http', 'https'], true) ? $url : '';
 };
+$moneyText = static function (mixed $value, string $empty = '-'): string {
+    $raw = trim((string) $value);
+    if ($raw === '') {
+        return $empty;
+    }
+
+    return '￥' . number_format((float) $raw, 0);
+};
+$joinLines = static function (array $values): string {
+    return implode(' / ', array_values(array_filter(array_map(
+        static fn (mixed $value): string => trim((string) $value),
+        $values
+    ), static fn (string $value): bool => $value !== '')));
+};
+$shortText = static function (mixed $value, int $limit = 34): string {
+    $text = trim((string) $value);
+    if ($text === '') {
+        return '';
+    }
+    if (function_exists('mb_strimwidth')) {
+        return mb_strimwidth($text, 0, $limit, '...', 'UTF-8');
+    }
+
+    return $text;
+};
+$extraValue = static function (array $extra, array $keys): string {
+    foreach ($keys as $key) {
+        $value = $extra[$key] ?? null;
+        if (is_scalar($value) && trim((string) $value) !== '') {
+            return trim((string) $value);
+        }
+    }
+
+    return '';
+};
+$storeByName = [];
+$storeById = [];
+$storesForPlatform = [];
+foreach (is_array($stores ?? null) ? $stores : [] as $storeRow) {
+    if (!is_array($storeRow)) {
+        continue;
+    }
+
+    $storeNamesForRow = array_filter(array_map(
+        static fn (mixed $value): string => trim((string) $value),
+        [$storeRow['name'] ?? '', $storeRow['short'] ?? '']
+    ), static fn (string $value): bool => $value !== '');
+    foreach ($storeNamesForRow as $storeNameForRow) {
+        $storeByName[$storeNameForRow] = $storeRow;
+    }
+
+    $storeId = (int) ($storeRow['id'] ?? 0);
+    if ($storeId > 0) {
+        $storeById[$storeId] = $storeRow;
+    }
+
+    $storePlatform = (string) ($storeRow['platform'] ?? '');
+    if ($storePlatform !== '') {
+        $storesForPlatform[$storePlatform][] = $storeRow;
+    }
+}
+$storeMeta = $storeById[(int) ($order['store_id'] ?? 0)] ?? ($storeByName[(string) ($order['store'] ?? '')] ?? null);
+if ($storeMeta === null && count($storesForPlatform[(string) ($order['platform'] ?? '')] ?? []) === 1) {
+    $storeMeta = $storesForPlatform[(string) ($order['platform'] ?? '')][0];
+}
+$storeLegacyId = trim((string) ($storeMeta['legacy_dpid'] ?? ''));
+$storeShort = trim((string) ($storeMeta['short'] ?? ''));
+$storeLabel = $joinLines([
+    $storeShort,
+    $storeLegacyId !== '' ? '店铺番号 ' . $storeLegacyId : '',
+]);
+$productUrlFor = static function (array $order, array $item, string $legacyDpid) use ($extraValue, $safeHttpUrl): string {
+    $itemExtra = is_array($item['platform_extra'] ?? null) ? $item['platform_extra'] : [];
+    $url = $safeHttpUrl($extraValue($itemExtra, ['EntryPoint', 'entryPoint', 'product_url', 'url']));
+    if ($url !== '') {
+        return $url;
+    }
+
+    $platform = (string) ($order['platform'] ?? '');
+    $itemCode = trim((string) (($item['item_code'] ?? '') ?: $extraValue($itemExtra, ['ItemId', 'itemCode'])));
+    $lotNumber = trim((string) (($item['lot_number'] ?? '') ?: $extraValue($itemExtra, ['lotnumber'])));
+    $encodedItem = rawurlencode($itemCode);
+    $encodedLot = rawurlencode($lotNumber !== '' ? $lotNumber : $itemCode);
+
+    return match ($platform) {
+        'y' => $legacyDpid !== '' && $itemCode !== '' ? "https://store.shopping.yahoo.co.jp/{$legacyDpid}/{$encodedItem}.html" : '',
+        'r' => $legacyDpid !== '' && $itemCode !== '' ? "https://item.rakuten.co.jp/{$legacyDpid}/{$encodedItem}/" : '',
+        'w' => $encodedLot !== '' ? "https://wowma.jp/item/{$encodedLot}" : '',
+        'm' => $encodedLot !== '' ? "https://jp.mercari.com/shops/product/{$encodedLot}" : '',
+        'q' => $encodedLot !== '' ? "https://www.qoo10.jp/g/{$encodedLot}" : '',
+        default => '',
+    };
+};
 
 $sourceLabel = static fn (string $source): string => match ($source) {
     'cn_purchase' => '国内采购',
@@ -84,10 +181,10 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                 <th class="c8">邮箱</th>
                 <th class="c9">支付方式</th>
                 <th class="c10">运送方式</th>
-                <th class="c11"><?= $isRakuten ? '已邀评' : '' ?></th>
-                <th class="c12"><?= $isRakuten ? '已评价' : '' ?></th>
-                <th class="c13"></th>
-                <th class="c14"></th>
+                <th class="c11">订单状态</th>
+                <th class="c12">付款状态</th>
+                <th class="c13">付款日期</th>
+                <th class="c14">邀评/评价</th>
             </tr>
             </thead>
             <tbody>
@@ -102,10 +199,15 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                 <td><?= e($customer['mail'] ?? '') ?></td>
                 <td><?= e($payMethod) ?></td>
                 <td><?= e($shipMethod) ?></td>
-                <td><?php if ($isRakuten): ?><input type="checkbox" aria-label="已邀评" <?= !empty($order['review_invited']) ? 'checked' : '' ?> disabled><?php endif; ?></td>
-                <td><?php if ($isRakuten): ?><input type="checkbox" aria-label="已评价" <?= !empty($order['reviewed']) ? 'checked' : '' ?> disabled><?php endif; ?></td>
-                <td></td>
-                <td></td>
+                <td><span class="order-state-tag"><?= e($orderStatus) ?></span></td>
+                <td><?= e($payStatus) ?></td>
+                <td><?= e($payDate) ?></td>
+                <td>
+                    <span class="review-tags">
+                        <span class="<?= !empty($order['review_invited']) ? 'on' : '' ?>">邀</span>
+                        <span class="<?= !empty($order['reviewed']) ? 'on' : '' ?>">评</span>
+                    </span>
+                </td>
             </tr>
             </tbody>
         </table>
@@ -117,21 +219,21 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
         <tr>
             <?php if ($showA): ?>
                 <th class="c0">图片</th>
-                <th class="c1" colspan="2">订单ID</th>
+                <th class="c1" colspan="2">订单ID / 店铺</th>
             <?php else: ?>
                 <th class="c0"><span class="seq-no"><?= e($seq) ?></span></th>
                 <th class="c1">图片</th>
-                <th class="c2">订单ID</th>
+                <th class="c2">订单ID / 店铺</th>
             <?php endif; ?>
-            <th class="c3">订单时间</th>
+            <th class="c3">订单时间 / 明细ID</th>
             <th class="c4">货源地 / 采购状态</th>
-            <th class="c5">ItemId</th>
-            <th class="c6">日本仓ID</th>
+            <th class="c5">ItemId / lotNumber</th>
+            <th class="c6">日本仓ID / 管理ID</th>
             <th class="c7">商品属性</th>
-            <th class="c8" colspan="2">项目选择</th>
+            <th class="c8" colspan="2">商品标题 / 项目选择</th>
             <th class="c10">数量</th>
-            <th class="c11">单价</th>
-            <th class="c12">运费/手续费</th>
+            <th class="c11">单价/总价</th>
+            <th class="c12">邮费/手续费</th>
             <th class="c13">请求金额</th>
             <th class="c14">操作</th>
         </tr>
@@ -139,18 +241,47 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
         <tbody>
         <?php foreach ($order['items'] as $itemIndex => $item): ?>
             <?php
+            $itemExtra = is_array($item['platform_extra'] ?? null) ? $item['platform_extra'] : [];
             $itemSource = $item['source_type'] ?? 'pending';
             $unitPrice = (float) ($item['unit_price'] ?? $item['amount'] ?? 0);
             $shippingFee = (float) ($item['postage_price'] ?? 0);
             $payFee = (float) ($item['pay_charge'] ?? 0);
-            $lineTotal = (float) ($item['line_total'] ?? (($unitPrice * max(1, (int) ($item['quantity'] ?? 1))) + $shippingFee + $payFee));
+            $requestAmountRaw = $extraValue($itemExtra, ['requestPrice', 'TotalPrice', 'totalPrice']);
+            $lineTotal = (float) ($requestAmountRaw !== '' ? $requestAmountRaw : ($item['line_total'] ?? (($unitPrice * max(1, (int) ($item['quantity'] ?? 1))) + $shippingFee + $payFee)));
             $quoteSalePrice = $unitPrice > 0 ? ($unitPrice + $shippingFee) : $lineTotal;
             $quoteCost = (float) (($item['amount'] ?? 0) ?: ($item['purchase_amount'] ?? 0) ?: ($item['cn_amount'] ?? 0));
-            $itemMeta = array_values(array_filter([
-                (string) ($item['lot_number'] ?? ''),
-                (string) ($item['item_management_id'] ?? ''),
+            $productUrl = $productUrlFor($order, $item, $storeLegacyId);
+            $shopLine = $joinLines([
+                (string) ($order['store'] ?? ''),
+                $storeLabel,
+            ]);
+            $shippingRequestMeta = $joinLines([
+                $extraValue($itemExtra, ['ShipNotes', 'deliveryRequest1']),
+                $extraValue($itemExtra, ['ShipRequestDate', 'deliveryRequest2']),
+                $extraValue($itemExtra, ['ShipRequestTime']),
+            ]);
+            $commissionMeta = $joinLines([
+                $extraValue($itemExtra, ['itemOptionCommission1']),
+                $extraValue($itemExtra, ['itemOptionCommission2']),
+                $extraValue($itemExtra, ['itemOptionCommission3']),
+                $extraValue($itemExtra, ['itemOptionCommission4']),
+                $extraValue($itemExtra, ['itemOptionCommission5']),
+            ]);
+            $itemDetailMeta = $joinLines([
                 (string) ($item['order_detail_id'] ?? ''),
-            ], static fn (string $value): bool => trim($value) !== ''));
+                (string) ($item['line_id'] ?? ''),
+            ]);
+            $itemCodeMeta = $joinLines([
+                (string) ($item['lot_number'] ?? ''),
+            ]);
+            $warehouseMeta = $joinLines([
+                (string) ($item['item_management_id'] ?? ''),
+            ]);
+            $optionMeta = $joinLines([
+                (string) ($item['option'] ?? ''),
+                (string) ($item['chinese_option'] ?? ''),
+                $commissionMeta,
+            ]);
             ?>
             <tr class="item-row">
                 <?php if (!$showA): ?>
@@ -165,8 +296,15 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                         <img class="order-img" src="<?= e($item['image']) ?>" alt="<?= e($item['title']) ?>">
                     </a>
                 </td>
-                <td<?php if ($showA): ?> colspan="2"<?php endif; ?>><a href="<?= e($detailUrl) ?>" class="oid-link"><?= e($order['platform_order_id']) ?></a><span class="oid-sub"><?= e($order['store']) ?></span></td>
-                <td><?= e($order['order_date']) ?></td>
+                <td<?php if ($showA): ?> colspan="2"<?php endif; ?> class="stack-cell">
+                    <a href="<?= e($detailUrl) ?>" class="oid-link"><?= e($order['platform_order_id']) ?></a>
+                    <?php if ($shopLine !== ''): ?><span class="oid-sub"><?= e($shopLine) ?></span><?php endif; ?>
+                </td>
+                <td class="stack-cell">
+                    <span class="stack-main"><?= e($order['order_date']) ?></span>
+                    <?php if ($itemDetailMeta !== ''): ?><span class="oid-sub">明细 <?= e($itemDetailMeta) ?></span><?php endif; ?>
+                    <?php if ($shippingRequestMeta !== ''): ?><span class="oid-sub" title="<?= e($shippingRequestMeta) ?>">发货要求 <?= e($shortText($shippingRequestMeta, 32)) ?></span><?php endif; ?>
+                </td>
                 <td class="source-status-cell">
                     <?php if ($orderView === 'platform' && $canChangeSource): ?>
                         <form class="source-form compact-source auto-submit-source" method="post" action="/orders/source">
@@ -185,14 +323,30 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                     <?php endif; ?>
                     <span class="status <?= e($statusClass((string) ($item['purchase_status'] ?? ''))) ?>"><?= e($item['purchase_status']) ?></span>
                 </td>
-                <td><?= e($item['item_code']) ?><?php if ($itemMeta): ?><span class="oid-sub"><?= e(implode(' / ', $itemMeta)) ?></span><?php endif; ?></td>
-                <td><?= e($item['jp_warehouse_id']) ?></td>
+                <td class="stack-cell">
+                    <?php if ($productUrl !== ''): ?>
+                        <a class="stack-main accent-link" href="<?= e($productUrl) ?>" target="_blank" rel="noopener noreferrer"><?= e($item['item_code']) ?></a>
+                    <?php else: ?>
+                        <span class="stack-main"><?= e($item['item_code']) ?></span>
+                    <?php endif; ?>
+                    <?php if ($itemCodeMeta !== ''): ?><span class="oid-sub"><?= e($itemCodeMeta) ?></span><?php endif; ?>
+                </td>
+                <td class="stack-cell">
+                    <span class="stack-main"><?= e($item['jp_warehouse_id']) ?></span>
+                    <?php if ($warehouseMeta !== ''): ?><span class="oid-sub"><?= e($warehouseMeta) ?></span><?php endif; ?>
+                </td>
                 <td><?= e($item['option']) ?></td>
-                <td colspan="2" title="<?= e($item['title']) ?>"><?= e($item['title']) ?></td>
+                <td colspan="2" class="stack-cell product-title-cell" title="<?= e($item['title']) ?>">
+                    <span class="stack-main"><?= e($item['title']) ?></span>
+                    <?php if ($optionMeta !== ''): ?><span class="oid-sub"><?= e($optionMeta) ?></span><?php endif; ?>
+                </td>
                 <td><span class="qty-val">×<?= e($item['quantity']) ?></span></td>
                 <td><span class="price-val<?php if ($canPriceQuote): ?> price-quote-trigger<?php endif; ?>"<?php if ($canPriceQuote): ?> tabindex="0" role="button" aria-label="打开核价浮层" title="悬停核价" data-price-quote-trigger data-item-id="<?= e($item['id']) ?>" data-sale-price="<?= e($quoteSalePrice) ?>" data-shipping="<?= e(($item['com_amount'] ?? 0) ?: '') ?>" data-cost="<?= e($quoteCost) ?>"<?php endif; ?>>￥<?= e(number_format($unitPrice, 0)) ?></span></td>
                 <td>￥<?= e(number_format($shippingFee, 0)) ?>/￥<?= e(number_format($payFee, 0)) ?></td>
-                <td><span class="price-val">￥<?= e(number_format($lineTotal, 0)) ?></span></td>
+                <td>
+                    <span class="price-val">￥<?= e(number_format($lineTotal, 0)) ?></span>
+                    <?php if ($requestAmountRaw !== ''): ?><span class="oid-sub">请求金额</span><?php endif; ?>
+                </td>
                 <td class="op-cell">
                     <?php if ($canEditThisView): ?><button class="log-btn edit-drawer-btn" type="button" data-open-editor="editor-<?= e($item['id']) ?>">编辑</button><?php endif; ?>
                     <button class="log-btn" type="button" data-toggle-logs="<?= e($logId) ?>">日志</button>
@@ -208,7 +362,7 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
         <?php if ($orderView === 'jp'): ?>
             <tr><th class="c0" colspan="2">出库状态</th><th class="c2">发货员</th><th class="c3">出库时间</th><th class="c4" colspan="2">仓位</th><th class="c6">订单备注</th><th class="c7">出库成本</th><th class="c8" colspan="2">出库单号</th><th class="c10">物流公司</th><th class="c11" colspan="4">国内运单号</th></tr>
         <?php else: ?>
-            <tr><th class="c0" colspan="2">采购状态</th><th class="c2">采购人</th><th class="c3">采购时间</th><th class="c4" colspan="2">采购链接</th><th class="c6">订单备注</th><th class="c7">采购金额</th><th class="c8" colspan="2">1688订单号</th><th class="c10">物流公司</th><th class="c11" colspan="4">国内运单号</th></tr>
+            <tr><th class="c0" colspan="2">采购状态 / 采购人</th><th class="c2">采购时间</th><th class="c3" colspan="2">采购链接</th><th class="c5" colspan="2">补货链接</th><th class="c7">订单备注</th><th class="c8">采购金额</th><th class="c9">国内运费</th><th class="c10">1688订单号</th><th class="c11">物流公司 / 状态</th><th class="c12" colspan="3">国内运单号 / 物流轨迹</th></tr>
         <?php endif; ?>
         </thead>
         <tbody>
@@ -226,9 +380,35 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                     <td><?= e($item['ship_company'] ?: '-') ?></td>
                     <td colspan="4"><?= e($item['ship_number'] ?: '-') ?></td>
                 <?php else: ?>
-                    <?php $purchaseLink = $safeHttpUrl($item['purchase_link'] ?? ''); ?>
-                    <td colspan="2"><?= e($item['purchase_status']) ?></td>
-                    <td><?= e($item['buyer'] ?: '-') ?></td>
+                    <?php
+                    $purchaseLink = $safeHttpUrl($item['purchase_link'] ?? '');
+                    $buhuoLink = $safeHttpUrl($item['buhuo_link'] ?? '');
+                    $noteText = $joinLines([
+                        $item['comment'] ?? '',
+                        $item['tranship_comment'] ?? '',
+                        $item['chinese_option'] ?? '',
+                    ]);
+                    $domesticShipMeta = $joinLines([
+                        $item['ship_number'] ?? '',
+                        $item['logistics'] ?? '',
+                    ]);
+                    $logisticTrace = trim((string) ($item['logistic_trace'] ?? ''));
+                    $logisticTraceUrl = '';
+                    if (preg_match('/https?:\/\/\S+/u', $logisticTrace, $traceMatches) === 1) {
+                        $logisticTraceUrl = $safeHttpUrl(rtrim($traceMatches[0], " \t\r\n。；;，,"));
+                    }
+                    $domesticLogisticsUrl = trim((string) ($item['tabaono'] ?? '')) !== ''
+                        ? '/logistics/1688?tenant=' . rawurlencode((string) $tenantKey) . '&q=' . rawurlencode((string) ($item['tabaono'] ?? ''))
+                        : '/logistics/express?tenant=' . rawurlencode((string) $tenantKey) . '&q=' . rawurlencode((string) ($item['ship_number'] ?? ''));
+                    $caigouNumbers = $joinLines([
+                        $item['tabaono'] ?? '',
+                        $item['caigou_ordernums'] ?? '',
+                    ]);
+                    ?>
+                    <td colspan="2" class="stack-cell">
+                        <span class="status <?= e($statusClass((string) ($item['purchase_status'] ?? ''))) ?>"><?= e($item['purchase_status']) ?></span>
+                        <span class="oid-sub"><?= e($item['buyer'] ?: '-') ?></span>
+                    </td>
                     <td><?= e($item['purchase_time'] ?: '-') ?></td>
                     <td colspan="2">
                         <?php if ($purchaseLink !== ''): ?>
@@ -237,11 +417,32 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                             <?= e(($item['purchase_link'] ?? '') !== '' ? '链接协议不允许' : '-') ?>
                         <?php endif; ?>
                     </td>
-                    <td><?= e(($item['comment'] ?? '') ?: '-') ?></td>
-                    <td>￥<?= e(number_format((float) ($item['purchase_amount'] ?? $item['amount'] ?? 0), 0)) ?></td>
-                    <td colspan="2"><?= e($item['tabaono'] ?: '-') ?></td>
-                    <td><?= e($item['ship_company'] ?: '-') ?></td>
-                    <td colspan="4"><?= e($item['ship_number'] ?: '-') ?></td>
+                    <td colspan="2">
+                        <?php if ($buhuoLink !== ''): ?>
+                            <a class="accent-link" href="<?= e($buhuoLink) ?>" target="_blank" rel="noopener noreferrer">补货链接</a>
+                        <?php else: ?>
+                            <?= e(($item['buhuo_link'] ?? '') !== '' ? '链接协议不允许' : '-') ?>
+                        <?php endif; ?>
+                    </td>
+                    <td title="<?= e($noteText) ?>"><?= e($noteText !== '' ? $noteText : '-') ?></td>
+                    <td><?= e($moneyText($item['purchase_amount'] ?? $item['amount'] ?? '')) ?></td>
+                    <td><?= e($moneyText($item['cn_amount'] ?? '')) ?></td>
+                    <td title="<?= e($caigouNumbers) ?>"><?= e($caigouNumbers !== '' ? $caigouNumbers : '-') ?></td>
+                    <td class="stack-cell">
+                        <span class="stack-main"><?= e($item['ship_company'] ?: '-') ?></span>
+                        <?php if (trim((string) ($item['logistics'] ?? '')) !== ''): ?><span class="oid-sub"><?= e($item['logistics']) ?></span><?php endif; ?>
+                    </td>
+                    <td colspan="3" class="stack-cell">
+                        <span class="stack-main"><?= e($domesticShipMeta !== '' ? $domesticShipMeta : '-') ?></span>
+                        <?php if (trim((string) ($item['ship_number'] ?? '')) !== '' || trim((string) ($item['tabaono'] ?? '')) !== ''): ?><a class="oid-sub accent-link" href="<?= e($domesticLogisticsUrl) ?>">查看货运</a><?php endif; ?>
+                        <?php if ($logisticTrace !== ''): ?>
+                            <?php if ($logisticTraceUrl !== ''): ?>
+                                <a class="oid-sub accent-link" href="<?= e($logisticTraceUrl) ?>" target="_blank" rel="noopener noreferrer" title="<?= e($logisticTrace) ?>">物流轨迹</a>
+                            <?php else: ?>
+                                <span class="oid-sub" title="<?= e($logisticTrace) ?>">轨迹 <?= e($shortText($logisticTrace, 30)) ?></span>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    </td>
                 <?php endif; ?>
             </tr>
         <?php endforeach; ?>
@@ -250,15 +451,25 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
 
     <table class="otable sec-c<?= e($hiddenCClass) ?>">
         <colgroup><?php for ($i = 0; $i < 15; $i++): ?><col class="c<?= e($i) ?>"><?php endfor; ?></colgroup>
-        <thead><tr><th class="c0" colspan="4">国际运单号</th><th class="c4" colspan="2">运单状态</th><th class="c6">运费</th><th class="c7">件数</th><th class="c8">重量</th><th class="c9" colspan="6"></th></tr></thead>
+        <thead><tr><th class="c0" colspan="4">国际运单号</th><th class="c4" colspan="2">国际运单状态</th><th class="c6">国际运费</th><th class="c7">件数</th><th class="c8">产品重量</th><th class="c9">利润(RMB)</th><th class="c10" colspan="5">国际备注</th></tr></thead>
         <tbody>
         <?php foreach ($order['items'] as $item): ?>
             <?php
             $intlNumber = (string) ($item['intl_number'] ?? '');
             $intlStatus = (string) (($item['intl_status'] ?? '') ?: '待发货');
             $intlQty = (int) (($item['intl_qty'] ?? 0) ?: ($item['ship_quantity'] ?? 0) ?: ($item['quantity'] ?? 0));
+            $intlFee = ($item['intl_fee'] ?? 0) ?: ($item['com_amount'] ?? 0);
+            $intlCompletedAt = trim((string) ($item['jpship_completed_at'] ?? ''));
+            $intlStatusMeta = $intlCompletedAt !== '' ? $intlStatus . ' / ' . $intlCompletedAt : $intlStatus;
+            $intlTrackingUrl = $intlNumber !== ''
+                ? '/logistics/jpyd-check?tenant=' . rawurlencode((string) $tenantKey) . '&number=' . rawurlencode($intlNumber)
+                : '';
+            $intlNote = $joinLines([
+                $item['intl_comment'] ?? '',
+                $item['tranship_comment'] ?? '',
+            ]);
             ?>
-            <tr class="item-row"><td colspan="4"><?= e($intlNumber !== '' ? $intlNumber : '待生成') ?></td><td colspan="2"><span class="intl-pend"><?= e($intlStatus) ?></span></td><td>￥<?= e(number_format((float) ($item['intl_fee'] ?? 0), 0)) ?></td><td><?= e($intlQty) ?></td><td><?= e((string) (($item['intl_weight'] ?? 0) ?: ($item['weight'] ?? '-'))) ?></td><td colspan="6"></td></tr>
+            <tr class="item-row"><td colspan="4" class="stack-cell"><span class="stack-main"><?= e($intlNumber !== '' ? $intlNumber : '待生成') ?></span><?php if ($intlTrackingUrl !== ''): ?><a class="oid-sub accent-link" href="<?= e($intlTrackingUrl) ?>" target="_blank" rel="noopener noreferrer">查看国际物流状态</a><?php endif; ?></td><td colspan="2"><span class="intl-pend" title="<?= e($intlStatusMeta) ?>"><?= e($intlStatusMeta) ?></span></td><td><?= e($moneyText($intlFee)) ?></td><td><?= e($intlQty) ?></td><td><?= e((string) (($item['intl_weight'] ?? 0) ?: ($item['weight'] ?? '-'))) ?></td><td><?= e($moneyText($item['cn_amount'] ?? '')) ?></td><td colspan="5" title="<?= e($intlNote) ?>"><?= e($intlNote !== '' ? $intlNote : '-') ?></td></tr>
         <?php endforeach; ?>
         </tbody>
     </table>

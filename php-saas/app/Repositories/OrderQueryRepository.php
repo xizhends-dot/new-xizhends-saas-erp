@@ -190,6 +190,7 @@ SQL);
             'total' => (float) ($row['total_price'] ?? 0),
             'review_invited' => !empty($row['review_invited']),
             'reviewed' => !empty($row['reviewed']),
+            'platform_extra' => $extra,
             'items' => $items,
         ];
     }
@@ -290,6 +291,7 @@ SQL);
                 'tranship_comment' => (string) ($row['tranship_comment'] ?? ''),
                 'intl_comment' => (string) ($row['intl_comment'] ?? ''),
                 'image' => (string) (($row['main_image'] ?? '') ?: $this->firstExtra($extra, ['zhutu'], '/assets/no-image.svg')),
+                'platform_extra' => $extra,
                 'logs' => $this->logsForItem($pdo, $orderId, (int) $row['id']),
             ];
         }, $stmt->fetchAll());
