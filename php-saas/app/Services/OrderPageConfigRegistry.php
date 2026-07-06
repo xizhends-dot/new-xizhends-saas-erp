@@ -81,9 +81,9 @@ final class OrderPageConfigRegistry
                 ['value' => '1', 'label' => '已评价'],
                 ['value' => '0', 'label' => '未评价'],
             ]],
-            ['key' => 'late_ship', 'label' => '超时发货', 'type' => 'checkbox', 'section' => 'flags', 'views' => ['platform', 'purchase']],
-            ['key' => 'in_delivery', 'label' => '配達中', 'type' => 'checkbox', 'section' => 'flags', 'views' => ['platform', 'jp']],
-            ['key' => 'delivered', 'label' => '配達完了', 'type' => 'checkbox', 'section' => 'flags', 'views' => ['platform', 'jp']],
+            ['key' => 'late_ship', 'label' => '【国内物流】超时发货', 'type' => 'checkbox', 'section' => 'flags', 'views' => ['platform', 'purchase']],
+            ['key' => 'in_delivery', 'label' => '【日本】配達中', 'type' => 'checkbox', 'section' => 'flags', 'views' => ['platform', 'jp']],
+            ['key' => 'delivered', 'label' => '【日本】配達完了', 'type' => 'checkbox', 'section' => 'flags', 'views' => ['platform', 'jp']],
         ];
 
         $fields = array_values(array_filter($fields, fn (array $field): bool => $this->fieldVisibleForPlatform((string) $field['key'], $platform)));
@@ -193,7 +193,6 @@ final class OrderPageConfigRegistry
             'purchase_link' => $platform === 'y',
             'product_name' => $platform === 'yp',
             'pay_method' => $platform === 'w',
-            'in_delivery', 'delivered' => $platform === 'r',
             'intl_ship_empty', 'frb_push' => $platform !== 'q',
             'item_id', 'ship_method', 'kana' => $platform !== 'yp',
             default => true,

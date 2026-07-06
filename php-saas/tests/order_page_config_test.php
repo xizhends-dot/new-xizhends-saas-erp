@@ -74,12 +74,15 @@ $check('采购状态字段类型', $rakutenFields['status']['type'] ?? null, 'se
 $check('采购状态字段选项来源', $rakutenFields['status']['optionsKey'] ?? null, 'statusOptions');
 $check('店铺字段选项来源', $rakutenFields['store']['optionsKey'] ?? null, 'storeNames');
 $check('采购状态字段位于基础区', $rakutenFields['status']['section'] ?? null, 'basic');
+$check('国内物流超时发货字段标签', $rakutenFields['late_ship']['label'] ?? null, '【国内物流】超时发货');
 $check('超时发货字段位于标记区', $rakutenFields['late_ship']['section'] ?? null, 'flags');
 $check('国际运单状态字段类型', $rakutenFields['intl_ship_empty']['type'] ?? null, 'select');
 $check('国际运单状态字段名', $rakutenFields['intl_ship_empty']['name'] ?? null, 'kong');
 $check('飞兔推送字段类型', $rakutenFields['frb_push']['type'] ?? null, 'select');
 $check('乐天配達中字段名', $rakutenFields['in_delivery']['name'] ?? null, 'haitatsuchuu');
+$check('日本配達中字段标签', $rakutenFields['in_delivery']['label'] ?? null, '【日本】配達中');
 $check('乐天配達完了字段名', $rakutenFields['delivered']['name'] ?? null, 'haitatsukanryo');
+$check('日本配達完了字段标签', $rakutenFields['delivered']['label'] ?? null, '【日本】配達完了');
 $check('日期范围字段类型', $rakutenFields['date_range']['type'] ?? null, 'date_range');
 $check('乐天日期开始字段名', $rakutenFields['date_range']['from'] ?? null, 'OrderTime');
 $check('乐天日期结束字段名', $rakutenFields['date_range']['to'] ?? null, 'OrderTime2');
@@ -122,6 +125,11 @@ $check('乐天订单号字段名', $registry->fieldNameFor('order_no', 'r'), 'or
 $check('Yahoo购物订单号字段名', $registry->fieldNameFor('order_no', 'y'), 'orderId');
 foreach (['yp', 'w', 'm', 'q'] as $platform) {
     $check("{$platform} 订单号字段名", $registry->fieldNameFor('order_no', $platform), 'ziid');
+}
+foreach (['r', 'y', 'yp', 'w', 'm', 'q'] as $platform) {
+    $checkTrue("{$platform} 显示国内物流超时发货", $has($platform, 'late_ship'));
+    $checkTrue("{$platform} 显示日本配達中", $has($platform, 'in_delivery'));
+    $checkTrue("{$platform} 显示日本配達完了", $has($platform, 'delivered'));
 }
 $check('乐天 ItemId 字段名', $registry->fieldNameFor('item_id', 'r'), 'ItemId');
 $check('Yahoo购物 ItemId 字段名', $registry->fieldNameFor('item_id', 'y'), 'ItemId');
