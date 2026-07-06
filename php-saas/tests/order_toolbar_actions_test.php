@@ -88,6 +88,8 @@ $assert('批量采购状态显示国内采购分组', str_contains($toolbar, '<o
 $assert('批量采购状态显示日本仓分组', str_contains($toolbar, '<option value="" disabled>---日本仓---</option>'));
 $assert('批量采购状态包含国内采购状态', str_contains($toolbar, '>国内采购-准备</option>'));
 $assert('批量采购状态包含日本仓状态', str_contains($toolbar, '>日本仓已完成</option>'));
+$assert('货源地设置使用设置按钮色调类', str_contains($toolbar, 'class="btn-xs batch-setting-btn"') && str_contains($toolbar, '>货源地设置</button>'));
+$assert('采购状态设置使用设置按钮色调类', substr_count($toolbar, 'class="btn-xs batch-setting-btn"') >= 2 && str_contains($toolbar, '>采购状态设置</button>'));
 
 if ($failures !== []) {
     fwrite(STDERR, "Order toolbar actions test FAILED:\n - " . implode("\n - ", $failures) . "\n");

@@ -483,7 +483,7 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
                         <option value="cn_purchase">国内采购</option>
                         <option value="jp_stock">日本仓</option>
                     </select>
-                    <button class="btn-xs" type="submit" name="batch_action" value="set_source" form="<?= e($batchFormId) ?>">货源地设置</button>
+                    <button class="btn-xs batch-setting-btn" type="submit" name="batch_action" value="set_source" form="<?= e($batchFormId) ?>">货源地设置</button>
                 <?php endif; ?>
                 <span class="sep">|</span>
                 <select class="assign-sel" name="purchase_status" form="<?= e($batchFormId) ?>">
@@ -503,7 +503,7 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </select>
-                <button class="btn-xs" type="submit" name="batch_action" value="set_purchase_status" form="<?= e($batchFormId) ?>">采购状态设置</button>
+                <button class="btn-xs batch-setting-btn" type="submit" name="batch_action" value="set_purchase_status" form="<?= e($batchFormId) ?>">采购状态设置</button>
                 <?php if ($orderView === 'platform' && $canBatchOperate): ?><span class="sep">|</span><button class="btn-xs danger-text" type="submit" name="batch_action" value="delete_orders" form="<?= e($batchFormId) ?>">批量删除</button><?php endif; ?>
             <?php endif; ?>
         </div>

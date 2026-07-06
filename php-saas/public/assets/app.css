@@ -1952,6 +1952,17 @@ label.ck.warn { color: #475569; }
   color: #fff;
 }
 
+.order-page .order-toolbar .batch-setting-btn:not(.danger-text) {
+  border-color: #111827;
+  background: #1f2937;
+  color: #fff;
+}
+
+.order-page .order-toolbar .batch-setting-btn:not(.danger-text):hover {
+  background: #111827;
+  color: #fff;
+}
+
 .order-page .order-toolbar .danger-text {
   border-color: #fecaca;
   background: #fff;
