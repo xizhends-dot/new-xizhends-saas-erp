@@ -351,7 +351,7 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
         <?php if ($orderView === 'jp'): ?>
             <tr><th class="c0" colspan="2">出库状态</th><th class="c2">发货员</th><th class="c3">出库时间</th><th class="c4" colspan="2">仓位</th><th class="c6">订单备注</th><th class="c7">出库成本</th><th class="c8" colspan="2">出库单号</th><th class="c10">物流公司</th><th class="c11" colspan="4">国内运单号</th></tr>
         <?php else: ?>
-            <tr><th class="c0" colspan="2">采购人</th><th class="c2">采购时间</th><th class="c3" colspan="2">采购链接</th><th class="c5" colspan="3">订单备注</th><th class="c8">采购金额</th><th class="c9">1688订单号</th><th class="c10">物流公司 / 状态</th><th class="c11" colspan="4">国内运单号 / 物流轨迹</th></tr>
+            <tr><th class="c0" colspan="2">采购人</th><th class="c2">采购时间</th><th class="c3" colspan="2">采购链接</th><th class="c5" colspan="3">订单备注</th><th class="c8">采购金额</th><th class="c9">1688订单号</th><th class="c10">物流公司</th><th class="c11" colspan="4">国内运单号 / 签收地</th></tr>
         <?php endif; ?>
         </thead>
         <tbody>
@@ -378,13 +378,8 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                     ]);
                     $domesticShipMeta = $joinLines([
                         $item['ship_number'] ?? '',
-                        $item['logistics'] ?? '',
+                        $item['receipt_city'] ?? '',
                     ]);
-                    $logisticTrace = trim((string) ($item['logistic_trace'] ?? ''));
-                    $logisticTraceUrl = '';
-                    if (preg_match('/https?:\/\/\S+/u', $logisticTrace, $traceMatches) === 1) {
-                        $logisticTraceUrl = $safeHttpUrl(rtrim($traceMatches[0], " \t\r\n。；;，,"));
-                    }
                     $domesticLogisticsUrl = trim((string) ($item['tabaono'] ?? '')) !== ''
                         ? '/logistics/1688?tenant=' . rawurlencode((string) $tenantKey) . '&q=' . rawurlencode((string) ($item['tabaono'] ?? ''))
                         : '/logistics/express?tenant=' . rawurlencode((string) $tenantKey) . '&q=' . rawurlencode((string) ($item['ship_number'] ?? ''));
@@ -405,20 +400,10 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                     <td colspan="3" title="<?= e($noteText) ?>"><?= e($noteText !== '' ? $noteText : '-') ?></td>
                     <td><?= e($moneyText($item['purchase_amount'] ?? $item['amount'] ?? '')) ?></td>
                     <td title="<?= e($caigouNumbers) ?>"><?= e($caigouNumbers !== '' ? $caigouNumbers : '-') ?></td>
-                    <td class="stack-cell">
-                        <span class="stack-main"><?= e($item['ship_company'] ?: '-') ?></span>
-                        <?php if (trim((string) ($item['logistics'] ?? '')) !== ''): ?><span class="oid-sub"><?= e($item['logistics']) ?></span><?php endif; ?>
-                    </td>
+                    <td><?= e($item['ship_company'] ?: '-') ?></td>
                     <td colspan="4" class="stack-cell">
                         <span class="stack-main"><?= e($domesticShipMeta !== '' ? $domesticShipMeta : '-') ?></span>
                         <?php if (trim((string) ($item['ship_number'] ?? '')) !== '' || trim((string) ($item['tabaono'] ?? '')) !== ''): ?><a class="oid-sub accent-link" href="<?= e($domesticLogisticsUrl) ?>">查看货运</a><?php endif; ?>
-                        <?php if ($logisticTrace !== ''): ?>
-                            <?php if ($logisticTraceUrl !== ''): ?>
-                                <a class="oid-sub accent-link" href="<?= e($logisticTraceUrl) ?>" target="_blank" rel="noopener noreferrer" title="<?= e($logisticTrace) ?>">物流轨迹</a>
-                            <?php else: ?>
-                                <span class="oid-sub" title="<?= e($logisticTrace) ?>">轨迹 <?= e($shortText($logisticTrace, 30)) ?></span>
-                            <?php endif; ?>
-                        <?php endif; ?>
                     </td>
                 <?php endif; ?>
             </tr>

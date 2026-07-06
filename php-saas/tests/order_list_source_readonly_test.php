@@ -69,10 +69,11 @@ $order = [
         'cn_amount' => '',
         'tabaono' => '',
         'caigou_ordernums' => '',
-        'ship_company' => '',
-        'ship_number' => '',
-        'logistics' => '',
-        'logistic_trace' => '',
+        'ship_company' => '中通',
+        'ship_number' => 'CN123456',
+        'receipt_city' => '义乌',
+        'logistics' => '运输中',
+        'logistic_trace' => '轨迹内容',
         'intl_number' => '',
         'intl_status' => '',
         'intl_fee' => '',
@@ -122,6 +123,10 @@ $assert('采购信息表不再显示采购状态采购人合并列', !str_contai
 $assert('采购信息表不再显示采购状态值', !str_contains($purchaseInfoHtml, '国内采购-准备'));
 $assert('采购信息表不再显示补货链接', !str_contains($purchaseInfoHtml, '补货链接'));
 $assert('采购信息表不再显示国内运费', !str_contains($purchaseInfoHtml, '国内运费'));
+$assert('采购信息表物流公司不再显示状态表头', !str_contains($purchaseInfoHtml, '物流公司 / 状态') && str_contains($purchaseInfoHtml, '<th class="c10">物流公司</th>'));
+$assert('采购信息表国内运单号改为签收地表头', !str_contains($purchaseInfoHtml, '国内运单号 / 物流轨迹') && str_contains($purchaseInfoHtml, '<th class="c11" colspan="4">国内运单号 / 签收地</th>'));
+$assert('采购信息表显示签收地', str_contains($purchaseInfoHtml, 'CN123456 / 义乌'));
+$assert('采购信息表不再显示物流状态和轨迹内容', !str_contains($purchaseInfoHtml, '运输中') && !str_contains($purchaseInfoHtml, '轨迹内容') && !str_contains($purchaseInfoHtml, '物流轨迹'));
 
 if ($failures !== []) {
     fwrite(STDERR, "Order list source readonly test FAILED:\n - " . implode("\n - ", $failures) . "\n");
