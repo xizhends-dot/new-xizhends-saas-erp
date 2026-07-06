@@ -178,8 +178,8 @@ $renderFilterField = static function (array $field, string $extraClass = '') use
         <?php if ($type === 'select'): ?>
             <select name="<?= e($name) ?>"<?= $selectAttrs ?>>
                 <?php if ($key === 'status'): ?>
-                    <option value=""><?= e($orderView === 'purchase' ? '— 待处理订单 —' : '全部状态') ?></option>
-                    <?php if ($orderView === 'purchase'): ?>
+                    <option value=""><?= e($orderView === 'jp' ? '全部状态' : '— 待处理订单 —') ?></option>
+                    <?php if ($orderView !== 'jp'): ?>
                         <option value="__ALL__" <?= e($value === '__ALL__' ? 'selected' : '') ?>>全部订单</option>
                     <?php endif; ?>
                 <?php elseif (in_array($key, ['store', 'buyer'], true)): ?>
