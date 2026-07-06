@@ -24,7 +24,7 @@ final class OrderPageConfigRegistry
         $fields = [
             ['key' => 'order_no', 'label' => '订单号', 'type' => 'text', 'section' => 'basic', 'views' => ['platform', 'purchase', 'jp']],
             ['key' => 'tabaono', 'label' => '1688订单号', 'type' => 'text', 'section' => 'basic', 'views' => ['platform', 'purchase']],
-            ['key' => 'customer_name', 'label' => '收件人姓名', 'type' => 'text', 'section' => 'basic', 'views' => ['platform']],
+            ['key' => 'customer_name', 'label' => '客人姓名', 'type' => 'text', 'section' => 'basic', 'views' => ['platform']],
             ['key' => 'phone', 'label' => '客人电话', 'type' => 'text', 'section' => 'basic', 'views' => ['platform']],
             ['key' => 'mail', 'label' => '客人邮箱', 'type' => 'text', 'section' => 'basic', 'views' => ['platform']],
             ['key' => 'cn_ship_no', 'label' => '国内发货单号', 'type' => 'text', 'section' => 'basic', 'views' => ['platform', 'purchase']],

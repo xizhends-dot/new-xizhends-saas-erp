@@ -73,6 +73,7 @@ $checkFalse('乐天不显示支付方式', $has('r', 'pay_method'));
 $check('采购状态字段类型', $rakutenFields['status']['type'] ?? null, 'select');
 $check('采购状态字段选项来源', $rakutenFields['status']['optionsKey'] ?? null, 'statusOptions');
 $check('店铺字段选项来源', $rakutenFields['store']['optionsKey'] ?? null, 'storeNames');
+$check('客人姓名字段标签', $rakutenFields['customer_name']['label'] ?? null, '客人姓名');
 $check('采购状态字段位于基础区', $rakutenFields['status']['section'] ?? null, 'basic');
 $check('国内物流超时发货字段标签', $rakutenFields['late_ship']['label'] ?? null, '【国内物流】超时发货');
 $check('超时发货字段位于标记区', $rakutenFields['late_ship']['section'] ?? null, 'flags');

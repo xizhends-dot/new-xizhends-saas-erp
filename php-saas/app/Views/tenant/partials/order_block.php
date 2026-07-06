@@ -173,8 +173,7 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
             <tr>
                 <th class="c0"><span class="seq-no"><?= e($seq) ?></span></th>
                 <th class="c1" colspan="2">导入时间</th>
-                <th class="c3">收件人</th>
-                <th class="c4">假名</th>
+                <th class="c3" colspan="2">客人姓名/片假名</th>
                 <th class="c5">地址</th>
                 <th class="c6">邮编</th>
                 <th class="c7">电话</th>
@@ -191,8 +190,10 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
             <tr>
                 <td><?php if ($canBatchOperate): ?><input class="order-check" type="checkbox" name="order_ids[]" value="<?= e($order['id']) ?>" form="<?= e($batchFormId) ?>" aria-label="选择订单"><?php else: ?><span class="seq-no"><?= e($seq) ?></span><?php endif; ?></td>
                 <td colspan="2"><?= e($importedAt) ?></td>
-                <td><?= e($customer['name'] ?? '') ?></td>
-                <td><?= e($customer['kana'] ?? '') ?></td>
+                <td colspan="2" class="stack-cell">
+                    <span class="stack-main"><?= e($customer['name'] ?? '') ?></span>
+                    <?php if (trim((string) ($customer['kana'] ?? '')) !== ''): ?><span class="oid-sub"><?= e($customer['kana']) ?></span><?php endif; ?>
+                </td>
                 <td title="<?= e($customer['address'] ?? '') ?>"><?= e($customer['address'] ?? '') ?></td>
                 <td><?= e($customer['zip'] ?? '') ?></td>
                 <td><?= e($customer['phone'] ?? '') ?></td>
