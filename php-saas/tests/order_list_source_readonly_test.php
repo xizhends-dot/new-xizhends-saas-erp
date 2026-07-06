@@ -124,8 +124,9 @@ $assert('采购信息表不再显示采购状态值', !str_contains($purchaseInf
 $assert('采购信息表不再显示补货链接', !str_contains($purchaseInfoHtml, '补货链接'));
 $assert('采购信息表不再显示国内运费', !str_contains($purchaseInfoHtml, '国内运费'));
 $assert('采购信息表采购时间放大一格', str_contains($purchaseInfoHtml, '<th class="c2" colspan="2">采购时间</th>'));
-$assert('采购信息表物流公司不再显示状态表头', !str_contains($purchaseInfoHtml, '物流公司 / 状态') && str_contains($purchaseInfoHtml, '<th class="c11">物流公司</th>'));
-$assert('采购信息表国内运单号改为签收地并收窄一格', !str_contains($purchaseInfoHtml, '国内运单号 / 物流轨迹') && str_contains($purchaseInfoHtml, '<th class="c12" colspan="3">国内运单号 / 签收地</th>'));
+$assert('采购信息表1688订单号放大一格', str_contains($purchaseInfoHtml, '<th class="c10" colspan="2">1688订单号</th>'));
+$assert('采购信息表物流公司不再显示状态表头', !str_contains($purchaseInfoHtml, '物流公司 / 状态') && str_contains($purchaseInfoHtml, '<th class="c12">物流公司</th>'));
+$assert('采购信息表国内运单号改为签收地并继续收窄一格', !str_contains($purchaseInfoHtml, '国内运单号 / 物流轨迹') && str_contains($purchaseInfoHtml, '<th class="c13" colspan="2">国内运单号 / 签收地</th>'));
 $assert('采购信息表显示签收地', str_contains($purchaseInfoHtml, 'CN123456 / 义乌'));
 $assert('采购信息表不再显示物流状态和轨迹内容', !str_contains($purchaseInfoHtml, '运输中') && !str_contains($purchaseInfoHtml, '轨迹内容') && !str_contains($purchaseInfoHtml, '物流轨迹'));
 
