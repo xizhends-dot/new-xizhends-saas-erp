@@ -84,6 +84,10 @@ $assert('批量栏不再显示状态适用货源地', !str_contains($toolbar, 'n
 $assert('批量采购状态下拉不再依赖状态适用货源地', !str_contains($toolbar, 'data-batch-status-target') && !str_contains($toolbar, '请先选择状态适用货源地'));
 $assert('批量栏不再显示采购人分配', !str_contains($toolbar, 'name="buyer"') && !str_contains($toolbar, 'assign_buyer') && !str_contains($toolbar, '>采购人<'));
 $assert('批量货源地不再显示待定', !str_contains($toolbar, '<option value="pending">待定</option>'));
+$assert('批量采购状态显示国内采购分组', str_contains($toolbar, '<option value="" disabled>---国内采购---</option>'));
+$assert('批量采购状态显示日本仓分组', str_contains($toolbar, '<option value="" disabled>---日本仓---</option>'));
+$assert('批量采购状态包含国内采购状态', str_contains($toolbar, '>国内采购-准备</option>'));
+$assert('批量采购状态包含日本仓状态', str_contains($toolbar, '>日本仓已完成</option>'));
 
 if ($failures !== []) {
     fwrite(STDERR, "Order toolbar actions test FAILED:\n - " . implode("\n - ", $failures) . "\n");

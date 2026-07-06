@@ -488,9 +488,20 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
                 <span class="sep">|</span>
                 <select class="assign-sel" name="purchase_status" form="<?= e($batchFormId) ?>">
                     <option value="">选择状态</option>
-                    <?php foreach (($orderView === 'platform' ? $mergedStatusOptions : $statusOptions) as $statusOption): ?>
-                        <option><?= e($statusOption) ?></option>
-                    <?php endforeach; ?>
+                    <?php if ($orderView === 'platform'): ?>
+                        <option value="" disabled>---国内采购---</option>
+                        <?php foreach ($statusOptions as $statusOption): ?>
+                            <option><?= e($statusOption) ?></option>
+                        <?php endforeach; ?>
+                        <option value="" disabled>---日本仓---</option>
+                        <?php foreach ($jpStockStatusOptions as $statusOption): ?>
+                            <option><?= e($statusOption) ?></option>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <?php foreach ($statusOptions as $statusOption): ?>
+                            <option><?= e($statusOption) ?></option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </select>
                 <button class="btn-xs" type="submit" name="batch_action" value="set_purchase_status" form="<?= e($batchFormId) ?>">采购状态设置</button>
                 <?php if ($orderView === 'platform' && $canBatchOperate): ?><span class="sep">|</span><button class="btn-xs danger-text" type="submit" name="batch_action" value="delete_orders" form="<?= e($batchFormId) ?>">批量删除</button><?php endif; ?>
