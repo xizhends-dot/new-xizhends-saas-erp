@@ -32,6 +32,7 @@ $canChangeSource = true;
 $canBatchOperate = true;
 $canBatchPurchase = true;
 $canBatchJp = false;
+$receiptCityOptions = ['义乌', '深圳威通'];
 $order = [
     'id' => 100,
     'platform' => 'y',
@@ -129,6 +130,10 @@ $assert('采购信息表物流公司不再显示状态表头', !str_contains($pu
 $assert('采购信息表国内运单号改为签收地并继续收窄一格', !str_contains($purchaseInfoHtml, '国内运单号 / 物流轨迹') && str_contains($purchaseInfoHtml, '<th class="c13" colspan="2">国内运单号 / 签收地</th>'));
 $assert('采购信息表显示签收地', str_contains($purchaseInfoHtml, 'CN123456 / 义乌'));
 $assert('采购信息表不再显示物流状态和轨迹内容', !str_contains($purchaseInfoHtml, '运输中') && !str_contains($purchaseInfoHtml, '轨迹内容') && !str_contains($purchaseInfoHtml, '物流轨迹'));
+$assert('编辑抽屉改为老系统左侧编辑结构', str_contains($html, 'editor-drawer legacy-sidebar-editor') && str_contains($html, '<div class="drawer-section-title">编辑订单</div>') && str_contains($html, '<div class="drawer-section-title">运单信息</div>'));
+$assert('编辑抽屉表单使用老系统行结构', str_contains($html, '<div class="drawer-form-group"><label>OrderId：</label>') && str_contains($html, '<div class="drawer-form-group"><label>1688订单号：</label>'));
+$assert('编辑抽屉签收地可选择并保留当前值', str_contains($html, '<select name="receipt_city"') && preg_match('/<option value="义乌"[^>]*selected[^>]*>义乌<\/option>/', $html) === 1);
+$assert('编辑抽屉不再使用旧卡片栅格结构', !str_contains($html, 'drawer-product') && !str_contains($html, 'drawer-split'));
 
 if ($failures !== []) {
     fwrite(STDERR, "Order list source readonly test FAILED:\n - " . implode("\n - ", $failures) . "\n");

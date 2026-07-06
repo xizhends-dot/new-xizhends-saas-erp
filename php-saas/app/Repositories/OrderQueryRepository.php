@@ -204,7 +204,7 @@ SQL);
 SELECT i.*, p.tabaono, p.caigou_link, p.buhuo_link, p.caigou_user AS purchase_user, p.caigou_time,
        p.caigou_ordernums, p.cn_amount, p.com_amount, p.cn_ship_number,
        j.out_status, j.assignee, j.location, j.out_no, j.out_cost, j.out_time,
-       d.ship_company, d.ship_number, d.ship_quantity, d.jpship_status, d.jpship_completed_at, d.logistic_trace,
+       d.ship_company, d.ship_number, d.ship_quantity, d.receipt_city, d.jpship_status, d.jpship_completed_at, d.logistic_trace,
        x.intl_number, x.intl_status, x.intl_fee, x.intl_qty, x.intl_weight, x.tranship_comment, x.comment AS intl_comment
 FROM order_items i
 LEFT JOIN purchases p ON p.order_item_id = i.id
@@ -274,6 +274,7 @@ SQL);
                 'ship_company' => (string) ($row['ship_company'] ?? ''),
                 'ship_number' => (string) (($row['cn_ship_number'] ?? '') ?: ($row['ship_number'] ?? '')),
                 'ship_quantity' => (int) ($row['ship_quantity'] ?? 0),
+                'receipt_city' => (string) ($row['receipt_city'] ?? ''),
                 'logistics' => (string) ($row['jpship_status'] ?? ''),
                 'logistic_trace' => (string) ($row['logistic_trace'] ?? ''),
                 'jpship_completed_at' => (string) ($row['jpship_completed_at'] ?? ''),

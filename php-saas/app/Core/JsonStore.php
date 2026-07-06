@@ -3693,6 +3693,7 @@ final class JsonStore implements StoreInterface
             'ship_company',
             'ship_number',
             'ship_quantity',
+            'receipt_city',
             'logistics',
             'logistic_trace',
             'material',

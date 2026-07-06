@@ -35,6 +35,10 @@ $purchaseStatusOptionsJson = json_encode([
     'pending' => $statusOptions,
     'jp_stock' => $jpStockStatusOptions,
 ], $jsonFlags) ?: '{}';
+$receiptCityOptions = array_values(array_filter(
+    array_map('strval', is_array($receiptCityOptions ?? null) ? $receiptCityOptions : []),
+    static fn (string $place): bool => trim($place) !== ''
+));
 $canEditOrders = (bool) ($canEditOrders ?? false);
 $canEditPurchase = (bool) ($canEditPurchase ?? false);
 $canEditJp = (bool) ($canEditJp ?? false);
@@ -461,10 +465,26 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
 
     <?php if ($canEditThisView): ?>
     <?php foreach ($order['items'] as $item): ?>
-        <aside class="editor-drawer" id="editor-<?= e($item['id']) ?>" aria-hidden="true">
+        <?php
+        $itemExtra = is_array($item['platform_extra'] ?? null) ? $item['platform_extra'] : [];
+        $entryPoint = $extraValue($itemExtra, ['EntryPoint', 'entryPoint', 'product_url', 'url']);
+        $shipName = (string) (($customer['name'] ?? '') ?: $extraValue($orderExtra, ['ShipName', 'senderName']));
+        $shipAddress1 = (string) (($customer['address'] ?? '') ?: $extraValue($orderExtra, ['ShipAddress1', 'senderAddress', 'shipping_address_1']));
+        $shipAddress2 = $extraValue($orderExtra, ['ShipAddress2', 'shipping_address_2']);
+        $shipCity = $extraValue($orderExtra, ['ShipCity', 'shipping_city']);
+        $shipPrefecture = $extraValue($orderExtra, ['ShipPrefecture', 'shipping_state']);
+        $shipZipCode = (string) (($customer['zip'] ?? '') ?: $extraValue($orderExtra, ['ShipZipCode', 'senderZipCode', 'shipping_postal_code']));
+        $shipPhoneNumber = (string) (($customer['phone'] ?? '') ?: $extraValue($orderExtra, ['ShipPhoneNumber', 'senderPhoneNumber1']));
+        $currentReceiptCity = trim((string) ($item['receipt_city'] ?? ''));
+        $receiptCityChoices = $receiptCityOptions;
+        if ($currentReceiptCity !== '' && !in_array($currentReceiptCity, $receiptCityChoices, true)) {
+            array_unshift($receiptCityChoices, $currentReceiptCity);
+        }
+        ?>
+        <aside class="editor-drawer legacy-sidebar-editor" id="editor-<?= e($item['id']) ?>" aria-hidden="true">
             <div class="drawer-head">
                 <div>
-                    <strong>编辑子商品</strong>
+                    <strong>编辑订单</strong>
                     <div class="sub"><?= e($order['platform_order_id']) ?> · <?= e($item['item_code']) ?></div>
                 </div>
                 <button class="drawer-close" type="button" data-close-editor="editor-<?= e($item['id']) ?>" aria-label="关闭">×</button>
@@ -476,66 +496,108 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                 <input type="hidden" name="item_id" value="<?= e($item['id']) ?>">
                 <input type="hidden" name="return" value="<?= e($returnUrl) ?>">
 
-                <div class="drawer-product">
-                    <img src="<?= e($item['image']) ?>" alt="<?= e($item['title']) ?>">
-                    <div>
-                        <div class="drawer-title"><?= e($item['title']) ?></div>
-                        <div class="sub"><?= e($item['option']) ?> · ×<?= e($item['quantity']) ?></div>
-                    </div>
+                <div class="drawer-section">
+                    <div class="drawer-section-title">编辑订单</div>
+                    <div class="drawer-form-group"><label>OrderId：</label><input type="text" value="<?= e($order['platform_order_id']) ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>Id：</label><input type="text" value="<?= e($order['id']) ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>LineId：</label><input type="text" value="<?= e($item['line_id'] ?? '') ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>ItemId：</label><input type="text" value="<?= e($item['item_code'] ?? '') ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>Quantity：</label><input type="text" value="<?= e($item['quantity'] ?? '') ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>SubCodeOption：</label><input type="text" value="<?= e($item['option'] ?? '') ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>OrderTime：</label><input type="text" value="<?= e($order['order_date'] ?? '') ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>OrderStatus：</label><input type="text" value="<?= e($orderStatus) ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>EntryPoint：</label><input type="text" value="<?= e($entryPoint) ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>ShipName：</label><input type="text" value="<?= e($shipName) ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>ShipAddress1：</label><input type="text" value="<?= e($shipAddress1) ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>ShipAddress2：</label><input type="text" value="<?= e($shipAddress2) ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>ShipCity：</label><input type="text" value="<?= e($shipCity) ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>ShipPrefecture：</label><input type="text" value="<?= e($shipPrefecture) ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>ShipZipCode：</label><input type="text" value="<?= e($shipZipCode) ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>ShipPhoneNumber：</label><input type="text" value="<?= e($shipPhoneNumber) ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>ShipRequestDate：</label><input type="text" value="<?= e($extraValue($orderExtra, ['ShipRequestDate', 'deliveryRequest2'])) ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>ShipRequestTime：</label><input type="text" value="<?= e($extraValue($orderExtra, ['ShipRequestTime'])) ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>ShipNotes：</label><input type="text" value="<?= e($extraValue($itemExtra, ['ShipNotes', 'deliveryRequest1'])) ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>BillMailAddress：</label><input type="text" value="<?= e($customer['mail'] ?? '') ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>PayMethodName：</label><input type="text" value="<?= e($payMethod) ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>产品单价：</label><input type="text" value="<?= e((string) ($item['unit_price'] ?? '')) ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>产品邮费：</label><input type="text" value="<?= e((string) ($item['postage_price'] ?? '')) ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>手续费：</label><input type="text" value="<?= e((string) ($item['pay_charge'] ?? '')) ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>TotalPrice：</label><input type="text" value="<?= e((string) ($item['line_total'] ?? '')) ?>" readonly class="readonly"></div>
                 </div>
 
                 <?php if ($canEditOrders || $canEditPurchase): ?>
-                <label><span>采购状态</span><select name="purchase_status" data-source-status-target data-status-options="<?= e($purchaseStatusOptionsJson) ?>">
-                    <?php foreach ($statusOptionsFor($item['purchase_status'] ?? '', (string) ($item['source_type'] ?? 'pending')) as $statusOption): ?>
-                        <option <?= ($item['purchase_status'] ?? '') === $statusOption ? 'selected' : '' ?>><?= e($statusOption) ?></option>
-                    <?php endforeach; ?>
-                </select></label>
-                <label><span>采购人</span><input name="buyer" value="<?= e($item['buyer'] ?? '') ?>"></label>
-                <label><span>采购时间</span><input name="purchase_time" value="<?= e($item['purchase_time'] ?? '') ?>" placeholder="YYYY-MM-DD HH:MM"></label>
-                <label><span>1688订单号</span><input name="tabaono" value="<?= e($item['tabaono'] ?? '') ?>"></label>
-                <label class="drawer-wide"><span>历史1688单号</span><input name="caigou_ordernums" value="<?= e($item['caigou_ordernums'] ?? '') ?>"></label>
-                <label class="drawer-wide"><span>采购链接</span><textarea name="purchase_link"><?= e($item['purchase_link'] ?? '') ?></textarea></label>
-                <label class="drawer-wide"><span>补货链接</span><textarea name="buhuo_link"><?= e($item['buhuo_link'] ?? '') ?></textarea></label>
-                <div class="drawer-split cols-3">
-                    <label><span>采购金额</span><input name="amount" value="<?= e($item['amount'] ?? '') ?>"></label>
-                    <label><span>cnamount</span><input name="cn_amount" value="<?= e($item['cn_amount'] ?? '') ?>"></label>
-                    <label><span>comamount</span><input name="com_amount" value="<?= e($item['com_amount'] ?? '') ?>"></label>
+                <div class="drawer-section">
+                    <div class="drawer-section-title">运单信息</div>
+                    <div class="drawer-form-group">
+                        <label>订单产品图：</label>
+                        <div class="image-upload-area">
+                            <img class="preview-image" src="<?= e($item['image']) ?>" alt="<?= e($item['title']) ?>">
+                        </div>
+                    </div>
+                    <div class="drawer-form-group"><label>SKU产品图：</label><input type="text" value="<?= e((string) (($item['sku_image'] ?? '') ?: '')) ?>" readonly class="readonly" placeholder="请在完整详情中维护图片"></div>
+                    <div class="drawer-form-group"><label>1688订单号：</label><input type="text" name="tabaono" value="<?= e($item['tabaono'] ?? '') ?>"></div>
+                    <div class="drawer-form-group"><label>历史1688单号：</label><input type="text" name="caigou_ordernums" value="<?= e($item['caigou_ordernums'] ?? '') ?>"></div>
+                    <div class="drawer-form-group"><label>采购人：</label><input type="text" name="buyer" value="<?= e($item['buyer'] ?? '') ?>"></div>
+                    <div class="drawer-form-group"><label>采购链接：</label><textarea name="purchase_link" rows="2"><?= e($item['purchase_link'] ?? '') ?></textarea></div>
+                    <div class="drawer-form-group"><label>物流公司：</label><input type="text" name="ship_company" value="<?= e($item['ship_company'] ?? '') ?>"></div>
+                    <div class="drawer-form-group"><label>国内运单号：</label><input type="text" name="ship_number" value="<?= e($item['ship_number'] ?? '') ?>"></div>
+                    <div class="drawer-form-group"><label>物流状态：</label><input type="text" name="logistics" value="<?= e($item['logistics'] ?? '') ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>物流轨迹：</label><textarea name="logistic_trace" rows="3" readonly class="readonly"><?= e($item['logistic_trace'] ?? '') ?></textarea></div>
+                    <div class="drawer-form-group"><label>物流签收地：</label><select name="receipt_city">
+                        <option value="">---请选择---</option>
+                        <?php foreach ($receiptCityChoices as $city): ?>
+                            <option value="<?= e($city) ?>" <?= $currentReceiptCity === $city ? 'selected' : '' ?>><?= e($city) ?></option>
+                        <?php endforeach; ?>
+                    </select></div>
+                    <div class="drawer-form-group"><label>comamount：</label><input type="text" name="com_amount" value="<?= e($item['com_amount'] ?? '') ?>"></div>
+                    <div class="drawer-form-group"><label>件数：</label><input type="text" name="ship_quantity" value="<?= e($item['ship_quantity'] ?? '') ?>"></div>
+                    <div class="drawer-form-group"><label>重量：</label><input type="text" name="weight" value="<?= e($item['weight'] ?? '') ?>"></div>
+                    <div class="drawer-form-group"><label class="label-red">材质：</label><input type="text" name="material" value="<?= e($item['material'] ?? '') ?>"></div>
+                    <div class="drawer-form-group"><label class="label-red">托运备注：</label><input type="text" name="tranship_comment" value="<?= e($item['tranship_comment'] ?? '') ?>"></div>
+                    <div class="drawer-form-group">
+                        <label class="label-red">中文属性备注：</label>
+                        <div class="drawer-field-stack">
+                            <textarea name="chinese_option" rows="2"><?= e($item['chinese_option'] ?? '') ?></textarea>
+                            <div class="drawer-readonly-note">
+                                <div><strong>商品数量：</strong><?= e($item['quantity'] ?? '-') ?></div>
+                                <div><strong>日语商品属性：</strong><?= e($item['option'] ?? '-') ?></div>
+                                <div><strong>項目・選択肢：</strong><?= e($extraValue($itemExtra, ['selectedChoice', 'SubCodeOption']) ?: '-') ?></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="drawer-form-group"><label>采购金额：</label><input type="text" name="amount" value="<?= e($item['amount'] ?? '') ?>"></div>
+                    <div class="drawer-form-group"><label>cnamount：</label><input type="text" name="cn_amount" value="<?= e($item['cn_amount'] ?? '') ?>"></div>
+                    <div class="drawer-form-group"><label>采购状态：</label><select name="purchase_status" data-source-status-target data-status-options="<?= e($purchaseStatusOptionsJson) ?>">
+                        <?php foreach ($statusOptionsFor($item['purchase_status'] ?? '', (string) ($item['source_type'] ?? 'pending')) as $statusOption): ?>
+                            <option <?= ($item['purchase_status'] ?? '') === $statusOption ? 'selected' : '' ?>><?= e($statusOption) ?></option>
+                        <?php endforeach; ?>
+                    </select></div>
+                    <div class="drawer-form-group"><label>采购时间：</label><input type="text" name="purchase_time" value="<?= e($item['purchase_time'] ?? '') ?>" placeholder="YYYY-MM-DD HH:MM"></div>
+                    <div class="drawer-form-group"><label>补货链接：</label><textarea name="buhuo_link" rows="2"><?= e($item['buhuo_link'] ?? '') ?></textarea></div>
+                    <div class="drawer-form-group"><label>订单备注：</label><textarea name="comment" rows="3"><?= e($item['comment'] ?? '') ?></textarea></div>
                 </div>
-                <div class="drawer-split">
-                    <label><span>材质</span><input name="material" value="<?= e($item['material'] ?? '') ?>"></label>
-                    <label><span>重量</span><input name="weight" value="<?= e($item['weight'] ?? '') ?>"></label>
-                </div>
-                <label class="drawer-wide"><span>托运备注</span><input name="tranship_comment" value="<?= e($item['tranship_comment'] ?? '') ?>"></label>
-                <label class="drawer-wide"><span>中文属性备注</span><textarea name="chinese_option"><?= e($item['chinese_option'] ?? '') ?></textarea></label>
-                <label class="drawer-wide"><span>订单备注</span><textarea name="comment"><?= e($item['comment'] ?? '') ?></textarea></label>
-                <div class="drawer-split">
-                    <label><span>物流公司</span><input name="ship_company" value="<?= e($item['ship_company'] ?? '') ?>"></label>
-                    <label><span>国内运单号</span><input name="ship_number" value="<?= e($item['ship_number'] ?? '') ?>"></label>
-                </div>
-                <label><span>物流状态</span><input name="logistics" value="<?= e($item['logistics'] ?? '') ?>"></label>
-                <label class="drawer-wide"><span>物流轨迹</span><textarea name="logistic_trace"><?= e($item['logistic_trace'] ?? '') ?></textarea></label>
                 <?php endif; ?>
                 <?php if ($canEditOrders || $canEditJp): ?>
-                <label><span>日本仓ID</span><input name="jp_warehouse_id" value="<?= e($item['jp_warehouse_id'] ?? '') ?>"></label>
-                <label><span>发货员</span><input name="assignee" value="<?= e($item['assignee'] ?? '') ?>"></label>
-                <label><span>出库状态</span><select name="out_status">
-                    <?php foreach (['待分配', '已分配', '已出库', '已发货'] as $outOption): ?>
-                        <option <?= ($item['out_status'] ?? '') === $outOption ? 'selected' : '' ?>><?= e($outOption) ?></option>
-                    <?php endforeach; ?>
-                </select></label>
-                <div class="drawer-split">
-                    <label><span>国际运单号</span><input name="intl_number" value="<?= e($item['intl_number'] ?? '') ?>"></label>
-                    <label><span>国际运费</span><input name="intl_fee" value="<?= e(($item['intl_fee'] ?? 0) ?: ($item['com_amount'] ?? '')) ?>"></label>
+                <div class="drawer-section">
+                    <div class="drawer-section-title">日本仓 / 国际物流</div>
+                    <div class="drawer-form-group"><label>日本仓ID：</label><input type="text" name="jp_warehouse_id" value="<?= e($item['jp_warehouse_id'] ?? '') ?>"></div>
+                    <div class="drawer-form-group"><label>发货员：</label><input type="text" name="assignee" value="<?= e($item['assignee'] ?? '') ?>"></div>
+                    <div class="drawer-form-group"><label>出库状态：</label><select name="out_status">
+                        <?php foreach (['待分配', '已分配', '已出库', '已发货'] as $outOption): ?>
+                            <option <?= ($item['out_status'] ?? '') === $outOption ? 'selected' : '' ?>><?= e($outOption) ?></option>
+                        <?php endforeach; ?>
+                    </select></div>
+                    <div class="drawer-form-group"><label>国际运单号：</label><input type="text" name="intl_number" value="<?= e($item['intl_number'] ?? '') ?>"></div>
+                    <div class="drawer-form-group"><label>国际运费：</label><input type="text" name="intl_fee" value="<?= e(($item['intl_fee'] ?? 0) ?: ($item['com_amount'] ?? '')) ?>"></div>
+                    <div class="drawer-form-group"><label>件数：</label><input type="text" name="intl_qty" value="<?= e(($item['intl_qty'] ?? 0) ?: ($item['ship_quantity'] ?? '')) ?>"></div>
+                    <div class="drawer-form-group"><label>国际重量：</label><input type="text" name="intl_weight" value="<?= e(($item['intl_weight'] ?? 0) ?: ($item['weight'] ?? '')) ?>"></div>
+                    <div class="drawer-form-group"><label>国际备注：</label><input type="text" name="intl_comment" value="<?= e($item['intl_comment'] ?? '') ?>"></div>
                 </div>
-                <div class="drawer-split">
-                    <label><span>件数</span><input name="intl_qty" value="<?= e(($item['intl_qty'] ?? 0) ?: ($item['ship_quantity'] ?? '')) ?>"></label>
-                    <label><span>国际重量</span><input name="intl_weight" value="<?= e(($item['intl_weight'] ?? 0) ?: ($item['weight'] ?? '')) ?>"></label>
-                </div>
-                <label class="drawer-wide"><span>国际备注</span><input name="intl_comment" value="<?= e($item['intl_comment'] ?? '') ?>"></label>
                 <?php endif; ?>
                 <div class="drawer-actions">
-                    <a class="btn" href="<?= e($detailUrl) ?>">完整详情</a>
-                    <button class="btn primary" type="submit">保存</button>
+                    <button class="drawer-btn drawer-btn-secondary" type="button" data-close-editor="editor-<?= e($item['id']) ?>">取消</button>
+                    <a class="drawer-btn drawer-btn-secondary" href="<?= e($detailUrl) ?>">完整详情</a>
+                    <button class="drawer-btn drawer-btn-primary" type="submit">保存</button>
                 </div>
             </form>
         </aside>

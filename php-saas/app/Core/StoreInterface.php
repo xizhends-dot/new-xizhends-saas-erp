@@ -179,7 +179,7 @@ interface StoreInterface
      * @param array<string, mixed> $data Supported old-detail compatible item fields include:
      * source_type, purchase_status, buyer, purchase_time, purchase_link, buhuo_link,
      * amount, cn_amount, com_amount, tabaono, caigou_ordernums, ship_company,
-     * ship_number, logistics, logistic_trace, material, weight, chinese_option,
+     * ship_number, ship_quantity, receipt_city, logistics, logistic_trace, material, weight, chinese_option,
      * comment, tranship_comment, assignee, out_status, jp_warehouse_id,
      * intl_number, intl_fee, intl_qty, intl_weight, intl_comment.
      */

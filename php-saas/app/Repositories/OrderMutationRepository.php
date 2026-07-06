@@ -343,7 +343,7 @@ SELECT i.id, i.order_id, o.platform, o.platform_order_id, COALESCE(NULLIF(s.dpqu
        p.caigou_time AS purchase_time, p.caigou_ordernums, p.cn_amount, p.com_amount, p.cn_ship_number,
        j.out_status, j.assignee,
        d.ship_company, COALESCE(NULLIF(p.cn_ship_number, ''), d.ship_number) AS ship_number,
-       d.ship_quantity, d.jpship_status AS logistics, d.logistic_trace,
+       d.ship_quantity, d.receipt_city, d.jpship_status AS logistics, d.logistic_trace,
        x.intl_number, x.intl_status, x.intl_fee, x.intl_qty, x.intl_weight, x.tranship_comment, x.comment AS intl_comment
 FROM order_items i
 JOIN orders o ON o.id = i.order_id
@@ -386,6 +386,7 @@ SQL);
             'ship_company',
             'ship_number',
             'ship_quantity',
+            'receipt_city',
             'logistics',
             'logistic_trace',
             'material',
@@ -531,6 +532,7 @@ SQL);
             'ship_number' => $this->updateShipNumber($pdo, $itemId, $value),
             'ship_company' => $this->updateDomesticColumn($pdo, $itemId, 'ship_company', $value),
             'ship_quantity' => $this->updateDomesticColumn($pdo, $itemId, 'ship_quantity', $value),
+            'receipt_city' => $this->updateDomesticColumn($pdo, $itemId, 'receipt_city', $value),
             'logistics' => $this->updateDomesticColumn($pdo, $itemId, 'jpship_status', $value),
             'logistic_trace' => $this->updateDomesticColumn($pdo, $itemId, 'logistic_trace', $value),
             'material' => $this->updateOrderItemColumn($pdo, $itemId, 'material', $value),

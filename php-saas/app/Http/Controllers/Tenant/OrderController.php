@@ -488,6 +488,8 @@ final class OrderController extends TenantBaseController
                 'caigou_ordernums',
                 'ship_company',
                 'ship_number',
+                'ship_quantity',
+                'receipt_city',
                 'logistics',
                 'logistic_trace',
                 'material',
