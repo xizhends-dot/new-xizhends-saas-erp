@@ -442,9 +442,13 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
     <?php endif; ?>
 
     <div class="tbar order-toolbar">
-        <div class="tbar-count">已选择 <strong>0</strong> / <strong><?= e($resultTotal) ?></strong> <?= e($resultUnit) ?><?php if ($canSelectAll): ?><button class="select-all-btn" type="button" data-toggle-selection="all">全选</button><?php endif; ?></div>
+        <div class="tbar-count">已选择 <strong>0</strong>/<strong><?= e($resultTotal) ?></strong><?= e($resultUnit) ?><?php if ($canSelectAll): ?><button class="select-all-btn" type="button" data-toggle-selection="all">全选</button><?php endif; ?></div>
         <div class="tbar-actions">
+            <span class="sep">|</span>
             <button class="tgl-all detail-toggle" type="button">展开详情</button>
+            <?php if ($can1688Logistics || $canExpressLogistics || $canJpLogistics): ?>
+                <span class="sep">|</span>
+            <?php endif; ?>
             <?php if ($can1688Logistics): ?>
                 <button class="btn-xs" type="submit" name="type" value="1688" form="order-logistics-form">更新1688物流</button>
             <?php endif; ?>
@@ -455,8 +459,10 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
                 <button class="btn-xs" type="submit" name="type" value="jp" form="order-logistics-form">更新国际物流</button>
             <?php endif; ?>
             <?php if (($orderView === 'jp' && !$canBatchJp) || ($orderView !== 'jp' && !$canBatchPurchase)): ?>
+                <span class="sep">|</span>
                 <span class="batch-label">当前账号没有批量操作权限</span>
             <?php elseif ($orderView === 'jp'): ?>
+                <span class="sep">|</span>
                 <span class="batch-label">采购状态</span>
                 <select class="assign-sel" name="purchase_status" form="<?= e($batchFormId) ?>">
                     <option value="">选择状态</option>
@@ -470,28 +476,24 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
                 <button class="btn-xs" type="submit" name="batch_action" value="assign_jp" form="<?= e($batchFormId) ?>">分配</button>
                 <button class="btn-xs" type="submit" name="batch_action" value="mark_out" form="<?= e($batchFormId) ?>">批量出库</button>
             <?php else: ?>
-                <span class="batch-label">采购状态</span>
-                <select class="assign-sel" name="purchase_status" form="<?= e($batchFormId) ?>">
-                    <option value="">选择状态</option>
-                    <?php foreach ($statusOptions as $statusOption): ?>
-                        <option><?= e($statusOption) ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <button class="btn-xs" type="submit" name="batch_action" value="set_purchase_status" form="<?= e($batchFormId) ?>">批量改状态</button>
                 <?php if ($orderView === 'platform' && $canChangeSource): ?>
-                    <span class="batch-label">货源地</span>
+                    <span class="sep">|</span>
                     <select class="assign-sel" name="source" form="<?= e($batchFormId) ?>">
                         <option value="">选择货源</option>
                         <option value="cn_purchase">国内采购</option>
                         <option value="jp_stock">日本仓</option>
-                        <option value="pending">待定</option>
                     </select>
-                    <button class="btn-xs" type="submit" name="batch_action" value="set_source" form="<?= e($batchFormId) ?>">批量改货源地</button>
+                    <button class="btn-xs" type="submit" name="batch_action" value="set_source" form="<?= e($batchFormId) ?>">货源地设置</button>
                 <?php endif; ?>
-                <span class="batch-label">采购人</span>
-                <select class="assign-sel" name="buyer" form="<?= e($batchFormId) ?>"><option value="">选择人员</option><option>王五</option><option>李四</option><option>赵六</option></select>
-                <button class="btn-xs" type="submit" name="batch_action" value="assign_buyer" form="<?= e($batchFormId) ?>">批量分配</button>
-                <?php if ($orderView === 'platform' && $canBatchOperate): ?><button class="btn-xs danger-text" type="submit" name="batch_action" value="delete_orders" form="<?= e($batchFormId) ?>">批量删除</button><?php endif; ?>
+                <span class="sep">|</span>
+                <select class="assign-sel" name="purchase_status" form="<?= e($batchFormId) ?>">
+                    <option value="">选择状态</option>
+                    <?php foreach (($orderView === 'platform' ? $mergedStatusOptions : $statusOptions) as $statusOption): ?>
+                        <option><?= e($statusOption) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <button class="btn-xs" type="submit" name="batch_action" value="set_purchase_status" form="<?= e($batchFormId) ?>">采购状态设置</button>
+                <?php if ($orderView === 'platform' && $canBatchOperate): ?><span class="sep">|</span><button class="btn-xs danger-text" type="submit" name="batch_action" value="delete_orders" form="<?= e($batchFormId) ?>">批量删除</button><?php endif; ?>
             <?php endif; ?>
         </div>
     </div>

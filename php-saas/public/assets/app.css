@@ -1924,11 +1924,16 @@ label.ck.warn { color: #475569; }
 }
 
 .order-page .order-toolbar {
+  justify-content: flex-start;
   min-height: 34px;
   margin-bottom: 8px;
   padding: 5px 7px;
   border: 1px solid var(--line);
   background: #fff;
+}
+
+.order-page .order-toolbar .tbar-actions {
+  justify-content: flex-start;
 }
 
 .order-page .order-toolbar .tgl-all,
