@@ -99,6 +99,11 @@ $assert('订单栏地址列加宽', str_contains($html, '<th class="c4" colspan=
 $assert('订单栏不再显示付款状态表头', !str_contains($html, '<th class="c12">付款状态</th>'));
 $assert('订单栏不再显示付款日期表头', !str_contains($html, '<th class="c13">付款日期</th>'));
 
+$assert('商品价格列改为单价表头', str_contains($html, '<th class="c11">单价</th>'));
+$assert('商品总价列显示总价表头', str_contains($html, '<th class="c13">总价</th>'));
+$assert('商品价格区域显示总价说明', str_contains($html, '<span class="oid-sub">总价</span>'));
+$assert('商品价格区域不再显示请求金额', !str_contains($html, '请求金额'));
+
 if ($failures !== []) {
     fwrite(STDERR, "Order list source readonly test FAILED:\n - " . implode("\n - ", $failures) . "\n");
     exit(1);
