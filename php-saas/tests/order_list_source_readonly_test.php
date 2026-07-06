@@ -52,10 +52,11 @@ $order = [
         'title' => '测试商品',
         'option' => '黑色',
         'quantity' => 1,
-        'unit_price' => 1000,
+        'unit_price' => 900,
         'postage_price' => 0,
         'pay_charge' => 0,
         'line_total' => 1000,
+        'platform_extra' => ['requestPrice' => '888'],
         'buyer' => '王五',
         'purchase_time' => '',
         'purchase_link' => '',
@@ -85,6 +86,17 @@ $order = [
 ob_start();
 require $basePath . '/app/Views/tenant/partials/order_block.php';
 $html = (string) ob_get_clean();
+$purchaseInfoHtml = '';
+if (preg_match('/<table class="otable sec-b purchase-info-table.*?<\/table>/s', $html, $purchaseMatches) === 1) {
+    $purchaseInfoHtml = $purchaseMatches[0];
+}
+
+$requestOnlyOrder = $order;
+$requestOnlyOrder['items'][0]['line_total'] = '';
+$order = $requestOnlyOrder;
+ob_start();
+require $basePath . '/app/Views/tenant/partials/order_block.php';
+$requestOnlyHtml = (string) ob_get_clean();
 
 $assert('列表展示国内采购货源地标签', str_contains($html, '<span class="src-tag cn">国内采购</span>'));
 $assert('列表不出现单项货源地修改表单', !str_contains($html, 'action="/orders/source"'));
@@ -100,9 +112,16 @@ $assert('订单栏不再显示付款状态表头', !str_contains($html, '<th cla
 $assert('订单栏不再显示付款日期表头', !str_contains($html, '<th class="c13">付款日期</th>'));
 
 $assert('商品价格列改为单价表头', str_contains($html, '<th class="c11">单价</th>'));
-$assert('商品总价列显示总价表头', str_contains($html, '<th class="c13">总价</th>'));
-$assert('商品价格区域显示总价说明', str_contains($html, '<span class="oid-sub">总价</span>'));
-$assert('商品价格区域不再显示请求金额', !str_contains($html, '请求金额'));
+$assert('商品金额列显示总价请求金额表头', str_contains($html, '<th class="c13">总价/请求金额</th>'));
+$assert('商品金额区域优先显示总价说明', str_contains($html, '<span class="oid-sub">总价</span>'));
+$assert('商品金额区域优先使用总价金额', str_contains($html, '<span class="price-val">￥1,000</span>'));
+$assert('没有总价时显示请求金额说明', str_contains($requestOnlyHtml, '<span class="oid-sub">请求金额</span>'));
+$assert('没有总价时使用请求金额数值', str_contains($requestOnlyHtml, '<span class="price-val">￥888</span>'));
+$assert('采购信息表首列只显示采购人', str_contains($purchaseInfoHtml, '<th class="c0" colspan="2">采购人</th>'));
+$assert('采购信息表不再显示采购状态采购人合并列', !str_contains($purchaseInfoHtml, '采购状态 / 采购人'));
+$assert('采购信息表不再显示采购状态值', !str_contains($purchaseInfoHtml, '国内采购-准备'));
+$assert('采购信息表不再显示补货链接', !str_contains($purchaseInfoHtml, '补货链接'));
+$assert('采购信息表不再显示国内运费', !str_contains($purchaseInfoHtml, '国内运费'));
 
 if ($failures !== []) {
     fwrite(STDERR, "Order list source readonly test FAILED:\n - " . implode("\n - ", $failures) . "\n");
