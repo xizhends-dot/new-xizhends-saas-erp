@@ -3491,6 +3491,10 @@ label.ck.warn { color: #475569; }
   flex: 1;
 }
 
+.drawer-image-upload-form {
+  display: none;
+}
+
 .editor-drawer .image-upload-area {
   padding: 10px;
   border: 1px dashed #cbd5e1;
@@ -3499,10 +3503,36 @@ label.ck.warn { color: #475569; }
 }
 
 .editor-drawer .preview-image {
+  display: block;
   max-width: 100%;
   max-height: 160px;
   border-radius: 4px;
   object-fit: contain;
+}
+
+.drawer-image-controls {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.drawer-image-controls textarea {
+  min-height: 48px;
+}
+
+.drawer-image-controls .btn {
+  justify-self: flex-start;
+}
+
+.drawer-image-empty,
+.drawer-image-path {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.drawer-image-path {
+  margin-top: 5px;
+  overflow-wrap: anywhere;
 }
 
 .drawer-readonly-note {

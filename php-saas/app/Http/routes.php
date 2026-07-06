@@ -46,6 +46,8 @@ return static function (Container $container, Router $router): void {
     $router->get('/login', [AuthController::class, 'loginForm']);
     $router->post('/login', [AuthController::class, 'login']);
     $router->post('/logout', [AuthController::class, 'logout']);
+    $router->get('/storage/tenants/{tenant_key}/images/orders/{order_id}/{item_id}/{filename}', [OrderController::class, 'serveOrderImage']);
+    $router->get('/storage/tenants/{tenant_key}/images/uploads/{order_id}/{filename}', [OrderController::class, 'serveUploadedImage']);
     $router->group([TenantAuthMiddleware::class], static function (Router $router): void {
         $router->get('/', [DashboardController::class, 'dashboard']);
         $router->get('/orders', [OrderController::class, 'orders']);

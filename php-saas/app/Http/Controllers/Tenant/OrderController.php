@@ -132,6 +132,7 @@ final class OrderController extends TenantBaseController
             'canBatchOperate' => $canEditFeature && $this->service->tenantFeatureEnabled($tenantKey, 'orders.platform') && $this->auth->tenantCan($tenantKey, '批量操作'),
             'canBatchPurchase' => $canEditFeature && $this->service->tenantFeatureEnabled($tenantKey, 'orders.purchase') && Permission::hasAny($currentUser, ['批量操作', '采购状态', '订单编辑']),
             'canBatchJp' => $canEditFeature && $this->service->tenantFeatureEnabled($tenantKey, 'orders.jp') && Permission::hasAny($currentUser, ['批量操作', '日本仓发货', '订单编辑']),
+            'canUploadImage' => $this->service->tenantFeatureEnabled($tenantKey, 'media.library') && $this->service->tenantFeatureEnabled($tenantKey, 'media.upload') && $this->auth->tenantCan($tenantKey, '图片上传'),
             'canImportExport' => $canPlatformImportExport || $canPurchaseImportExport || $canFinanceExport,
             'canFullImportExport' => $canPlatformImportExport || $canFinanceExport,
             'canPlatformImportExport' => $canPlatformImportExport,
@@ -361,6 +362,8 @@ final class OrderController extends TenantBaseController
         }
         $kind = (string) ($_POST['kind'] ?? 'attachment');
         $kind = in_array($kind, ['main', 'sku', 'attachment'], true) ? $kind : 'attachment';
+        $fallback = '/orders/detail?tenant=' . rawurlencode($tenantKey) . '&id=' . $orderId;
+        $return = $this->safeReturn((string) ($_POST['return'] ?? $fallback), $fallback);
 
         $saved = $this->saveUploadedImage($tenantKey, $orderId, $itemId, $kind);
         if ($saved !== null) {
@@ -379,7 +382,34 @@ final class OrderController extends TenantBaseController
             }
         }
 
-        redirect_to('/orders/detail?tenant=' . rawurlencode($tenantKey) . '&id=' . $orderId);
+        redirect_to($return);
+    }
+
+    public function serveOrderImage(): void
+    {
+        $tenantKey = $this->tenantKeyFromRoute();
+        $orderId = (int) ($_GET['order_id'] ?? 0);
+        $itemId = (int) ($_GET['item_id'] ?? 0);
+        $this->auth->requireTenant($tenantKey);
+        $this->ensureOrderAccess($tenantKey, $orderId);
+        $this->ensureItemAccess($tenantKey, $itemId);
+        $itemOrder = $this->accessibleOrderForItem($tenantKey, $itemId, $this->auth->currentTenantUser($tenantKey));
+        if ((int) ($itemOrder['id'] ?? 0) !== $orderId) {
+            http_response_code(404);
+            return;
+        }
+
+        $this->sendTenantImage($tenantKey, "images/orders/{$orderId}/{$itemId}", (string) ($_GET['filename'] ?? ''));
+    }
+
+    public function serveUploadedImage(): void
+    {
+        $tenantKey = $this->tenantKeyFromRoute();
+        $orderId = (int) ($_GET['order_id'] ?? 0);
+        $this->auth->requireTenant($tenantKey);
+        $this->ensureOrderAccess($tenantKey, $orderId);
+
+        $this->sendTenantImage($tenantKey, "images/uploads/{$orderId}", (string) ($_GET['filename'] ?? ''));
     }
 
     private function batchActionLogName(string $action): string
@@ -535,6 +565,42 @@ final class OrderController extends TenantBaseController
         }
 
         return array_values(array_unique(array_filter($ids)));
+    }
+
+    private function tenantKeyFromRoute(): string
+    {
+        $tenantKey = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($_GET['tenant_key'] ?? '')) ?: '';
+        return $tenantKey !== '' ? $tenantKey : current_tenant_key();
+    }
+
+    private function sendTenantImage(string $tenantKey, string $relativeFolder, string $filename): never
+    {
+        $filename = basename($filename);
+        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        $mimeTypes = [
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+        ];
+        if ($filename === '' || !isset($mimeTypes[$extension])) {
+            http_response_code(404);
+            exit;
+        }
+
+        $baseDir = realpath(BASE_PATH . '/storage/tenants/' . $tenantKey);
+        $path = realpath(BASE_PATH . '/storage/tenants/' . $tenantKey . '/' . $relativeFolder . '/' . $filename);
+        if ($baseDir === false || $path === false || !str_starts_with(str_replace('\\', '/', $path), str_replace('\\', '/', $baseDir) . '/')) {
+            http_response_code(404);
+            exit;
+        }
+
+        header('Content-Type: ' . $mimeTypes[$extension]);
+        header('Content-Length: ' . filesize($path));
+        header('Cache-Control: private, max-age=86400');
+        readfile($path);
+        exit;
     }
 
     private function saveUploadedImage(string $tenantKey, int $orderId, int $itemId, string $kind): ?array

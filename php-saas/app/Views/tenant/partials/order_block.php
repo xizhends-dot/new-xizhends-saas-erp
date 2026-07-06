@@ -52,6 +52,7 @@ $canChangeSource = (bool) ($canChangeSource ?? false);
 $canBatchOperate = (bool) ($canBatchOperate ?? false);
 $canBatchPurchase = (bool) ($canBatchPurchase ?? false);
 $canBatchJp = (bool) ($canBatchJp ?? false);
+$canUploadImage = (bool) ($canUploadImage ?? false);
 $canSelectItem = ($orderView === 'purchase' && $canBatchPurchase) || ($orderView === 'jp' && $canBatchJp);
 $canEditThisView = $canEditOrders || ($orderView === 'purchase' && $canEditPurchase) || ($orderView === 'jp' && $canEditJp) || ($orderView === 'platform' && ($canEditPurchase || $canEditJp || $canChangeSource));
 $safeHttpUrl = static function (mixed $url): string {
@@ -487,6 +488,10 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
         if ($currentReceiptCity !== '' && !in_array($currentReceiptCity, $receiptCityChoices, true)) {
             array_unshift($receiptCityChoices, $currentReceiptCity);
         }
+        $mainImage = trim((string) ($item['image'] ?? ''));
+        $skuImage = trim((string) ($item['sku_image'] ?? ''));
+        $mainImageFormId = 'drawer-image-main-' . (int) $item['id'];
+        $skuImageFormId = 'drawer-image-sku-' . (int) $item['id'];
         ?>
         <aside class="editor-drawer" id="editor-<?= e($item['id']) ?>" aria-hidden="true">
             <div class="drawer-head">
@@ -496,6 +501,18 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                 </div>
                 <button class="drawer-close" type="button" data-close-editor="editor-<?= e($item['id']) ?>" aria-label="关闭">×</button>
             </div>
+            <?php if ($canUploadImage): ?>
+                <?php foreach (['main' => $mainImageFormId, 'sku' => $skuImageFormId] as $imageKind => $imageFormId): ?>
+                    <form id="<?= e($imageFormId) ?>" class="drawer-image-upload-form" method="post" action="/orders/images/upload" enctype="multipart/form-data">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
+                        <input type="hidden" name="order_id" value="<?= e($order['id']) ?>">
+                        <input type="hidden" name="item_id" value="<?= e($item['id']) ?>">
+                        <input type="hidden" name="kind" value="<?= e($imageKind) ?>">
+                        <input type="hidden" name="return" value="<?= e($returnUrl) ?>">
+                    </form>
+                <?php endforeach; ?>
+            <?php endif; ?>
             <form class="drawer-body" method="post" action="/orders/item/save">
                 <?= csrf_field() ?>
                 <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
@@ -538,10 +555,38 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                     <div class="drawer-form-group">
                         <label>订单产品图：</label>
                         <div class="image-upload-area">
-                            <img class="preview-image" src="<?= e($item['image']) ?>" alt="<?= e($item['title']) ?>">
+                            <?php if ($mainImage !== ''): ?>
+                                <img class="preview-image" src="<?= e($mainImage) ?>" alt="<?= e($item['title']) ?>">
+                            <?php else: ?>
+                                <div class="drawer-image-empty">暂无图片</div>
+                            <?php endif; ?>
+                            <?php if ($canUploadImage): ?>
+                                <div class="drawer-image-controls">
+                                    <input form="<?= e($mainImageFormId) ?>" type="file" name="image" accept="image/*">
+                                    <textarea form="<?= e($mainImageFormId) ?>" name="base64_image" rows="2" placeholder="也可粘贴 base64 图片数据"></textarea>
+                                    <button form="<?= e($mainImageFormId) ?>" class="btn btn-xs" type="submit">上传订单产品图</button>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
-                    <div class="drawer-form-group"><label>SKU产品图：</label><input type="text" value="<?= e((string) (($item['sku_image'] ?? '') ?: '')) ?>" readonly class="readonly" placeholder="请在完整详情中维护图片"></div>
+                    <div class="drawer-form-group">
+                        <label>SKU产品图：</label>
+                        <div class="image-upload-area">
+                            <?php if ($skuImage !== ''): ?>
+                                <img class="preview-image" src="<?= e($skuImage) ?>" alt="SKU产品图">
+                                <div class="drawer-image-path"><?= e($skuImage) ?></div>
+                            <?php else: ?>
+                                <div class="drawer-image-empty">暂无图片</div>
+                            <?php endif; ?>
+                            <?php if ($canUploadImage): ?>
+                                <div class="drawer-image-controls">
+                                    <input form="<?= e($skuImageFormId) ?>" type="file" name="image" accept="image/*">
+                                    <textarea form="<?= e($skuImageFormId) ?>" name="base64_image" rows="2" placeholder="也可粘贴 base64 图片数据"></textarea>
+                                    <button form="<?= e($skuImageFormId) ?>" class="btn btn-xs" type="submit">上传SKU产品图</button>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
                     <div class="drawer-form-group"><label>1688订单号：</label><input type="text" name="tabaono" value="<?= e($item['tabaono'] ?? '') ?>"></div>
                     <div class="drawer-form-group"><label>历史1688单号：</label><input type="text" name="caigou_ordernums" value="<?= e($item['caigou_ordernums'] ?? '') ?>"></div>
                     <div class="drawer-form-group"><label>采购人：</label><input type="text" name="buyer" value="<?= e($item['buyer'] ?? '') ?>"></div>
