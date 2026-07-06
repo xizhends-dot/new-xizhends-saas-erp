@@ -1867,6 +1867,176 @@ label.ck.warn { color: #475569; }
 .sec-a thead th { background: #eaedf7; color: #334155; }
 .sec-b thead th { background: #e4f3ea; color: #334155; }
 .sec-c thead th { background: #eef2f6; color: #334155; }
+/* 融合改良版：翠绿色主导的订单页展示 */
+.order-page .order-workbench-panel {
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+.order-page .order-panel-head {
+  border-color: #047857;
+  background: var(--green);
+  color: #fff;
+}
+
+.order-page .order-panel-head .sub {
+  color: #fff;
+  opacity: .9;
+}
+
+.order-page .order-search-panel .order-filter-modern {
+  background: var(--green-soft);
+}
+
+.order-page .order-filter-modern .order-search-field > .lb,
+.order-page .order-filter-modern .order-page-size-field > .lb {
+  color: #065f46;
+  font-weight: 700;
+}
+
+.order-page .order-filter-modern .order-search-field input,
+.order-page .order-filter-modern .order-search-field select,
+.order-page .order-tool-form select,
+.order-page .assign-sel,
+.order-page .src-sel {
+  border-color: var(--line);
+  background: #fff;
+}
+
+.order-page .order-tool-action,
+.order-page .order-tool-row,
+.order-page .order-tool-more summary {
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+.order-page .order-tool-action:hover,
+.order-page .order-tool-row:hover,
+.order-page .order-tool-more summary:hover {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+
+.order-page .order-tool-action span,
+.order-page .order-tool-more summary span,
+.order-page .order-tool-button {
+  color: #065f46;
+}
+
+.order-page .order-toolbar {
+  min-height: 34px;
+  margin-bottom: 8px;
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.order-page .order-toolbar .tgl-all,
+.order-page .order-toolbar .select-all-btn,
+.order-page .order-toolbar .btn-xs:not(.danger-text) {
+  border-color: #047857;
+  background: var(--green);
+  color: #fff;
+  font-weight: 800;
+}
+
+.order-page .order-toolbar .tgl-all:hover,
+.order-page .order-toolbar .select-all-btn:hover,
+.order-page .order-toolbar .btn-xs:not(.danger-text):hover {
+  background: #047857;
+  color: #fff;
+}
+
+.order-page .order-toolbar .danger-text {
+  border-color: #fecaca;
+  background: #fff;
+  color: #991b1b;
+}
+
+.order-page .order-list {
+  gap: 12px;
+}
+
+.order-page .order-block {
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+.order-page .otable thead th {
+  border-color: var(--line);
+  color: #064e3b;
+  font-weight: 850;
+}
+
+.order-page .otable tbody td {
+  border-color: var(--line);
+  background: #f6f6f6;
+}
+
+.order-page .otable tbody tr:hover td {
+  background: var(--green-soft);
+}
+
+.order-page .sec-a thead th {
+  background: #d1fae5;
+  color: #064e3b;
+}
+
+.order-page .sec-b thead th {
+  background: #bbf7d0;
+  color: #064e3b;
+}
+
+.order-page .order-block > .sec-b + .sec-b thead th {
+  background: #a7f3d0;
+  color: #064e3b;
+}
+
+.order-page .sec-c thead th {
+  background: #ecfdf5;
+  color: #064e3b;
+}
+
+.order-page .status,
+.order-page .src-tag.cn,
+.order-page .out-st.out,
+.order-page .out-st.assigned {
+  border: 1px solid #047857;
+  background: var(--green);
+  color: #fff;
+  font-weight: 800;
+}
+
+.order-page .src-tag.jp,
+.order-page .intl-pend,
+.order-page .out-st.sent {
+  border: 1px solid #111827;
+  background: #111827;
+  color: #fff;
+  font-weight: 800;
+}
+
+.order-page .src-tag.pending,
+.order-page .out-st.wait {
+  border: 1px solid #6b7280;
+  background: #6b7280;
+  color: #fff;
+  font-weight: 800;
+}
+
+.order-page .log-btn {
+  border-color: var(--line);
+  background: #fff;
+  color: #065f46;
+  font-weight: 800;
+}
+
+.order-page .log-btn:hover,
+.order-page .log-btn.on {
+  border-color: #047857;
+  background: var(--green);
+  color: #fff;
+}
 
 .c0{width:4.5%}.c1{width:3.5%}.c2{width:4.5%}.c3{width:8%}.c4{width:9.5%}.c5{width:9%}.c6{width:6%}.c7{width:7%}.c8{width:8.5%}.c9{width:8.5%}.c10{width:5%}.c11{width:6%}.c12{width:6.5%}.c13{width:6%}.c14{width:7.5%}
 
