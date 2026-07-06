@@ -1964,9 +1964,15 @@ label.ck.warn { color: #475569; }
 }
 
 .order-page .order-toolbar .danger-text {
-  border-color: #fecaca;
-  background: #fff;
-  color: #991b1b;
+  border-color: #991b1b;
+  background: #991b1b;
+  color: #fff;
+}
+
+.order-page .order-toolbar .danger-text:hover {
+  border-color: #7f1d1d;
+  background: #7f1d1d;
+  color: #fff;
 }
 
 .order-page .order-list {
