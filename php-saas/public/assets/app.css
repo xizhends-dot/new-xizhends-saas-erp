@@ -2310,10 +2310,37 @@ label.ck.warn { color: #475569; }
 }
 
 .source-status-cell .status {
+  display: block;
   max-width: 100%;
+  width: fit-content;
+  margin: 3px auto 0;
+  padding: 4px 10px;
+  border: 1px solid #047857;
+  background: var(--green);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 850;
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.source-status-cell .src-tag {
+  margin-bottom: 2px;
+  padding: 2px 7px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.source-status-cell .src-tag.cn,
+.source-status-cell .src-tag.jp,
+.source-status-cell .src-tag.pending {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #64748b;
 }
 
 .qty-val {
