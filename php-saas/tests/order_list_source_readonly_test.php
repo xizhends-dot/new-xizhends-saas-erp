@@ -130,9 +130,10 @@ $assert('采购信息表物流公司不再显示状态表头', !str_contains($pu
 $assert('采购信息表国内运单号改为签收地并继续收窄一格', !str_contains($purchaseInfoHtml, '国内运单号 / 物流轨迹') && str_contains($purchaseInfoHtml, '<th class="c13" colspan="2">国内运单号 / 签收地</th>'));
 $assert('采购信息表显示签收地', str_contains($purchaseInfoHtml, 'CN123456 / 义乌'));
 $assert('采购信息表不再显示物流状态和轨迹内容', !str_contains($purchaseInfoHtml, '运输中') && !str_contains($purchaseInfoHtml, '轨迹内容') && !str_contains($purchaseInfoHtml, '物流轨迹'));
-$assert('编辑抽屉保持右侧编辑器结构', str_contains($html, 'class="editor-drawer"') && !str_contains($html, 'legacy-sidebar-editor') && str_contains($html, '<strong>编辑子商品</strong>') && str_contains($html, 'drawer-product'));
+$assert('编辑抽屉保持右侧编辑器结构', str_contains($html, 'class="editor-drawer"') && !str_contains($html, 'legacy-sidebar-editor') && str_contains($html, '<strong>编辑订单</strong>'));
 $assert('编辑抽屉没有货源地选项', !str_contains($html, 'name="source_type"') && !str_contains($html, '货源地</span>'));
-$assert('编辑抽屉没有老系统基础订单块和SKU上传', !str_contains($html, 'OrderId：') && !str_contains($html, 'SKU产品图') && !str_contains($html, 'drawer-section-title'));
+$assert('编辑抽屉内容对齐老系统侧栏字段', str_contains($html, '<div class="drawer-section-title">编辑订单</div>') && str_contains($html, '<div class="drawer-section-title">运单信息</div>') && str_contains($html, 'OrderId：') && str_contains($html, 'SKU产品图') && str_contains($html, '物流签收地：') && str_contains($html, '中文属性备注：'));
+$assert('编辑抽屉不使用最初简化商品卡片', !str_contains($html, 'drawer-product'));
 $assert('编辑抽屉签收地可选择并保留当前值', str_contains($html, '<select name="receipt_city"') && preg_match('/<option value="义乌"[^>]*selected[^>]*>义乌<\/option>/', $html) === 1);
 preg_match('/data-status-options="([^"]+)"/', $html, $statusJsonMatch);
 $statusOptionsJson = html_entity_decode($statusJsonMatch[1] ?? '', ENT_QUOTES, 'UTF-8');
