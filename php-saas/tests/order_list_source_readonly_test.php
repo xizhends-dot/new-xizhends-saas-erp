@@ -137,6 +137,7 @@ $assert('编辑抽屉保持右侧编辑器结构', str_contains($html, 'class="e
 $assert('编辑抽屉没有货源地选项', !str_contains($html, 'name="source_type"') && !str_contains($html, '货源地</span>'));
 $assert('编辑抽屉内容对齐老系统侧栏字段', str_contains($html, '<summary class="drawer-section-title">编辑订单</summary>') && str_contains($html, '<div class="drawer-section-title">运单信息</div>') && str_contains($html, 'OrderId：') && str_contains($html, 'SKU产品图') && str_contains($html, '物流签收地：') && str_contains($html, '中文属性备注：'));
 $assert('编辑抽屉支持上传订单产品图和SKU产品图', str_contains($html, 'action="/orders/images/upload"') && str_contains($html, 'name="kind" value="main"') && str_contains($html, 'name="kind" value="sku"') && str_contains($html, 'type="file" name="image"') && str_contains($html, 'name="base64_image"') && str_contains($html, 'form="drawer-image-main-200"') && str_contains($html, 'form="drawer-image-sku-200"'));
+$assert('编辑抽屉图片粘贴框对齐老系统', str_contains($html, 'data-image-paste-input') && str_contains($html, 'data-image-paste-area') && str_contains($html, 'data-image-base64') && str_contains($html, 'placeholder="可将图片粘贴到此"') && !str_contains($html, '粘贴 base64 图片数据'));
 $assert('编辑抽屉图片操作对齐老系统按钮', str_contains($html, '【选择图片】') && str_contains($html, '>提交保存</button>') && str_contains($html, '>削除</button>') && str_contains($html, 'action="/orders/images/delete"') && str_contains($html, 'form="drawer-image-delete-sku-200"'));
 $assert('编辑订单基础信息默认收起', str_contains($html, '<details class="drawer-section drawer-collapsible">') && str_contains($html, '<summary class="drawer-section-title">编辑订单</summary>'));
 $assert('编辑抽屉不使用最初简化商品卡片', !str_contains($html, 'drawer-product'));
@@ -149,6 +150,8 @@ $assert('平台订单右侧栏采购状态实际包含日本仓状态', str_cont
 
 $css = (string) file_get_contents($basePath . '/public/assets/app.css');
 $assert('编辑抽屉仍从右侧滑入', str_contains($css, 'right: 0;') && str_contains($css, 'translateX(104%)') && str_contains($css, 'width: min(520px, 92vw)'));
+$js = (string) file_get_contents($basePath . '/public/assets/app.js');
+$assert('编辑抽屉支持直接粘贴图片预览并写入隐藏字段', str_contains($js, "document.addEventListener('paste'") && str_contains($js, 'imageFileFromClipboard') && str_contains($js, 'readAsDataURL') && str_contains($js, 'data-image-base64') && str_contains($js, '已粘贴图片，点击提交保存'));
 
 if ($failures !== []) {
     fwrite(STDERR, "Order list source readonly test FAILED:\n - " . implode("\n - ", $failures) . "\n");

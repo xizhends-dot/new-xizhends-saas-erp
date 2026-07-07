@@ -99,6 +99,10 @@ document.addEventListener('change', function (event) {
     refreshOrderSelection(target.closest('.order-page'));
   }
 
+  if (target instanceof HTMLInputElement && target.matches('[data-image-file-input]')) {
+    handleDrawerImageFileChange(target);
+  }
+
   if (!(target instanceof HTMLSelectElement)) return;
 
   var form = target.closest('.auto-submit-source');
@@ -124,6 +128,14 @@ document.addEventListener('submit', function (event) {
   var form = event.target;
   if (form instanceof HTMLFormElement && form.id === 'purchase-status-form') {
     serializePurchaseStatuses(form);
+    return;
+  }
+
+  if (form instanceof HTMLFormElement && form.matches('.drawer-image-upload-form') && form.getAttribute('action') === '/orders/images/upload') {
+    if (!drawerImageFormHasPayload(form)) {
+      event.preventDefault();
+      alert('请先选择或粘贴图片');
+    }
     return;
   }
 
@@ -196,6 +208,25 @@ document.addEventListener('keydown', function (event) {
   }
 });
 
+document.addEventListener('paste', function (event) {
+  var target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+
+  var pasteTarget = target.closest('[data-image-paste-input], [data-image-paste-area]');
+  if (!(pasteTarget instanceof HTMLElement)) return;
+
+  var area = pasteTarget.matches('[data-image-paste-area]')
+    ? pasteTarget
+    : pasteTarget.closest('[data-image-paste-area]');
+  if (!(area instanceof HTMLElement)) return;
+
+  var file = imageFileFromClipboard(event);
+  if (!file) return;
+
+  event.preventDefault();
+  readDrawerImageFile(area, file, 'paste');
+});
+
 function openEditor(id) {
   var drawer = document.getElementById(id);
   if (!drawer) return;
@@ -237,6 +268,108 @@ function ensureBackdrop() {
     document.body.appendChild(backdrop);
   }
   return backdrop;
+}
+
+function findDrawerImageAreaByForm(form) {
+  if (!(form instanceof HTMLFormElement) || form.id === '') return null;
+  var areas = document.querySelectorAll('[data-image-paste-area]');
+  for (var i = 0; i < areas.length; i++) {
+    var area = areas[i];
+    if (area instanceof HTMLElement && area.getAttribute('data-paste-target') === form.id) {
+      return area;
+    }
+  }
+  return null;
+}
+
+function drawerImageFormHasPayload(form) {
+  var area = findDrawerImageAreaByForm(form);
+  if (!(area instanceof HTMLElement)) return true;
+
+  var fileInput = area.querySelector('[data-image-file-input]');
+  var base64Input = area.querySelector('[data-image-base64]');
+  var hasFile = fileInput instanceof HTMLInputElement && fileInput.files && fileInput.files.length > 0;
+  var hasPasted = base64Input instanceof HTMLTextAreaElement && base64Input.value.trim() !== '';
+  return hasFile || hasPasted;
+}
+
+function imageFileFromClipboard(event) {
+  var clipboard = event.clipboardData || (event.originalEvent && event.originalEvent.clipboardData);
+  if (!clipboard || !clipboard.items) return null;
+
+  for (var i = 0; i < clipboard.items.length; i++) {
+    var item = clipboard.items[i];
+    if (!item || item.kind !== 'file') continue;
+    var file = item.getAsFile();
+    if (file && file.type && file.type.indexOf('image/') === 0) {
+      return file;
+    }
+  }
+  return null;
+}
+
+function handleDrawerImageFileChange(input) {
+  var area = input.closest('[data-image-paste-area]');
+  if (!(area instanceof HTMLElement) || !input.files || input.files.length === 0) return;
+  var file = input.files[0];
+  if (!file || !file.type || file.type.indexOf('image/') !== 0) return;
+
+  var base64Input = area.querySelector('[data-image-base64]');
+  if (base64Input instanceof HTMLTextAreaElement) {
+    base64Input.value = '';
+  }
+  readDrawerImageFile(area, file, 'file');
+}
+
+function readDrawerImageFile(area, file, mode) {
+  var reader = new FileReader();
+  reader.onload = function (loadEvent) {
+    var result = loadEvent.target ? loadEvent.target.result : '';
+    if (typeof result !== 'string' || result === '') return;
+    setDrawerImagePreview(area, result, mode);
+  };
+  reader.readAsDataURL(file);
+}
+
+function setDrawerImagePreview(area, src, mode) {
+  if (!(area instanceof HTMLElement)) return;
+
+  var base64Input = area.querySelector('[data-image-base64]');
+  if (base64Input instanceof HTMLTextAreaElement) {
+    base64Input.value = mode === 'paste' ? src : '';
+  }
+
+  if (mode === 'paste') {
+    var fileInput = area.querySelector('[data-image-file-input]');
+    if (fileInput instanceof HTMLInputElement) {
+      fileInput.value = '';
+    }
+  }
+
+  area.querySelectorAll('.drawer-image-empty, .drawer-image-path').forEach(function (node) {
+    node.remove();
+  });
+
+  var preview = area.querySelector('.preview-image');
+  if (!(preview instanceof HTMLImageElement)) {
+    preview = document.createElement('img');
+    preview.className = 'preview-image';
+    preview.alt = '';
+    var controls = area.querySelector('.drawer-image-controls');
+    if (controls) {
+      area.insertBefore(preview, controls);
+    } else {
+      area.appendChild(preview);
+    }
+  }
+  preview.src = src;
+
+  var pasteInput = area.querySelector('[data-image-paste-input]');
+  if (pasteInput instanceof HTMLInputElement) {
+    pasteInput.value = mode === 'paste' ? '已粘贴图片，点击提交保存' : '已选择图片，点击提交保存';
+    pasteInput.classList.add('has-image');
+  }
+  area.classList.add('has-image');
 }
 
 function activateSettingsPane(key, syncHash) {

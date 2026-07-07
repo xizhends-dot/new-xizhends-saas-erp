@@ -3549,8 +3549,33 @@ label.ck.warn { color: #475569; }
   display: none;
 }
 
-.drawer-image-controls textarea {
-  min-height: 48px;
+.drawer-paste-input {
+  width: 100%;
+  min-height: 30px;
+  padding: 6px 8px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 3px;
+  background: #fff;
+  color: #475569;
+  cursor: text;
+}
+
+.drawer-paste-input:focus,
+.editor-drawer .image-upload-area:focus,
+.editor-drawer .image-upload-area:focus-within {
+  outline: 2px solid rgba(7, 140, 88, 0.18);
+  border-color: var(--green);
+}
+
+.editor-drawer .image-upload-area.has-image {
+  border-color: #16a34a;
+  background: #f6fffb;
+}
+
+.drawer-paste-input.has-image {
+  border-color: #16a34a;
+  background: #f0fdf4;
+  color: #166534;
 }
 
 .drawer-image-actions {
