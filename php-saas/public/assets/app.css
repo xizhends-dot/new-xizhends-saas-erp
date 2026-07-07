@@ -3508,8 +3508,44 @@ label.ck.warn { color: #475569; }
 }
 
 .drawer-field-stack,
+.drawer-inline-action,
 .editor-drawer .image-upload-area {
   flex: 1;
+}
+
+.drawer-inline-action {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.drawer-refresh-btn {
+  border-color: #047857;
+  background: var(--green);
+  color: #fff;
+}
+
+.drawer-refresh-btn:hover {
+  background: #047857;
+  color: #fff;
+}
+
+.drawer-refresh-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.drawer-refresh-status {
+  grid-column: 1 / -1;
+  min-height: 15px;
+  color: #047857;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.drawer-refresh-status.is-error {
+  color: #b91c1c;
 }
 
 .drawer-image-upload-form {

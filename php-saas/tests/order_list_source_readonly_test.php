@@ -34,6 +34,7 @@ $canBatchPurchase = true;
 $canBatchJp = false;
 $canUploadImage = true;
 $canDeleteImage = true;
+$can1688Logistics = true;
 $receiptCityOptions = ['义乌', '深圳威通'];
 $order = [
     'id' => 100,
@@ -143,6 +144,7 @@ $assert('编辑抽屉图片削除不使用内联跳转确认', str_contains($htm
 $assert('编辑订单基础信息默认收起', str_contains($html, '<details class="drawer-section drawer-collapsible">') && str_contains($html, '<summary class="drawer-section-title">编辑订单</summary>'));
 $assert('编辑抽屉不使用最初简化商品卡片', !str_contains($html, 'drawer-product'));
 $assert('编辑抽屉签收地可选择并保留当前值', str_contains($html, '<select name="receipt_city"') && preg_match('/<option value="义乌"[^>]*selected[^>]*>义乌<\/option>/', $html) === 1);
+$assert('编辑抽屉1688订单号支持单条刷新', str_contains($html, 'data-1688-refresh-input') && str_contains($html, 'data-1688-refresh-button') && str_contains($html, 'data-refresh-url="/orders/1688/refresh"') && str_contains($html, 'data-1688-refresh-status'));
 preg_match('/data-status-options="([^"]+)"/', $html, $statusJsonMatch);
 $statusOptionsJson = html_entity_decode($statusJsonMatch[1] ?? '', ENT_QUOTES, 'UTF-8');
 $drawerStatusOptions = json_decode($statusOptionsJson, true) ?: [];
@@ -154,6 +156,10 @@ $assert('编辑抽屉仍从右侧滑入', str_contains($css, 'right: 0;') && str
 $js = (string) file_get_contents($basePath . '/public/assets/app.js');
 $assert('编辑抽屉支持直接粘贴图片预览并写入隐藏字段', str_contains($js, "document.addEventListener('paste'") && str_contains($js, 'imageFileFromClipboard') && str_contains($js, 'readAsDataURL') && str_contains($js, 'data-image-base64') && str_contains($js, '已粘贴图片，点击提交保存'));
 $assert('编辑抽屉图片保存削除使用异步提交并保持抽屉', str_contains($js, 'submitDrawerImageForm') && str_contains($js, "fetch(action") && str_contains($js, 'clearDrawerImagePreview') && str_contains($js, 'ensureDrawerImageDeleteButton') && str_contains($js, 'X-Requested-With'));
+$assert('编辑抽屉1688刷新异步回填字段并保持抽屉', str_contains($js, 'refreshDrawer1688') && str_contains($js, 'apply1688RefreshFields') && str_contains($js, "fetch(url") && str_contains($js, "field.value = fields[name]"));
+
+$routes = (string) file_get_contents($basePath . '/app/Http/routes.php');
+$assert('1688单条刷新路由已注册', str_contains($routes, "post('/orders/1688/refresh'") && str_contains($routes, 'refresh1688Order'));
 
 if ($failures !== []) {
     fwrite(STDERR, "Order list source readonly test FAILED:\n - " . implode("\n - ", $failures) . "\n");

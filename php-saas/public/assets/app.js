@@ -61,6 +61,12 @@ document.addEventListener('click', function (event) {
     closeEditor(editorClose.getAttribute('data-close-editor') || '');
   }
 
+  var refresh1688 = target.closest('[data-1688-refresh-button]');
+  if (refresh1688) {
+    event.preventDefault();
+    refreshDrawer1688(refresh1688);
+  }
+
   var settingsTab = target.closest('[data-settings-tab]');
   if (settingsTab) {
     event.preventDefault();
@@ -512,6 +518,81 @@ function setDrawerImagePreview(area, src, mode) {
     pasteInput.classList.add('has-image');
   }
   area.classList.add('has-image');
+}
+
+function refreshDrawer1688(button) {
+  if (!(button instanceof HTMLButtonElement)) return;
+  var form = button.closest('form');
+  if (!(form instanceof HTMLFormElement)) return;
+
+  var input = form.querySelector('[data-1688-refresh-input]');
+  if (!(input instanceof HTMLInputElement)) return;
+
+  var status = form.querySelector('[data-1688-refresh-status]');
+  var url = button.getAttribute('data-refresh-url') || '/orders/1688/refresh';
+  var tabaono = input.value.trim();
+  if (tabaono === '') {
+    set1688RefreshStatus(status, '请先填写1688订单号', true);
+    input.focus();
+    return;
+  }
+
+  var data = new FormData();
+  data.set('tenant', fieldValue(form, 'tenant'));
+  data.set('_token', fieldValue(form, '_token') || csrfToken());
+  data.set('order_id', fieldValue(form, 'order_id'));
+  data.set('item_id', fieldValue(form, 'item_id'));
+  data.set('tabaono', tabaono);
+
+  button.disabled = true;
+  input.readOnly = true;
+  set1688RefreshStatus(status, '刷新中...', false);
+
+  fetch(url, {
+    method: 'POST',
+    body: data,
+    headers: {
+      Accept: 'application/json',
+      'X-Requested-With': 'XMLHttpRequest'
+    }
+  }).then(function (response) {
+    return response.json().catch(function () {
+      return {};
+    }).then(function (payload) {
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.message || '1688刷新失败。');
+      }
+      return payload;
+    });
+  }).then(function (payload) {
+    apply1688RefreshFields(form, payload.fields || {});
+    set1688RefreshStatus(status, payload.message || '已刷新', false);
+  }).catch(function (error) {
+    set1688RefreshStatus(status, error && error.message ? error.message : '1688刷新失败。', true);
+  }).finally(function () {
+    button.disabled = false;
+    input.readOnly = false;
+  });
+}
+
+function fieldValue(form, name) {
+  var field = form.querySelector('[name="' + name + '"]');
+  return field && 'value' in field ? String(field.value || '') : '';
+}
+
+function set1688RefreshStatus(status, message, failed) {
+  if (!(status instanceof HTMLElement)) return;
+  status.textContent = message;
+  status.classList.toggle('is-error', Boolean(failed));
+}
+
+function apply1688RefreshFields(form, fields) {
+  Object.keys(fields).forEach(function (name) {
+    var field = form.querySelector('[name="' + name + '"]');
+    if (!field || !('value' in field)) return;
+    field.value = fields[name] == null ? '' : String(fields[name]);
+    field.dispatchEvent(new Event('change', { bubbles: true }));
+  });
 }
 
 function activateSettingsPane(key, syncHash) {

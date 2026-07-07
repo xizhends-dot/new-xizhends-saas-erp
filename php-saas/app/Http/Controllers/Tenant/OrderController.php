@@ -316,6 +316,21 @@ final class OrderController extends TenantBaseController
         redirect_to($return);
     }
 
+    public function refresh1688Order(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'orders.edit');
+        $this->requireTenantFeature($tenantKey, 'logistics.1688');
+        $this->auth->requireAnyTenantPermission($tenantKey, ['订单编辑', '采购状态', '1688物流']);
+
+        $itemId = (int) ($_POST['item_id'] ?? 0);
+        $tabaono = (string) ($_POST['tabaono'] ?? '');
+        $this->ensureItemAccess($tenantKey, $itemId);
+
+        $result = $this->alibaba1688LogisticsService->syncItem($tenantKey, $itemId, $tabaono, $this->currentUserName($tenantKey));
+        $this->json($result, $result['ok'] ? 200 : 422);
+    }
+
     public function addOrderAttachment(): void
     {
         $tenantKey = current_tenant_key();

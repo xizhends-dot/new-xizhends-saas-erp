@@ -54,6 +54,7 @@ $canBatchPurchase = (bool) ($canBatchPurchase ?? false);
 $canBatchJp = (bool) ($canBatchJp ?? false);
 $canUploadImage = (bool) ($canUploadImage ?? false);
 $canDeleteImage = (bool) ($canDeleteImage ?? false);
+$can1688Logistics = (bool) ($can1688Logistics ?? false);
 $canSelectItem = ($orderView === 'purchase' && $canBatchPurchase) || ($orderView === 'jp' && $canBatchJp);
 $canEditThisView = $canEditOrders || ($orderView === 'purchase' && $canEditPurchase) || ($orderView === 'jp' && $canEditJp) || ($orderView === 'platform' && ($canEditPurchase || $canEditJp || $canChangeSource));
 $safeHttpUrl = static function (mixed $url): string {
@@ -628,7 +629,16 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                             <?php endif; ?>
                         </div>
                     </div>
-                    <div class="drawer-form-group"><label>1688订单号：</label><input type="text" name="tabaono" value="<?= e($item['tabaono'] ?? '') ?>"></div>
+                    <div class="drawer-form-group">
+                        <label>1688订单号：</label>
+                        <div class="drawer-inline-action">
+                            <input type="text" name="tabaono" value="<?= e($item['tabaono'] ?? '') ?>" data-1688-refresh-input>
+                            <?php if ($can1688Logistics): ?>
+                                <button class="btn btn-xs drawer-refresh-btn" type="button" data-1688-refresh-button data-refresh-url="/orders/1688/refresh">刷新</button>
+                            <?php endif; ?>
+                            <span class="drawer-refresh-status" data-1688-refresh-status></span>
+                        </div>
+                    </div>
                     <div class="drawer-form-group"><label>历史1688单号：</label><input type="text" name="caigou_ordernums" value="<?= e($item['caigou_ordernums'] ?? '') ?>"></div>
                     <div class="drawer-form-group"><label>采购人：</label><input type="text" name="buyer" value="<?= e($item['buyer'] ?? '') ?>"></div>
                     <div class="drawer-form-group"><label>采购链接：</label><textarea name="purchase_link" rows="2"><?= e($item['purchase_link'] ?? '') ?></textarea></div>

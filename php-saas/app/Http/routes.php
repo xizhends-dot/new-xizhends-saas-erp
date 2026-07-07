@@ -63,6 +63,7 @@ return static function (Container $container, Router $router): void {
     $router->post('/orders/rakuten/sync', [OrderExportController::class, 'syncRakutenOrders']);
     $router->group([TenantAuthMiddleware::class], static function (Router $router): void {
         $router->post('/orders/item/save', [OrderController::class, 'saveOrderItem']);
+        $router->post('/orders/1688/refresh', [OrderController::class, 'refresh1688Order']);
         $router->post('/orders/attachments/add', [OrderController::class, 'addOrderAttachment']);
         $router->post('/orders/attachments/delete', [OrderController::class, 'deleteOrderAttachment']);
         $router->post('/orders/images/upload', [OrderController::class, 'uploadOrderImage']);

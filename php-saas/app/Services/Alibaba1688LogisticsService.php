@@ -16,6 +16,51 @@ final class Alibaba1688LogisticsService
     }
 
     /**
+     * @return array{ok: bool, message: string, fields: array<string, string>, item_id: int}
+     */
+    public function syncItem(string $tenantKey, int $itemId, string $tabaono, string $operator = '系统'): array
+    {
+        $tabaono = trim($tabaono);
+        if (!$this->validOrderId($tabaono)) {
+            return ['ok' => false, 'message' => '1688 订单号格式不正确。', 'fields' => [], 'item_id' => $itemId];
+        }
+
+        $credentials = $this->credentials($tenantKey);
+        if (!$credentials) {
+            return ['ok' => false, 'message' => '缺少 1688 API 配置。请在租户设置启用 1688 接口，并配置 apikeys.conf。', 'fields' => [], 'item_id' => $itemId];
+        }
+
+        $record = $this->findItemRecord($tenantKey, $itemId);
+        if (!$record) {
+            return ['ok' => false, 'message' => '未找到要刷新的订单明细。', 'fields' => [], 'item_id' => $itemId];
+        }
+
+        try {
+            $payload = $this->fetchOrderPayload($tabaono, $credentials);
+        } catch (\Throwable $error) {
+            return ['ok' => false, 'message' => '1688 API 查询失败：' . $error->getMessage(), 'fields' => [], 'item_id' => $itemId];
+        }
+
+        if (!$payload['ok']) {
+            return ['ok' => false, 'message' => $payload['message'], 'fields' => [], 'item_id' => $itemId];
+        }
+
+        $changes = $this->changesFromPayload($payload, $record['item'], $tabaono);
+        if (!$changes) {
+            return ['ok' => false, 'message' => '1688 没有返回可回填的信息。', 'fields' => [], 'item_id' => $itemId];
+        }
+
+        $this->store->updateOrderItem($tenantKey, $itemId, $changes, $operator, '1688单号刷新');
+
+        return [
+            'ok' => true,
+            'message' => '1688 单号已刷新。',
+            'fields' => array_map(static fn (mixed $value): string => (string) $value, $changes),
+            'item_id' => $itemId,
+        ];
+    }
+
+    /**
      * @param array<int, int> $itemIds
      * @param array<string, mixed> $options
      * @return array{ok: bool, message: string, scanned: int, updated: int, skipped: int, failed: int, tenants: array<int, string>}
@@ -45,13 +90,13 @@ final class Alibaba1688LogisticsService
             }
 
             try {
-                $logistics = $this->fetchOrderLogistics($tabaono, $credentials);
-                if (!$logistics['ok']) {
+                $payload = $this->fetchOrderPayload($tabaono, $credentials);
+                if (!$payload['ok']) {
                     $failed++;
                     continue;
                 }
 
-                $changes = $this->changesFromLogistics($logistics);
+                $changes = $this->changesFromPayload($payload, $record['item'], $tabaono);
                 if (!$changes) {
                     $skipped++;
                     continue;
@@ -100,6 +145,83 @@ final class Alibaba1688LogisticsService
         }
 
         return $changes;
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     * @param array<string, mixed> $item
+     * @return array<string, string>
+     */
+    private function changesFromPayload(array $payload, array $item, string $tabaono): array
+    {
+        $changes = $this->changesFromLogistics($payload);
+        $changes['tabaono'] = $tabaono;
+
+        $amount = $this->calculatedAmount($payload, $item);
+        if ($amount !== '') {
+            $changes['amount'] = $amount;
+        }
+
+        $purchaseTime = $this->purchaseTimeFromPayTime($payload['pay_time'] ?? '');
+        if ($purchaseTime !== '') {
+            $changes['purchase_time'] = $purchaseTime;
+        }
+
+        $nextStatus = $this->purchaseStatusFromLogistics(
+            (string) ($payload['status'] ?? ''),
+            (string) ($item['purchase_status'] ?? '')
+        );
+        if ($nextStatus !== '') {
+            $changes['purchase_status'] = $nextStatus;
+        }
+
+        return $changes;
+    }
+
+    /**
+     * @param array{app_key: string, app_secret: string, access_token: string} $credentials
+     * @return array<string, mixed>
+     */
+    private function fetchOrderPayload(string $orderId, array $credentials): array
+    {
+        $logistics = $this->fetchOrderLogistics($orderId, $credentials);
+        if (!$logistics['ok']) {
+            return $logistics;
+        }
+
+        $summary = $this->fetchOrderSummary($orderId, $credentials);
+        if ($summary['ok']) {
+            $logistics = array_merge($logistics, $summary);
+        }
+
+        return $logistics;
+    }
+
+    /**
+     * @param array{app_key: string, app_secret: string, access_token: string} $credentials
+     * @return array{ok: bool, total_amount: string, pay_time: string, total_product_quantity: int, message: string}
+     */
+    private function fetchOrderSummary(string $orderId, array $credentials): array
+    {
+        $info = $this->request($credentials, 'com.alibaba.trade/alibaba.trade.get.buyerView', [
+            'access_token' => $credentials['access_token'],
+            'orderId' => $orderId,
+            'webSite' => '1688',
+        ]);
+        if (!$info['ok']) {
+            return $this->emptySummary(false, $info['message']);
+        }
+
+        $result = is_array($info['data']['result'] ?? null) ? $info['data']['result'] : [];
+        $baseInfo = is_array($result['baseInfo'] ?? null) ? $result['baseInfo'] : [];
+
+        return [
+            'ok' => true,
+            'total_amount' => trim((string) ($baseInfo['totalAmount'] ?? '')),
+            'pay_time' => trim((string) ($baseInfo['payTime'] ?? '')),
+            'total_product_quantity' => $this->totalProductQuantity($result['productItems'] ?? []),
+            'message' => '',
+        ];
     }
 
     /**
@@ -174,8 +296,11 @@ final class Alibaba1688LogisticsService
         if (!is_array($data)) {
             return ['ok' => false, 'data' => [], 'message' => '1688 API 返回不是有效 JSON。'];
         }
-        if (($data['success'] ?? false) !== true) {
+        if (array_key_exists('success', $data) && $data['success'] !== true) {
             return ['ok' => false, 'data' => $data, 'message' => (string) ($data['errorMessage'] ?? '1688 API 查询失败。')];
+        }
+        if (isset($data['errorCode']) || isset($data['errorMessage'])) {
+            return ['ok' => false, 'data' => $data, 'message' => (string) ($data['errorMessage'] ?? $data['errorCode'] ?? '1688 API 查询失败。')];
         }
 
         return ['ok' => true, 'data' => $data, 'message' => ''];
@@ -313,6 +438,90 @@ final class Alibaba1688LogisticsService
         return implode("\r\n", $lines);
     }
 
+    /**
+     * @param array<string, mixed> $payload
+     * @param array<string, mixed> $item
+     */
+    private function calculatedAmount(array $payload, array $item): string
+    {
+        $totalAmount = trim((string) ($payload['total_amount'] ?? ''));
+        if ($totalAmount === '' || !is_numeric($totalAmount)) {
+            return '';
+        }
+
+        $amount = (float) $totalAmount;
+        $totalQuantity = (int) ($payload['total_product_quantity'] ?? 0);
+        if ($totalQuantity > 0) {
+            $customerQuantity = max(1, (int) ($item['quantity'] ?? 1));
+            $amount = round(($amount / $totalQuantity) * $customerQuantity, 2);
+        }
+
+        return $this->amountString($amount);
+    }
+
+    private function purchaseTimeFromPayTime(mixed $value): string
+    {
+        $raw = trim((string) $value);
+        if ($raw === '') {
+            return '';
+        }
+
+        if (ctype_digit($raw)) {
+            $timestamp = (int) $raw;
+            if ($timestamp > 9999999999) {
+                $timestamp = (int) floor($timestamp / 1000);
+            }
+            return date('Y-m-d H:i:s', $timestamp);
+        }
+
+        $timestamp = strtotime($raw);
+        return $timestamp !== false ? date('Y-m-d H:i:s', $timestamp) : '';
+    }
+
+    private function purchaseStatusFromLogistics(string $logisticsStatus, string $currentStatus): string
+    {
+        if (!in_array($logisticsStatus, ['已签收', '运输中'], true)) {
+            return '';
+        }
+
+        $lockedStatuses = ['已发出荷通知', '已到货问题件', '已发日本', '日本库存', '日本库存订单', '义乌库存', '上海库存', '客人取消订单', '等待换货中', '等待采购退货', '采购退货完成'];
+        if (in_array($currentStatus, $lockedStatuses, true)) {
+            return '';
+        }
+
+        if ($logisticsStatus === '已签收') {
+            return '已到货';
+        }
+
+        return $currentStatus !== '已到货' ? '发货中' : '';
+    }
+
+    private function totalProductQuantity(mixed $items): int
+    {
+        if (!is_array($items)) {
+            return 0;
+        }
+
+        $quantity = 0;
+        foreach ($items as $item) {
+            if (is_array($item)) {
+                $quantity += max(0, (int) ($item['quantity'] ?? 0));
+            }
+        }
+
+        return $quantity;
+    }
+
+    private function amountString(float $amount): string
+    {
+        $rounded = round($amount, 2);
+        if (abs($rounded - round($rounded)) < 0.00001) {
+            return (string) (int) round($rounded);
+        }
+
+        return rtrim(rtrim(number_format($rounded, 2, '.', ''), '0'), '.');
+    }
+
     /** @return array<int, array{order: array<string, mixed>, item: array<string, mixed>}> */
     private function candidateItems(string $tenantKey, array $targetItemIds, int $limit): array
     {
@@ -343,6 +552,20 @@ final class Alibaba1688LogisticsService
         }
 
         return $records;
+    }
+
+    /** @return array{order: array<string, mixed>, item: array<string, mixed>}|null */
+    private function findItemRecord(string $tenantKey, int $itemId): ?array
+    {
+        foreach ($this->store->orders($tenantKey) as $order) {
+            foreach ($order['items'] ?? [] as $item) {
+                if (is_array($item) && (int) ($item['id'] ?? 0) === $itemId) {
+                    return ['order' => $order, 'item' => $item];
+                }
+            }
+        }
+
+        return null;
     }
 
     private function statusLabel(string $status): string
@@ -389,5 +612,11 @@ final class Alibaba1688LogisticsService
     private function emptyLogistics(bool $ok, string $message): array
     {
         return ['ok' => $ok, 'company' => '', 'bill_no' => '', 'status' => '', 'trace' => '', 'message' => $message];
+    }
+
+    /** @return array{ok: bool, total_amount: string, pay_time: string, total_product_quantity: int, message: string} */
+    private function emptySummary(bool $ok, string $message): array
+    {
+        return ['ok' => $ok, 'total_amount' => '', 'pay_time' => '', 'total_product_quantity' => 0, 'message' => $message];
     }
 }
