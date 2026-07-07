@@ -257,7 +257,7 @@ $uniqueOrders = (int) ($totals['unique_orders'] ?? 0);
 
 <div class="page-head">
     <div>
-        <h1>采购业绩统计 <span class="sub">沿用 old/plugins/caigou_stats 展示方式</span></h1>
+        <h1>采购业绩统计 <span class="sub">按采购员、平台和日期统计采购完成情况</span></h1>
     </div>
     <div class="head-actions">
         <a class="btn" href="/stats/purchase/status-daily?tenant=<?= e($tenantKey) ?>">采购状态日报</a>

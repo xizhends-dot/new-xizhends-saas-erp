@@ -48,9 +48,6 @@ final class PlatformOrderSyncRegistry
             RakutenOrderService::class,
             WowmaOrderSyncService::class,
             YahooShopOrderSyncService::class,
-            MercariOrderSyncService::class,
-            Qoo10OrderSyncService::class,
-            YahooAuctionOrderSyncService::class,
         ];
     }
 }

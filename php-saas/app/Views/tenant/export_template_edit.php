@@ -6,8 +6,8 @@ $returnUrl = is_string($returnUrl ?? null) && $returnUrl !== '' ? $returnUrl : '
 $columns = array_values((array) ($template['columns'] ?? []));
 $selectedPlatforms = array_values(array_filter(array_map('strval', is_array($template['platforms'] ?? null) ? $template['platforms'] : [])));
 $platformOptions = [
-    'r' => '乐天',
-    'y' => 'Yahoo购物',
+    'r' => 'Rakuten',
+    'y' => 'Yahoo',
     'yp' => '雅拍',
     'w' => 'Wowma',
     'm' => 'Mercari',

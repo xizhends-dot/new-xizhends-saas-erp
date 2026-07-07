@@ -63,7 +63,7 @@ final class YahooShopOrderSyncService extends AbstractPlatformOrderSyncService
 
     public function platformName(): string
     {
-        return 'Yahoo Shop';
+        return 'Yahoo';
     }
 
     /**
@@ -73,10 +73,10 @@ final class YahooShopOrderSyncService extends AbstractPlatformOrderSyncService
     {
         $store = $this->store->store($tenantKey, $storeId);
         if (!$store) {
-            return $this->result(false, '请选择 Yahoo Shop 店铺后再同步。');
+            return $this->result(false, '请选择 Yahoo 店铺后再同步。');
         }
         if ((string) ($store['platform'] ?? '') !== 'y') {
-            return $this->markFailure($tenantKey, $storeId, '请选择 Yahoo Shop 店铺后再同步。');
+            return $this->markFailure($tenantKey, $storeId, '请选择 Yahoo 店铺后再同步。');
         }
 
         $credentials = $this->credentials($store);
@@ -101,7 +101,7 @@ final class YahooShopOrderSyncService extends AbstractPlatformOrderSyncService
             );
 
             if (!$orderIds) {
-                $message = 'Yahoo Shop 没有需要同步的新订单。';
+                $message = 'Yahoo 没有需要同步的新订单。';
                 $this->store->markStoreSync($tenantKey, $storeId, '同步完成', $message);
                 return $this->result(true, $message);
             }
@@ -124,7 +124,7 @@ final class YahooShopOrderSyncService extends AbstractPlatformOrderSyncService
             }
 
             $message = sprintf(
-                'Yahoo Shop 同步完成：检索 %d 单，新增 %d 单，更新 %d 单，新增商品 %d 件，更新商品 %d 件，跳过 %d 单。',
+                'Yahoo 同步完成：检索 %d 单，新增 %d 单，更新 %d 单，新增商品 %d 件，更新商品 %d 件，跳过 %d 单。',
                 count($orderIds),
                 $summary['inserted'],
                 $summary['updated'],
@@ -136,7 +136,7 @@ final class YahooShopOrderSyncService extends AbstractPlatformOrderSyncService
 
             return $this->result(true, $message, $summary, count($orderIds));
         } catch (\Throwable $error) {
-            return $this->markFailure($tenantKey, $storeId, 'Yahoo Shop 同步失败：' . $error->getMessage());
+            return $this->markFailure($tenantKey, $storeId, 'Yahoo 同步失败：' . $error->getMessage());
         }
     }
 
@@ -163,7 +163,7 @@ final class YahooShopOrderSyncService extends AbstractPlatformOrderSyncService
     private function missingCredentialMessage(array $credentials): string
     {
         if ($credentials['seller_id'] === '') {
-            return '缺少 Yahoo Shop API 配置：seller_id 或 store_account。';
+            return '缺少 Yahoo API 配置：seller_id 或 store_account。';
         }
         if ($credentials['access_token'] !== '') {
             return '';
@@ -177,7 +177,7 @@ final class YahooShopOrderSyncService extends AbstractPlatformOrderSyncService
         }
 
         return $missing
-            ? '缺少 Yahoo Shop API 配置：access_token，或 refresh_token + client_id/app_id + client_secret。缺失项：' . implode(', ', $missing) . '。'
+            ? '缺少 Yahoo API 配置：access_token，或 refresh_token + client_id/app_id + client_secret。缺失项：' . implode(', ', $missing) . '。'
             : '';
     }
 

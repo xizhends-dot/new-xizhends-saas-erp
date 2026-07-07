@@ -152,7 +152,7 @@ $assert('配置页新建入口带回配置页 return', str_contains($orderToolsH
 $assert('配置页自定义模板显示编辑入口', str_contains($orderToolsHtml, '编辑') && str_contains($orderToolsHtml, 'id=' . $templateId));
 $assert('配置页自定义模板显示删除表单', str_contains($orderToolsHtml, '/import-export/export-templates/delete') && str_contains($orderToolsHtml, 'name="id" value="' . $templateId . '"'));
 $assert('配置页预置模板显示复制入口与说明', str_contains($orderToolsHtml, '复制为自定义') && str_contains($orderToolsHtml, '预置模板不可直接修改,复制后可自由编辑字段') && str_contains($orderToolsHtml, 'builtin_riya'));
-$assert('配置页显示模板适用平台标签', str_contains($orderToolsHtml, 'Yahoo购物') && str_contains($orderToolsHtml, '全平台'));
+$assert('配置页显示模板适用平台标签', str_contains($orderToolsHtml, 'Yahoo') && str_contains($orderToolsHtml, '全平台'));
 
 $builtinEditHtml = order_export_tools_controller_html($basePath, $jsonPath, 'exportTemplateEdit', [
     'tenant' => 'erp',
@@ -178,7 +178,7 @@ function order_export_tools_fixture(): array
 
     return [
         'admins' => [],
-        'platforms' => [['code' => 'r', 'name' => '乐天 Rakuten', 'short' => 'Rakuten', 'default_enabled' => true]],
+        'platforms' => [['code' => 'r', 'name' => 'Rakuten', 'short' => 'Rakuten', 'default_enabled' => true]],
         'tenants' => [[
             'id' => 1,
             'key' => 'erp',

@@ -2880,7 +2880,7 @@ final class JsonStore implements StoreInterface
                         'legacy_dpid' => '',
                         'api_config' => '',
                         'profit_deduction' => 70,
-                        'hidden_reason' => ($store['status'] ?? '') === 'hidden' ? '平台锁定或旧系统隐藏店铺' : '',
+                        'hidden_reason' => ($store['status'] ?? '') === 'hidden' ? '平台锁定或隐藏店铺' : '',
                     ];
                 }
                 unset($store);
@@ -3292,9 +3292,9 @@ final class JsonStore implements StoreInterface
                     'order_id' => $orderId,
                     'order_item_id' => (int) (($order['items'][0]['id'] ?? 0)),
                     'type' => '订单图片',
-                    'title' => '旧系统 ph_img 多图迁移占位',
+                    'title' => '订单多图附件占位',
                     'path' => "storage/tenants/{$tenantKey}/images/uploads/{$orderId}/legacy-1.jpg",
-                    'source' => '旧系统 ph_img',
+                    'source' => '订单图片附件',
                     'uploaded_by' => '系统迁移',
                     'size' => '待扫描',
                     'created_at' => '2026-06-17 09:00',
@@ -3593,6 +3593,9 @@ final class JsonStore implements StoreInterface
                 'rotation_proxy' => '',
                 'enabled' => false,
             ],
+            'debug' => [
+                'enabled' => true,
+            ],
             'updated_at' => '',
         ];
     }
@@ -3603,6 +3606,7 @@ final class JsonStore implements StoreInterface
         $mapping = is_array($data['logistics_mapping'] ?? null) ? $data['logistics_mapping'] : [];
         $showapi = is_array($data['showapi'] ?? null) ? $data['showapi'] : [];
         $proxy = is_array($data['proxy'] ?? null) ? $data['proxy'] : [];
+        $debug = is_array($data['debug'] ?? null) ? $data['debug'] : [];
 
         return [
             'logistics_mapping' => [
@@ -3621,6 +3625,9 @@ final class JsonStore implements StoreInterface
             'proxy' => [
                 'rotation_proxy' => trim((string) ($proxy['rotation_proxy'] ?? '')),
                 'enabled' => !empty($proxy['enabled']),
+            ],
+            'debug' => [
+                'enabled' => !empty($debug['enabled']),
             ],
         ];
     }
@@ -4029,8 +4036,8 @@ final class JsonStore implements StoreInterface
         return [
             'admins' => $this->seedAdmins(),
             'platforms' => [
-                ['code' => 'y', 'name' => 'Yahoo 购物', 'short' => 'Yahoo', 'color' => '#ef4444'],
-                ['code' => 'r', 'name' => '乐天 Rakuten', 'short' => 'Rakuten', 'color' => '#2563eb'],
+                ['code' => 'r', 'name' => 'Rakuten', 'short' => 'Rakuten', 'color' => '#2563eb'],
+                ['code' => 'y', 'name' => 'Yahoo', 'short' => 'Yahoo', 'color' => '#ef4444'],
                 ['code' => 'w', 'name' => 'Wowma', 'short' => 'Wowma', 'color' => '#14b8a6'],
                 ['code' => 'm', 'name' => 'Mercari', 'short' => 'Mercari', 'color' => '#06b6d4'],
                 ['code' => 'q', 'name' => 'Qoo10', 'short' => 'Qoo10', 'color' => '#8b5cf6'],

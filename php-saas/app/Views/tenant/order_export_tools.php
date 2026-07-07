@@ -21,8 +21,8 @@ $displayLabels = [
     'hidden' => '隐藏',
 ];
 $platformLabels = [
-    'r' => '乐天',
-    'y' => 'Yahoo购物',
+    'r' => 'Rakuten',
+    'y' => 'Yahoo',
     'yp' => '雅拍',
     'w' => 'Wowma',
     'm' => 'Mercari',

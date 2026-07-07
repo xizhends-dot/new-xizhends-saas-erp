@@ -29,7 +29,7 @@ $buildUrl = static function (array $extra = []) use ($tenantKey, $filters): stri
 ?>
 <div class="page-head">
     <div>
-        <h1>利润核算分析 <span class="sub">按旧系统 profit-analysis 的商品明细口径核算</span></h1>
+        <h1>利润核算分析 <span class="sub">按商品明细口径核算销售利润</span></h1>
     </div>
     <div class="head-actions">
         <a class="btn" href="/import-export/export?tenant=<?= e($tenantKey) ?>&type=finance">导出财务表</a>
@@ -38,7 +38,7 @@ $buildUrl = static function (array $extra = []) use ($tenantKey, $filters): stri
 </div>
 
 <div class="notice">
-    当前口径：售价 = 商品单价 + 日本邮费；实际利润 = 售价 × 扣点 × 汇率 - 国际运费 - 采购金额。Y/R 平台日本邮费按同订单明细分摊，国际运费优先读取实际运费，缺失时使用默认运费。旧系统汇率参考：<?= e($legacySettings['profit_exchange_rate'] ?: '未配置') ?>。
+    当前口径：售价 = 商品单价 + 日本邮费；实际利润 = 售价 × 扣点 × 汇率 - 国际运费 - 采购金额。Y/R 平台日本邮费按同订单明细分摊，国际运费优先读取实际运费，缺失时使用默认运费。参考汇率：<?= e($legacySettings['profit_exchange_rate'] ?: '未配置') ?>。
 </div>
 
 <div class="profit-tabs">

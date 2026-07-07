@@ -33,7 +33,7 @@ use Xizhen\Services\AuthService;
 $jsonPath = sys_get_temp_dir() . '/xizhen-order-batch-status-source-store-' . bin2hex(random_bytes(6)) . '.json';
 $data = [
     'admins' => [],
-    'platforms' => [['code' => 'r', 'name' => '乐天 Rakuten', 'short' => 'Rakuten']],
+    'platforms' => [['code' => 'r', 'name' => 'Rakuten', 'short' => 'Rakuten']],
     'tenants' => [[
         'id' => 1,
         'key' => 'erp',

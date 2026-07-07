@@ -95,12 +95,12 @@ $check('每页显示字段类型', $rakutenFields['page_size']['type'] ?? null, 
 $check('每页显示字段位于控制区', $rakutenFields['page_size']['section'] ?? null, 'control');
 $check('每页显示选项数', count($rakutenFields['page_size']['options'] ?? []), 4);
 
-$checkTrue('Yahoo购物显示邀评', $has('y', 'review_invited'));
-$checkTrue('Yahoo购物显示评价', $has('y', 'reviewed'));
-$checkTrue('Yahoo购物显示采购链接', $has('y', 'purchase_link'));
-$checkFalse('Yahoo购物不显示 lotNumber', $has('y', 'lot_number'));
-$check('Yahoo购物采购链接字段名', ($fieldByKey('y')['purchase_link']['name'] ?? null), 'caigoulink');
-$check('Yahoo购物运送方式字段名', ($fieldByKey('y')['ship_method']['name'] ?? null), 'PayStatus');
+$checkTrue('Yahoo显示邀评', $has('y', 'review_invited'));
+$checkTrue('Yahoo显示评价', $has('y', 'reviewed'));
+$checkTrue('Yahoo显示采购链接', $has('y', 'purchase_link'));
+$checkFalse('Yahoo不显示 lotNumber', $has('y', 'lot_number'));
+$check('Yahoo采购链接字段名', ($fieldByKey('y')['purchase_link']['name'] ?? null), 'caigoulink');
+$check('Yahoo运送方式字段名', ($fieldByKey('y')['ship_method']['name'] ?? null), 'PayStatus');
 
 $checkTrue('Mercari 显示 lotNumber', $has('m', 'lot_number'));
 $checkFalse('Mercari 不显示 lotNumber 为空', $has('m', 'lot_number_empty'));
@@ -128,7 +128,7 @@ $checkFalse('Qoo10 不显示飞兔推送', $has('q', 'frb_push'));
 $checkFalse('Qoo10 不显示 lotNumber', $has('q', 'lot_number'));
 
 $check('乐天订单号字段名', $registry->fieldNameFor('order_no', 'r'), 'orderId');
-$check('Yahoo购物订单号字段名', $registry->fieldNameFor('order_no', 'y'), 'orderId');
+$check('Yahoo订单号字段名', $registry->fieldNameFor('order_no', 'y'), 'orderId');
 foreach (['yp', 'w', 'm', 'q'] as $platform) {
     $check("{$platform} 订单号字段名", $registry->fieldNameFor('order_no', $platform), 'ziid');
 }
@@ -138,12 +138,12 @@ foreach (['r', 'y', 'yp', 'w', 'm', 'q'] as $platform) {
     $checkTrue("{$platform} 显示日本配達完了", $has($platform, 'delivered'));
 }
 $check('乐天 ItemId 字段名', $registry->fieldNameFor('item_id', 'r'), 'ItemId');
-$check('Yahoo购物 ItemId 字段名', $registry->fieldNameFor('item_id', 'y'), 'ItemId');
+$check('Yahoo ItemId 字段名', $registry->fieldNameFor('item_id', 'y'), 'ItemId');
 foreach (['w', 'm', 'q'] as $platform) {
     $check("{$platform} ItemId 字段名", $registry->fieldNameFor('item_id', $platform), 'itemManagementId');
 }
 $check('乐天运送方式字段名', $registry->fieldNameFor('ship_method', 'r'), 'yunshu');
-$check('Yahoo购物运送方式字段名', $registry->fieldNameFor('ship_method', 'y'), 'PayStatus');
+$check('Yahoo运送方式字段名', $registry->fieldNameFor('ship_method', 'y'), 'PayStatus');
 $check('Wowma 运送方式字段名', $registry->fieldNameFor('ship_method', 'w'), 'deliveryName');
 $check('Mercari 运送方式字段名', $registry->fieldNameFor('ship_method', 'm'), 'deliveryName');
 $check('Qoo10 运送方式字段名', $registry->fieldNameFor('ship_method', 'q'), 'deliveryName');
@@ -152,7 +152,7 @@ foreach (['y', 'w', 'm', 'q'] as $platform) {
     $check("{$platform} 片假名字段名", $registry->fieldNameFor('kana', $platform), 'senderKana');
 }
 $check('乐天订单时间字段名', $registry->orderDateFieldFor('r'), 'OrderTime');
-$check('Yahoo购物订单时间字段名', $registry->orderDateFieldFor('y'), 'OrderTime');
+$check('Yahoo订单时间字段名', $registry->orderDateFieldFor('y'), 'OrderTime');
 foreach (['yp', 'w', 'm', 'q'] as $platform) {
     $check("{$platform} 订单时间字段名", $registry->orderDateFieldFor($platform), 'orderDate');
 }
@@ -282,6 +282,17 @@ $templateTools = $toolMap($registry->exportToolsFor('r', ['role' => '客服', 'p
 $checkFalse('仅公司设置无导入导出不可见模板入口', $templateTools['export_template'] ?? false);
 $templateWithImportTools = $toolMap($registry->exportToolsFor('r', ['role' => '客服', 'permissions' => ['导入导出', '公司设置']]));
 $checkTrue('导入导出加公司设置权限用户可见模板入口', $templateWithImportTools['export_template'] ?? false);
+
+$yahooSyncTools = $toolMap($registry->exportToolsFor('y', ['role' => '客服', 'permissions' => ['订单编辑']]));
+$wowmaSyncTools = $toolMap($registry->exportToolsFor('w', ['role' => '客服', 'permissions' => ['订单编辑']]));
+$mercariSyncTools = $toolMap($registry->exportToolsFor('m', ['role' => '客服', 'permissions' => ['订单编辑']]));
+$qoo10SyncTools = $toolMap($registry->exportToolsFor('q', ['role' => '客服', 'permissions' => ['订单编辑']]));
+$ypSyncTools = $toolMap($registry->exportToolsFor('yp', ['role' => '客服', 'permissions' => ['订单编辑']]));
+$checkTrue('Yahoo 可见同步订单', $yahooSyncTools['sync_orders'] ?? false);
+$checkTrue('Wowma 可见同步订单', $wowmaSyncTools['sync_orders'] ?? false);
+$checkFalse('Mercari 不可见同步订单', $mercariSyncTools['sync_orders'] ?? false);
+$checkFalse('Qoo10 不可见同步订单', $qoo10SyncTools['sync_orders'] ?? false);
+$checkFalse('雅虎拍卖不可见同步订单', $ypSyncTools['sync_orders'] ?? false);
 
 $mercariTools = $registry->exportToolsFor('m', ['role' => '公司管理员', 'is_company_admin' => true]);
 $mercariTodo = array_values(array_filter($mercariTools, static fn (array $tool): bool => ($tool['key'] ?? '') === 'mercari_new_import_todo'))[0] ?? [];

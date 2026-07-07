@@ -43,15 +43,15 @@
 </div>
 
 <div class="panel">
-    <div class="panel-head"><span>旧系统迁移对应</span><span class="sub">只作为迁移参考，不直接暴露旧路径</span></div>
+    <div class="panel-head"><span>图片存储说明</span><span class="sub">按业务功能隔离目录</span></div>
     <div class="panel-body">
         <table class="table">
-            <thead><tr><th>功能</th><th>旧系统参考</th><th>新系统租户路径</th></tr></thead>
+            <thead><tr><th>功能</th><th>用途</th><th>新系统租户路径</th></tr></thead>
             <tbody>
             <?php foreach ($library['references'] as $row): ?>
                 <tr>
                     <td><strong><?= e($row['name']) ?></strong></td>
-                    <td><code><?= e($row['old']) ?></code></td>
+                    <td><?= e($row['usage'] ?? '') ?></td>
                     <td><code><?= e($row['new']) ?></code></td>
                 </tr>
             <?php endforeach; ?>

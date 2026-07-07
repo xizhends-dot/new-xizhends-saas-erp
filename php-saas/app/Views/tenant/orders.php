@@ -386,7 +386,7 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
             <div class="order-tool-list">
                 <?php if ($syncTool !== null): ?>
                     <?php if ($orderView === 'platform' && $platformSyncName !== '' && $platformSyncStores): ?>
-                        <form class="order-tool-row order-tool-form order-tool-sync" method="post" action="<?= e((string) ($syncTool['action'] ?? '/orders/platform/sync')) ?>">
+                        <form class="order-tool-row order-tool-form order-tool-sync" method="post" action="<?= e((string) ($syncTool['action'] ?? '/orders/platform/sync')) ?>" <?= $currentPlatform === 'y' ? 'data-confirm="Yahoo 平台订单同步需要在指定 IP 环境下执行。确认当前网络符合要求后再继续同步？"' : '' ?>>
                             <?= csrf_field() ?>
                             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                             <input type="hidden" name="return" value="<?= e($returnUrl) ?>">

@@ -1,6 +1,6 @@
 <div class="page-head">
     <div>
-        <h1>功能工作台 <span class="sub">按旧系统模块补齐的新 SaaS 入口</span></h1>
+        <h1>功能工作台 <span class="sub">按业务模块汇总当前可用入口</span></h1>
     </div>
     <div class="head-actions">
         <a class="btn" href="/settings?tenant=<?= e($tenantKey) ?>">配置 API</a>

@@ -118,13 +118,13 @@ $json = static fn (mixed $value): string => json_encode($value, JSON_UNESCAPED_U
     <div class="panel-head"><span>已迁移的 Excel 项</span><span class="sub">PhpSpreadsheet XLSX</span></div>
     <div class="panel-body">
         <table class="table">
-            <thead><tr><th>项目</th><th>原因</th><th>旧系统来源</th></tr></thead>
+            <thead><tr><th>项目</th><th>原因</th><th>用途说明</th></tr></thead>
             <tbody>
             <?php foreach ($excelRequirements as $item): ?>
                 <tr>
                     <td><?= e($item['item'] ?? $item) ?></td>
                     <td><?= e($item['reason'] ?? '') ?></td>
-                    <td><?= e($item['old_source'] ?? '') ?></td>
+                    <td><?= e($item['usage'] ?? '') ?></td>
                 </tr>
             <?php endforeach; ?>
             <?php if (!$excelRequirements): ?>

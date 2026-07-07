@@ -250,6 +250,7 @@ final class AdminController
         $mapping = is_array($_POST['logistics_mapping'] ?? null) ? $_POST['logistics_mapping'] : [];
         $showapi = is_array($_POST['showapi'] ?? null) ? $_POST['showapi'] : [];
         $proxy = is_array($_POST['proxy'] ?? null) ? $_POST['proxy'] : [];
+        $debug = is_array($_POST['debug'] ?? null) ? $_POST['debug'] : [];
 
         $this->store->saveGlobalSettings([
             'logistics_mapping' => [
@@ -268,6 +269,9 @@ final class AdminController
             'proxy' => [
                 'rotation_proxy' => '',
                 'enabled' => isset($proxy['enabled']),
+            ],
+            'debug' => [
+                'enabled' => isset($debug['enabled']),
             ],
         ]);
 

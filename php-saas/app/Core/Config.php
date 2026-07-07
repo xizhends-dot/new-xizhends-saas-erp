@@ -93,7 +93,7 @@ final class Config
             'schema_sources' => [
                 '主库' => 'migrations/master/*.sql',
                 '租户库' => 'migrations/tenant/*.sql',
-                '旧系统参考' => 'old/CLAUDE.md、old/plugins/、old/cron/',
+                '接口说明' => '物流、导入导出、订单同步由当前 SaaS 服务维护',
             ],
         ];
     }

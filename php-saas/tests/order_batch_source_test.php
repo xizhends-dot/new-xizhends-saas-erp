@@ -52,7 +52,7 @@ final class BatchSourceTestStore implements StoreInterface
     public function adminByUsername(string $username): ?array { return null; }
     public function touchAdminLogin(int $adminId): void {}
     public function tenant(string $key): array { return ['key' => $key, 'status' => 'active', 'platforms' => [['code' => 'r', 'enabled' => true, 'locked' => false]]]; }
-    public function platforms(): array { return [['code' => 'r', 'name' => '乐天 Rakuten', 'short' => 'Rakuten']]; }
+    public function platforms(): array { return [['code' => 'r', 'name' => 'Rakuten', 'short' => 'Rakuten']]; }
     public function orders(string $tenantKey): array { return $this->orders; }
     public function ordersByYear(string $tenantKey, int $year): array { return $this->orders; }
     public function ordersForStores(string $tenantKey, array $stores): array { return $this->orders; }

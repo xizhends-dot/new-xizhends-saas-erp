@@ -5,7 +5,7 @@
 
 CREATE TABLE IF NOT EXISTS `platforms` (
     `code`            VARCHAR(16)  NOT NULL COMMENT '平台代码：y/r/w/m/q/yp',
-    `name`            VARCHAR(64)  NOT NULL COMMENT '平台名称：Yahoo购物/乐天/Wowma/Mercari/Qoo10/雅虎拍卖',
+    `name`            VARCHAR(64)  NOT NULL COMMENT '平台名称：Rakuten/Yahoo/Wowma/Mercari/Qoo10/雅虎拍卖',
     `sort_order`      INT          NOT NULL DEFAULT 0 COMMENT '侧栏排序',
     `default_enabled` TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '新租户默认是否开通',
     PRIMARY KEY (`code`)
@@ -16,8 +16,8 @@ CREATE TABLE IF NOT EXISTS `platforms` (
 
 -- 内置 6 个平台目录数据
 INSERT INTO `platforms` (`code`, `name`, `sort_order`, `default_enabled`) VALUES
-    ('y',  'Yahoo购物',  10, 1),
-    ('r',  '乐天',       20, 1),
+    ('r',  'Rakuten',    10, 1),
+    ('y',  'Yahoo',      20, 1),
     ('w',  'Wowma',      30, 1),
     ('m',  'Mercari',    40, 1),
     ('q',  'Qoo10',      50, 1),

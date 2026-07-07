@@ -37,7 +37,7 @@
                     <span>导入文件</span>
                     <input type="file" name="csv_file" accept=".csv,.xls,.xlsx,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
                 </label>
-                <div class="setting-muted wide">支持 10MB 以内 CSV / 制表符文本 / 旧系统文本型 .xls / XLSX。平台订单导入会识别订单号、商品、客户、金额、店铺等列。</div>
+                <div class="setting-muted wide">支持 10MB 以内 CSV / 制表符文本 / XLS / XLSX。平台订单导入会识别订单号、商品、客户、金额、店铺等列。</div>
                 <div class="setting-muted wide">文件中的“店铺”列为空时归属当前店铺；非空且不等于当前店铺全称或缩写时，该行会被跳过。</div>
                 <div class="form-submit wide"><button class="btn primary" type="submit">导入订单</button></div>
             </form>

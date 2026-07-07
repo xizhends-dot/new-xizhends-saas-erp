@@ -142,7 +142,7 @@ final class ImportExportController extends TenantBaseController
             'excelRequirements' => array_merge(
                 $this->financeExportRequirementService->excelRequirements(),
                 array_map(
-                    static fn (string $item): array => ['item' => $item, 'reason' => '已通过 PhpSpreadsheet 生成样式 XLSX。', 'old_source' => 'old/*/custinfo_export.php'],
+                    static fn (string $item): array => ['item' => $item, 'reason' => '已通过 PhpSpreadsheet 生成样式 XLSX。', 'usage' => '客户资料导出时保留固定列宽、表头样式和文本格式。'],
                     $this->customerExportService->excelRequirements()
                 )
             ),

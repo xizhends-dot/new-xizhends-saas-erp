@@ -3,7 +3,7 @@ $logisticsMeta = match ($type) {
     '1688' => [
         'title' => '1688物流查询日志',
         'return_path' => '/logistics/1688',
-        'notice' => '已接入 old/plugins/1688api 与 cron/update_1688_logistics.php 的 1688 物流查询规则。',
+        'notice' => '用于查询 1688 采购订单的国内物流轨迹，记录订单号、1688 单号、处理状态与返回说明。',
         'columns' => [
             ['key' => 'date', 'label' => '日期'],
             ['key' => 'user_name', 'label' => '用户'],
@@ -17,7 +17,7 @@ $logisticsMeta = match ($type) {
     'express' => [
         'title' => 'Showapi物流查询日志',
         'return_path' => '/logistics/express',
-        'notice' => '已接入 old/plugins/express-showapi 的国内快递查询规则；ShowAPI 失败或无轨迹时，可由超管开启百度物流备用查询。',
+        'notice' => '用于查询淘宝、拼多多等国内快递轨迹，记录运单号、处理状态、接口说明与相关链接。',
         'columns' => [
             ['key' => 'date', 'label' => '日期'],
             ['key' => 'user_name', 'label' => '用户'],
@@ -30,7 +30,7 @@ $logisticsMeta = match ($type) {
     default => [
         'title' => '国际物流查询日志',
         'return_path' => '/logistics/jp',
-        'notice' => '已接入 old/plugins/jpshipinfo、sagawa-shipinfo 与 cron/update_jpship_logistics.php 的日本物流查询规则。',
+        'notice' => '用于查询国际运单和日本配送轨迹，记录平台订单、国际运单号、处理状态与查询结果。',
         'columns' => [
             ['key' => 'date', 'label' => '日期'],
             ['key' => 'platform_name', 'label' => '平台'],
@@ -116,7 +116,7 @@ $failureCount = count($rows) - $successCount;
 </style>
 <div class="page-head">
     <div>
-        <h1><?= e($logisticsMeta['title']) ?> <span class="sub">旧系统物流任务迁移入口</span></h1>
+        <h1><?= e($logisticsMeta['title']) ?> <span class="sub">物流接口查询记录</span></h1>
     </div>
     <div class="head-actions">
         <form method="post" action="/orders/logistics/update">

@@ -28,11 +28,18 @@ $platformNames = ['y' => 'Yahoo'];
 $source = 'all';
 $keyword = '';
 $filters = [];
-$stores = [];
+$stores = [['id' => 1, 'platform' => 'y', 'name' => 'Yahoo一店', 'short' => 'Y-01']];
 $statusOptions = ['未处理的订单', '国内采购-准备'];
 $jpStockStatusOptions = ['日本仓待处理', '日本仓已完成'];
 $filterFields = [];
-$exportTools = [];
+$exportTools = [[
+    'key' => 'sync_orders',
+    'label' => '同步订单',
+    'action' => '/orders/platform/sync',
+    'method' => 'post',
+    'group' => 'sync',
+    'visibleWhen' => true,
+]];
 $canEditOrders = true;
 $canEditPurchase = false;
 $canEditJp = false;
@@ -48,7 +55,7 @@ $canFullImportExport = false;
 $can1688Logistics = true;
 $canExpressLogistics = true;
 $canJpLogistics = true;
-$platformSyncServices = [];
+$platformSyncServices = ['y' => 'Yahoo'];
 
 ob_start();
 require $basePath . '/app/Views/tenant/orders.php';
@@ -58,6 +65,8 @@ $assert('订单批量工具栏存在', preg_match('/<div class="tbar order-toolb
 $toolbar = $matches[0] ?? '';
 $assert('订单页不再显示无效手动录入按钮', !str_contains($html, '手动录入'));
 $assert('订单页不再显示无效手动出库按钮', !str_contains($html, '手动出库'));
+$assert('Yahoo 同步表单提示指定 IP', str_contains($html, 'data-confirm="Yahoo 平台订单同步需要在指定 IP 环境下执行。确认当前网络符合要求后再继续同步？"'));
+$assert('Yahoo 同步按钮可见', str_contains($html, '同步订单') && str_contains($html, 'name="platform" value="y"'));
 
 $expectedOrder = [
     '已选择',

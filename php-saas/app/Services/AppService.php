@@ -257,33 +257,33 @@ final class AppService
                 ['feature' => 'orders.jp', 'title' => '日本仓发货', 'desc' => '只显示日本仓子商品，支持批量分配与出库状态更新。', 'href' => "/orders?tenant={$tenantKey}&view=jp", 'status' => '已接后端'],
                 ['feature' => 'orders.edit', 'title' => '订单详情', 'desc' => '从订单号进入，保存采购、物流、日本仓和日志字段。', 'href' => "/orders?tenant={$tenantKey}&view=platform", 'status' => '已接后端'],
             ],
-            '旧系统插件' => [
-                ['feature' => 'logistics.1688', 'title' => '1688 物流', 'desc' => '对应 old/plugins/1688api 与 cron/update_1688_logistics.php。', 'href' => "/logistics/1688?tenant={$tenantKey}", 'status' => '已接 API/CLI'],
-                ['feature' => 'logistics.express', 'title' => 'TB/PDD 物流', 'desc' => '对应 old/plugins/express-showapi 的国内快递查询。', 'href' => "/logistics/express?tenant={$tenantKey}", 'status' => '已接 ShowAPI 占位配置'],
-                ['feature' => 'logistics.jp', 'title' => '日本物流', 'desc' => '对应 jpshipinfo、sagawa-shipinfo 与 update_jpship_logistics.php。', 'href' => "/logistics/jp?tenant={$tenantKey}", 'status' => '已接 API/CLI'],
-                ['feature' => 'logistics.jp', 'title' => '运单核对', 'desc' => '对应 checkyd 与 jpyd-check，核对国内/国际运单并跳转日本快递官网。', 'href' => "/logistics/waybill-check?tenant={$tenantKey}", 'status' => '已接页面'],
-                ['feature' => 'mail.center', 'title' => '客服邮件中心', 'desc' => '对应 old/kefu_mail 与 cron/mail_sync.php。', 'href' => "/mail?tenant={$tenantKey}", 'status' => '已接 IMAP/SMTP'],
+            '物流与客服' => [
+                ['feature' => 'logistics.1688', 'title' => '1688 物流', 'desc' => '查询 1688 采购订单的国内物流轨迹，记录订单号、状态和接口返回说明。', 'href' => "/logistics/1688?tenant={$tenantKey}", 'status' => '已接 API/CLI'],
+                ['feature' => 'logistics.express', 'title' => 'TB/PDD 物流', 'desc' => '查询淘宝、拼多多等国内快递轨迹，可记录运单号、状态和相关链接。', 'href' => "/logistics/express?tenant={$tenantKey}", 'status' => '已接 ShowAPI'],
+                ['feature' => 'logistics.jp', 'title' => '日本物流', 'desc' => '查询国际运单和日本配送轨迹，记录平台订单、运单号和查询结果。', 'href' => "/logistics/jp?tenant={$tenantKey}", 'status' => '已接 API/CLI'],
+                ['feature' => 'logistics.jp', 'title' => '运单核对', 'desc' => '核对国内/国际运单并跳转承运商官网，用于发货前后快速复核。', 'href' => "/logistics/waybill-check?tenant={$tenantKey}", 'status' => '已接页面'],
+                ['feature' => 'mail.center', 'title' => '客服邮件中心', 'desc' => '收取并发送客服邮件，支持账号绑定、文件夹同步和规则分流。', 'href' => "/mail?tenant={$tenantKey}", 'status' => '已接 IMAP/SMTP'],
                 ['feature' => 'media.library', 'title' => '租户图片库', 'desc' => '按公司隔离订单主图、SKU 图、上传凭证和旧图清理策略。', 'href' => "/media?tenant={$tenantKey}", 'status' => '页面已接'],
             ],
             '经营分析' => [
-                ['feature' => 'analytics.profit', 'title' => '利润核算分析', 'desc' => '对应 old/plugins/profit-analysis。', 'href' => "/analytics/profit?tenant={$tenantKey}", 'status' => '已接核算明细'],
-                ['feature' => 'stats.purchase', 'title' => '采购业绩统计', 'desc' => '对应 old/plugins/caigou_stats，按采购员统计完成采购、采购金额和 1688 单号。', 'href' => "/stats/purchase?tenant={$tenantKey}", 'status' => '开发数据'],
-                ['feature' => 'stats.performance', 'title' => '业绩统计', 'desc' => '对应 old/performance，按日、平台、店铺聚合订单和金额。', 'href' => "/performance?tenant={$tenantKey}", 'status' => '已接页面'],
-                ['feature' => 'stats.products', 'title' => '出单商品分析', 'desc' => '对应 old/performance/product_analysis，按商品编码统计热卖排名。', 'href' => "/performance/products?tenant={$tenantKey}", 'status' => '已接页面'],
-                ['feature' => 'stats.shipping_anomaly', 'title' => '异常运费检测', 'desc' => '对应 old/plugins/shipping-anomaly，按商品 ID 与数量聚合对比国际运费。', 'href' => "/stats/shipping-anomaly?tenant={$tenantKey}", 'status' => '已接页面'],
-                ['feature' => 'tools.price_calculator', 'title' => '核价计算器', 'desc' => '对应 old/price_calculator.php，支持多行成本核算和目标利润反推售价。', 'href' => "/price-calculator?tenant={$tenantKey}", 'status' => '已接页面'],
+                ['feature' => 'analytics.profit', 'title' => '利润核算分析', 'desc' => '按商品明细核算销售额、扣点、汇率、采购金额、国际运费和利润率。', 'href' => "/analytics/profit?tenant={$tenantKey}", 'status' => '已接核算明细'],
+                ['feature' => 'stats.purchase', 'title' => '采购业绩统计', 'desc' => '按采购员统计完成采购、采购金额、采购件数和 1688 单号。', 'href' => "/stats/purchase?tenant={$tenantKey}", 'status' => '开发数据'],
+                ['feature' => 'stats.performance', 'title' => '业绩统计', 'desc' => '按日、平台、店铺聚合订单数量和销售金额。', 'href' => "/performance?tenant={$tenantKey}", 'status' => '已接页面'],
+                ['feature' => 'stats.products', 'title' => '出单商品分析', 'desc' => '按商品编码统计热卖排名、出单数量和销售表现。', 'href' => "/performance/products?tenant={$tenantKey}", 'status' => '已接页面'],
+                ['feature' => 'stats.shipping_anomaly', 'title' => '异常运费检测', 'desc' => '按商品 ID 与数量聚合对比国际运费，筛出异常运费订单。', 'href' => "/stats/shipping-anomaly?tenant={$tenantKey}", 'status' => '已接页面'],
+                ['feature' => 'tools.price_calculator', 'title' => '核价计算器', 'desc' => '支持多行成本核算和目标利润反推售价。', 'href' => "/price-calculator?tenant={$tenantKey}", 'status' => '已接页面'],
                 ['feature' => 'import_export.center', 'title' => '导入导出', 'desc' => '对应 Excel 导入、物流导入、客户资料导出。', 'href' => "/import-export?tenant={$tenantKey}", 'status' => '页面已接'],
                 ['feature' => 'management.jobs', 'title' => '定时任务状态', 'desc' => '租户只查看同步状态；频率、开关和失败重试由超管设置。', 'href' => "/jobs?tenant={$tenantKey}", 'status' => '只读'],
             ],
             '权限与体系' => [
                 ['feature' => 'management.stores', 'title' => '店铺管理', 'desc' => '承接隐藏店铺、店铺扣点、店铺级 API 配置和平台状态。', 'href' => "/stores?tenant={$tenantKey}", 'status' => '已接后端'],
                 ['feature' => 'management.users', 'title' => '员工管理', 'desc' => '承接管理员、采购、客服角色、首选入口、1688 配置和店铺范围。', 'href' => "/users?tenant={$tenantKey}", 'status' => '已接后端'],
-                ['feature' => 'account.password_edit', 'title' => '员工自助改密码', 'desc' => '对应 old/pwdedit.php，改用 password_hash 和旧密码校验。', 'href' => "/password/edit?tenant={$tenantKey}", 'status' => '已接页面'],
-                ['feature' => 'management.notices', 'title' => '通知公告', 'desc' => '对应 old/notice，租户管理员发布公告，员工在首页和订单页可见。', 'href' => "/notices?tenant={$tenantKey}", 'status' => '已接页面'],
-                ['feature' => 'management.user_permission_overrides', 'title' => '细粒度权限', 'desc' => '对应 old/user_permissions.php，支持单员工 allow/deny 覆盖。', 'href' => "/users/permissions?tenant={$tenantKey}", 'status' => '已接页面'],
+                ['feature' => 'account.password_edit', 'title' => '员工自助改密码', 'desc' => '员工可自行修改密码，使用当前密码校验和安全哈希保存。', 'href' => "/password/edit?tenant={$tenantKey}", 'status' => '已接页面'],
+                ['feature' => 'management.notices', 'title' => '通知公告', 'desc' => '租户管理员发布公告，员工在首页和订单页可见。', 'href' => "/notices?tenant={$tenantKey}", 'status' => '已接页面'],
+                ['feature' => 'management.user_permission_overrides', 'title' => '细粒度权限', 'desc' => '支持单员工 allow/deny 覆盖，用于临时开放或限制具体权限点。', 'href' => "/users/permissions?tenant={$tenantKey}", 'status' => '已接页面'],
                 ['feature' => 'management.customer_service_deductions', 'title' => '客服扣点', 'desc' => '对应 old 用户列表快捷扣点编辑，保存到租户利润设置。', 'href' => "/users/customer-service-deductions?tenant={$tenantKey}", 'status' => '已接页面'],
                 ['feature' => 'management.assignments', 'title' => '店铺分配', 'desc' => '承接旧 ph_userlevel，维护采购与客服店铺关系。', 'href' => "/assignments?tenant={$tenantKey}", 'status' => '已接后端'],
-                ['feature' => 'management.settings', 'title' => '系统设置', 'desc' => '读取 old/setting.ini，区分可迁入参数和敏感密钥。', 'href' => "/settings?tenant={$tenantKey}", 'status' => '已接配置'],
+                ['feature' => 'management.settings', 'title' => '系统设置', 'desc' => '维护当前租户的订单、利润、物流、公告和接口配置。', 'href' => "/settings?tenant={$tenantKey}", 'status' => '已接配置'],
                 ['feature' => 'management.logs', 'title' => '操作日志', 'desc' => '展示货源改判、批量更新、详情保存等审计记录。', 'href' => "/logs?tenant={$tenantKey}", 'status' => '已接后端'],
             ],
         ]);
@@ -556,16 +556,16 @@ final class AppService
     public function importExportJobs(): array
     {
         return [
-            ['key' => 'platform_orders_import', 'name' => '平台订单 CSV 导入', 'source' => 'old/*/orderinsert.php', 'status' => '已接 CSV 写入', 'scope' => '乐天 / Yahoo / Wowma / Mercari / Qoo10 / 雅虎拍卖', 'direction' => 'import'],
-            ['key' => 'platform_export', 'name' => '平台订单表导出', 'source' => 'old/*/sendxizhends.php', 'status' => '已接当前筛选导出', 'scope' => '按当前平台 / 店铺 / 筛选条件', 'direction' => 'export'],
-            ['key' => 'delivery_notice_export', 'name' => '发货通知表导出', 'source' => 'old/*/outexcel3.php', 'status' => '已接当前筛选导出', 'scope' => '客户邮件、订单号、国际运单状态', 'direction' => 'export'],
-            ['key' => 'purchase_export', 'name' => '采购表导出', 'source' => 'old/*/caigou_export.php', 'status' => '已接 XLSX 图片导出', 'scope' => '国内采购子商品、采购链接、1688 单号', 'direction' => 'export'],
-            ['key' => 'purchase_import', 'name' => '采购表导入', 'source' => 'old/*/caigou_import.php', 'status' => '已接 XLSX/CSV 更新', 'scope' => '采购状态、采购金额、采购人、采购时间', 'direction' => 'import'],
-            ['key' => 'shipping_import', 'name' => '国际运单导入', 'source' => 'old/*/shipping_import.php', 'status' => '已接 CSV 更新', 'scope' => '国际运单号、运费、重量、件数', 'direction' => 'import'],
-            ['key' => 'shipment_export', 'name' => '发货表导出', 'source' => 'old/*/outexcel.php', 'status' => '已接 CSV 导出', 'scope' => '平台发货通知 / 已发日本', 'direction' => 'export'],
-            ['key' => 'finance_export', 'name' => '财务表导出', 'source' => 'old/*/outcwexcel.php', 'status' => '已接 XLSX 图片导出', 'scope' => '销售额、采购额、运费、扣点、利润', 'direction' => 'export'],
-            ['key' => 'customers_export', 'name' => '客户资料导出', 'source' => 'old/*/custinfo_export.php', 'status' => '已接 XLSX 样式导出', 'scope' => '按平台 / 店铺 / 日期', 'direction' => 'export'],
-            ['key' => 'logistics_export', 'name' => '物流表导出', 'source' => 'old/*/wuliu_export.php', 'status' => '已接 CSV 导出', 'scope' => '国内/国际运单与状态', 'direction' => 'export'],
+            ['key' => 'platform_orders_import', 'name' => '平台订单 CSV 导入', 'usage' => '批量写入平台订单、商品、客户和金额数据', 'status' => '已接 CSV 写入', 'scope' => 'Rakuten / Yahoo / Wowma / Mercari / Qoo10 / 雅虎拍卖', 'direction' => 'import'],
+            ['key' => 'platform_export', 'name' => '平台订单表导出', 'usage' => '按当前筛选导出平台订单明细', 'status' => '已接当前筛选导出', 'scope' => '按当前平台 / 店铺 / 筛选条件', 'direction' => 'export'],
+            ['key' => 'delivery_notice_export', 'name' => '发货通知表导出', 'usage' => '生成客户邮件、订单号、国际运单状态等发货通知数据', 'status' => '已接当前筛选导出', 'scope' => '客户邮件、订单号、国际运单状态', 'direction' => 'export'],
+            ['key' => 'purchase_export', 'name' => '采购表导出', 'usage' => '导出国内采购子商品、采购链接和 1688 单号', 'status' => '已接 XLSX 图片导出', 'scope' => '国内采购子商品、采购链接、1688 单号', 'direction' => 'export'],
+            ['key' => 'purchase_import', 'name' => '采购表导入', 'usage' => '批量更新采购状态、采购金额、采购人和采购时间', 'status' => '已接 XLSX/CSV 更新', 'scope' => '采购状态、采购金额、采购人、采购时间', 'direction' => 'import'],
+            ['key' => 'shipping_import', 'name' => '国际运单导入', 'usage' => '批量写入国际运单号、运费、重量和件数', 'status' => '已接 CSV 更新', 'scope' => '国际运单号、运费、重量、件数', 'direction' => 'import'],
+            ['key' => 'shipment_export', 'name' => '发货表导出', 'usage' => '导出平台发货通知和已发日本处理数据', 'status' => '已接 CSV 导出', 'scope' => '平台发货通知 / 已发日本', 'direction' => 'export'],
+            ['key' => 'finance_export', 'name' => '财务表导出', 'usage' => '导出销售额、采购额、运费、扣点和利润核算数据', 'status' => '已接 XLSX 图片导出', 'scope' => '销售额、采购额、运费、扣点、利润', 'direction' => 'export'],
+            ['key' => 'customers_export', 'name' => '客户资料导出', 'usage' => '按平台、店铺和日期导出客户资料', 'status' => '已接 XLSX 样式导出', 'scope' => '按平台 / 店铺 / 日期', 'direction' => 'export'],
+            ['key' => 'logistics_export', 'name' => '物流表导出', 'usage' => '导出国内运单、国际运单和物流状态', 'status' => '已接 CSV 导出', 'scope' => '国内/国际运单与状态', 'direction' => 'export'],
         ];
     }
 
@@ -595,9 +595,9 @@ final class AppService
     public function mediaTasks(): array
     {
         return [
-            ['name' => '主图下载', 'path' => 'old/cron/zhutu_downloader.php', 'status' => '待接任务队列', 'note' => '把平台图片缓存到租户文件区'],
-            ['name' => '图片上传', 'path' => 'old/orderr/ajax/image_upload.php 等', 'status' => '待接上传接口', 'note' => '统一替换 6 平台重复实现'],
-            ['name' => '旧图清理', 'path' => 'old/cron/cleanup_old_images.php', 'status' => '待接保留策略', 'note' => '按订单归档时间清理缓存'],
+            ['name' => '主图下载', 'path' => '租户订单图片目录', 'status' => '待接任务队列', 'note' => '把平台图片缓存到租户文件区'],
+            ['name' => '图片上传', 'path' => '租户上传附件目录', 'status' => '待接上传接口', 'note' => '统一保存订单主图、SKU 图和业务附件'],
+            ['name' => '图片清理', 'path' => '租户缓存与归档目录', 'status' => '待接保留策略', 'note' => '按订单归档时间清理缓存'],
         ];
     }
 
@@ -654,9 +654,9 @@ final class AppService
                 ],
             ],
             'references' => [
-                ['name' => '主图下载', 'old' => 'old/cron/zhutu_downloader.php', 'new' => "{$base}/orders/{order_id}/{item_id}/main.*"],
-                ['name' => '图片上传', 'old' => 'old/orderr/ajax/image_upload.php', 'new' => "{$base}/uploads/{order_id}/{item_id}/"],
-                ['name' => '旧图清理', 'old' => 'old/cron/cleanup_old_images.php', 'new' => "{$base}/archive/ + {$base}/cache/"],
+                ['name' => '主图下载', 'usage' => '缓存平台商品主图，订单列表和编辑栏直接读取。', 'new' => "{$base}/orders/{order_id}/{item_id}/main.*"],
+                ['name' => '图片上传', 'usage' => '保存员工上传的采购凭证、SKU 图和发货照片。', 'new' => "{$base}/uploads/{order_id}/{item_id}/"],
+                ['name' => '图片清理', 'usage' => '清理临时缓存和已过保留期的归档图片。', 'new' => "{$base}/archive/ + {$base}/cache/"],
             ],
         ];
     }

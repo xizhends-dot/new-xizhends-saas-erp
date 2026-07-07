@@ -428,7 +428,7 @@ final class SpreadsheetExportService
                 'text_columns' => ['order_no', 'item_code', 'customer_name', 'address', 'domestic_tracking', 'intl_number', 'purchase_status', 'taobao_order_no'],
             ],
             'ordery' => [
-                'name' => 'Yahoo购物财务核算表',
+                'name' => 'Yahoo财务核算表',
                 'filename_prefix' => 'finance-yahoo-shop',
                 'headers' => ['订单号', '产品编码', '图片', '数量', '客户姓名', '地址', '国际单号', '国际运费', '采购价格', '产品单价', '产品总价（单价*数量）', '产品运费', '利润', '采购状态'],
                 'columns' => ['order_no', 'item_code', 'image', 'quantity', 'customer_name', 'address', 'intl_number', 'intl_fee', 'purchase_price', 'unit_price', 'product_total', 'product_postage', 'profit', 'purchase_status'],

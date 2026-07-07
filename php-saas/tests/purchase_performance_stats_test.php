@@ -27,7 +27,7 @@ $jsonPath = sys_get_temp_dir() . '/xizhen-purchase-performance-' . bin2hex(rando
 $data = [
     'admins' => [],
     'platforms' => [
-        ['code' => 'r', 'name' => '乐天 Rakuten', 'short' => 'Rakuten', 'color' => '#2563eb'],
+        ['code' => 'r', 'name' => 'Rakuten', 'short' => 'Rakuten', 'color' => '#2563eb'],
         ['code' => 'w', 'name' => 'Wowma', 'short' => 'Wowma', 'color' => '#14b8a6'],
     ],
     'tenants' => [[

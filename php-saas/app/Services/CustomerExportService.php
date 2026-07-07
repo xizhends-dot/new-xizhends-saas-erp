@@ -44,11 +44,11 @@ final class CustomerExportService
 
         return [
             'name' => '客户资料',
-            'filename' => "customers-legacy-{$tenantKey}-{$today}.xlsx",
+            'filename' => "customers-{$tenantKey}-{$today}.xlsx",
             'headers' => $this->headers(),
             'rows' => $rows,
-            'source' => 'old/*/custinfo_export.php',
-            'note' => '按旧 custinfo_export.php 输出样式化 XLSX。',
+            'source' => 'customer_export',
+            'note' => '按客户资料导出字段输出样式化 XLSX。',
         ];
     }
 

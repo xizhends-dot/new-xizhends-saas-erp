@@ -93,7 +93,7 @@ final class AdminRepository extends BaseRepository
         $stmt = $this->db->master()->prepare(
             'INSERT INTO global_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()'
         );
-        foreach (['logistics_mapping', 'showapi', 'proxy'] as $section) {
+        foreach (['logistics_mapping', 'showapi', 'proxy', 'debug'] as $section) {
             $stmt->execute([
                 $section,
                 json_encode($settings[$section] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
@@ -124,6 +124,9 @@ final class AdminRepository extends BaseRepository
                 'rotation_proxy' => '',
                 'enabled' => false,
             ],
+            'debug' => [
+                'enabled' => true,
+            ],
             'updated_at' => '',
         ];
     }
@@ -136,6 +139,7 @@ final class AdminRepository extends BaseRepository
         $mapping = is_array($data['logistics_mapping'] ?? null) ? $data['logistics_mapping'] : [];
         $showapi = is_array($data['showapi'] ?? null) ? $data['showapi'] : [];
         $proxy = is_array($data['proxy'] ?? null) ? $data['proxy'] : [];
+        $debug = is_array($data['debug'] ?? null) ? $data['debug'] : [];
 
         return [
             'logistics_mapping' => [
@@ -154,6 +158,9 @@ final class AdminRepository extends BaseRepository
             'proxy' => [
                 'rotation_proxy' => trim((string) ($proxy['rotation_proxy'] ?? '')),
                 'enabled' => !empty($proxy['enabled']),
+            ],
+            'debug' => [
+                'enabled' => !empty($debug['enabled']),
             ],
         ];
     }

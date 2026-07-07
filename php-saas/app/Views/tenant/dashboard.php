@@ -29,7 +29,7 @@ $formatNumber = static fn (mixed $value, int $decimals = 2): string => number_fo
 </section>
 
 <section class="panel feature-section" style="margin-top:14px;">
-    <div class="panel-head"><span>常用功能</span><span class="sub">来自旧系统的重构入口</span></div>
+    <div class="panel-head"><span>常用功能</span><span class="sub">当前租户可用入口</span></div>
     <div class="feature-grid">
         <?php foreach (array_slice(array_merge(...array_values($groups)), 0, 8) as $feature): ?>
             <a class="feature-card" href="<?= e($feature['href']) ?>">

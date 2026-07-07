@@ -28,7 +28,7 @@ $jsonPath = sys_get_temp_dir() . '/xizhen-profit-analysis-' . bin2hex(random_byt
 $data = [
     'admins' => [],
     'platforms' => [
-        ['code' => 'r', 'name' => '乐天 Rakuten', 'short' => 'Rakuten', 'color' => '#2563eb'],
+        ['code' => 'r', 'name' => 'Rakuten', 'short' => 'Rakuten', 'color' => '#2563eb'],
         ['code' => 'w', 'name' => 'Wowma', 'short' => 'Wowma', 'color' => '#14b8a6'],
     ],
     'tenants' => [[

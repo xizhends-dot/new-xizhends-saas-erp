@@ -295,7 +295,7 @@ final class OrderPageConfigRegistry
         $role = Permission::normalizeRole($user['role'] ?? '');
         $username = strtolower(trim((string) ($user['username'] ?? '')));
         $isCompanyAdmin = (bool) ($user['is_company_admin'] ?? false) || $role === '公司管理员';
-        $canSyncOrders = Permission::hasAny($user, ['导入导出', '订单编辑']);
+        $canSyncOrders = in_array($platform, ['r', 'w', 'y'], true) && Permission::hasAny($user, ['导入导出', '订单编辑']);
         $canImportExport = Permission::has($user, '导入导出');
         $canPlatformImportExport = $canImportExport;
         $canPurchaseImport = $canImportExport && $platform === 'r' && Permission::has($user, '采购导入导出');

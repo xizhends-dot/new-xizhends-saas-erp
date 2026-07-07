@@ -28,7 +28,7 @@ $jsonPath = sys_get_temp_dir() . '/xizhen-price-quote-' . bin2hex(random_bytes(6
 $data = [
     'admins' => [],
     'platforms' => [
-        ['code' => 'r', 'name' => '乐天 Rakuten', 'short' => 'Rakuten', 'color' => '#2563eb'],
+        ['code' => 'r', 'name' => 'Rakuten', 'short' => 'Rakuten', 'color' => '#2563eb'],
     ],
     'tenants' => [[
         'id' => 1,

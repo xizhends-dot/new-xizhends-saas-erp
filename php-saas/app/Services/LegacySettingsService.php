@@ -165,6 +165,9 @@ final class LegacySettingsService
                 'rotation_proxy' => '',
                 'enabled' => false,
             ],
+            'debug' => [
+                'enabled' => true,
+            ],
             'updated_at' => '',
         ];
     }

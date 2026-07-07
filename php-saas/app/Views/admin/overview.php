@@ -44,8 +44,8 @@
                 <tr><th>PHP</th><td><?= e(PHP_VERSION) ?></td></tr>
                 <tr><th>数据存储</th><td><?= e($diagnostics['effective_driver']) ?></td></tr>
                 <tr><th>MySQL 状态</th><td><?= e($diagnostics['fallback_reason'] ?? '可用') ?></td></tr>
-                <tr><th>Rust 版本</th><td>已转为备份资料</td></tr>
-                <tr><th>旧系统</th><td>/old 保留参考</td></tr>
+                <tr><th>运行模式</th><td>PHP SaaS 主线</td></tr>
+                <tr><th>调试模式</th><td><a class="btn" href="/admin/settings">前往设置</a></td></tr>
                 <tr><th>详情</th><td><a class="btn" href="/admin/system">查看系统状态</a></td></tr>
                 </tbody>
             </table>

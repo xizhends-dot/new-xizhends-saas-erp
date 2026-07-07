@@ -26,7 +26,7 @@ $tenantNotices = [];
 $orderView = 'platform';
 $orders = [];
 $platform = 'y';
-$platformNames = ['y' => 'Yahoo 购物'];
+$platformNames = ['y' => 'Yahoo'];
 $keyword = '';
 $filters = [];
 $stores = [['id' => 1, 'platform' => 'y', 'name' => 'Yahoo一店', 'short' => 'Y-01']];

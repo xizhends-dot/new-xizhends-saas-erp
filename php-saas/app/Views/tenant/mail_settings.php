@@ -73,7 +73,7 @@ $mailTab = 'settings';
                     <label class="fg"><span>店铺缩写</span><input name="shop_dpqz" value="<?= e($selectedAccount['shop_dpqz'] ?? '') ?>"></label>
                     <label class="fg"><span>店铺名称</span><input name="shop_name" value="<?= e($selectedAccount['shop_name'] ?? '') ?>"></label>
                     <label class="fg"><span>关联平台</span><select name="platform">
-                        <?php foreach (['' => '自动', 'w' => 'Wowma', 'r' => 'Rakuten', 'y' => 'Yahoo购物', 'm' => 'Mercari', 'yp' => '雅虎拍卖'] as $code => $label): ?>
+                        <?php foreach (['' => '自动', 'r' => 'Rakuten', 'y' => 'Yahoo', 'w' => 'Wowma', 'm' => 'Mercari', 'q' => 'Qoo10', 'yp' => '雅虎拍卖'] as $code => $label): ?>
                             <option value="<?= e($code) ?>" <?= (string) ($selectedAccount['platform'] ?? '') === $code ? 'selected' : '' ?>><?= e($label) ?></option>
                         <?php endforeach; ?>
                     </select></label>

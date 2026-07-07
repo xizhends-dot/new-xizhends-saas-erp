@@ -25,7 +25,7 @@ $jsonPath = sys_get_temp_dir() . '/xizhen-store-import-' . bin2hex(random_bytes(
 $data = [
     'admins' => [],
     'platforms' => [
-        ['code' => 'r', 'name' => '乐天 Rakuten', 'short' => 'Rakuten', 'color' => '#2563eb'],
+        ['code' => 'r', 'name' => 'Rakuten', 'short' => 'Rakuten', 'color' => '#2563eb'],
     ],
     'tenants' => [[
         'id' => 1,
@@ -81,7 +81,7 @@ $parse = static function (array $rows, array $context) use ($importer): array {
 $context = [
     'platform' => 'r',
     'store_id' => 1,
-    'platform_names' => ['r' => '乐天 Rakuten'],
+    'platform_names' => ['r' => 'Rakuten'],
     'stores' => [$selectedStore],
     'restrict_to_store_id' => true,
 ];
@@ -113,7 +113,7 @@ $assert('他店行错误提示', str_contains(implode('；', $mismatchedStore['e
 $globalContext = [
     'platform' => 'r',
     'store_id' => 1,
-    'platform_names' => ['r' => '乐天 Rakuten'],
+    'platform_names' => ['r' => 'Rakuten'],
     'stores' => [$selectedStore, $otherStore],
 ];
 $global = $parse([

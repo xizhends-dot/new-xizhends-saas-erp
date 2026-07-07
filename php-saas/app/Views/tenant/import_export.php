@@ -64,7 +64,7 @@ $exportMap = [
                     <span>导入文件</span>
                     <input type="file" name="csv_file" accept=".csv,.xls,.xlsx,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
                 </label>
-                <div class="setting-muted wide">支持 10MB 以内 CSV / 制表符文本 / 旧系统文本型 .xls / 采购 XLSX。会先解析前 5 行预览，再按导入类型写入或更新订单数据。</div>
+                <div class="setting-muted wide">支持 10MB 以内 CSV / 制表符文本 / XLS / XLSX。会先解析前 5 行预览，再按导入类型写入或更新订单数据。</div>
                 <div class="form-submit"><button class="btn primary" type="submit">导入并记录</button></div>
             </form>
             <?php else: ?>
@@ -94,15 +94,15 @@ $exportMap = [
 </div>
 
 <div class="panel">
-    <div class="panel-head"><span>任务类型</span><span class="sub">旧系统导入导出迁移清单</span></div>
+    <div class="panel-head"><span>任务类型</span><span class="sub">当前可用导入导出接口</span></div>
     <div class="panel-body">
         <table class="table">
-            <thead><tr><th>名称</th><th>来源</th><th>范围</th><th>状态</th><th>操作</th></tr></thead>
+            <thead><tr><th>名称</th><th>用途</th><th>范围</th><th>状态</th><th>操作</th></tr></thead>
             <tbody>
             <?php foreach ($jobs as $job): ?>
                 <tr>
                     <td><?= e($job['name']) ?></td>
-                    <td><?= e($job['source']) ?></td>
+                    <td><?= e($job['usage'] ?? '') ?></td>
                     <td><?= e($job['scope']) ?></td>
                     <td><span class="tag blue"><?= e($job['status']) ?></span></td>
                     <td>

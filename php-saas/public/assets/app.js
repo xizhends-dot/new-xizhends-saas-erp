@@ -132,6 +132,14 @@ document.addEventListener('change', function (event) {
 
 document.addEventListener('submit', function (event) {
   var form = event.target;
+  if (form instanceof HTMLFormElement && form.hasAttribute('data-confirm')) {
+    var message = form.getAttribute('data-confirm') || '确认继续操作？';
+    if (!confirm(message)) {
+      event.preventDefault();
+      return;
+    }
+  }
+
   if (form instanceof HTMLFormElement && form.id === 'purchase-status-form') {
     serializePurchaseStatuses(form);
     return;

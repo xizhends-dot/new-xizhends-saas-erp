@@ -47,8 +47,8 @@ $apiConfigRaw = (string) ($store['api_config'] ?? '');
             </label>
 
             <label>
-                <span>旧系统店铺ID</span>
-                <input name="legacy_dpid" value="<?= e($store['legacy_dpid'] ?? '') ?>" placeholder="乐天填 dpid，用于商品页和主图">
+                <span>平台店铺ID</span>
+                <input name="legacy_dpid" value="<?= e($store['legacy_dpid'] ?? '') ?>" placeholder="Rakuten 填 dpid，用于商品页和主图">
             </label>
 
             <label>
@@ -58,7 +58,7 @@ $apiConfigRaw = (string) ($store['api_config'] ?? '');
 
             <label class="wide">
                 <span>店铺全称</span>
-                <input name="name" value="<?= e($store['name'] ?? '') ?>" placeholder="如 乐天旗舰店">
+                <input name="name" value="<?= e($store['name'] ?? '') ?>" placeholder="如 Rakuten旗舰店">
             </label>
 
             <label>
@@ -108,7 +108,7 @@ $apiConfigRaw = (string) ($store['api_config'] ?? '');
     <div class="panel-body">
         <div class="check-list">
             <div>租户管理员可以新增、编辑、隐藏本公司店铺。</div>
-            <div>旧系统 `dpapi_config`、店铺扣点、隐藏店铺原因已纳入新店铺资料。</div>
+            <div>店铺 API 配置、店铺扣点、隐藏店铺原因统一纳入当前店铺资料。</div>
             <div>有“店铺新增”或“员工管理”权限的员工，可以按授权范围维护店铺或分配店铺。</div>
             <div>平台是否开通、是否锁定、定时任务频率和系统级 API Provider 由超管维护。</div>
         </div>

@@ -47,9 +47,9 @@ $message = trim((string) ($message ?? ''));
                     <option value="<?= e($code) ?>"><?= e($name) ?></option>
                 <?php endforeach; ?>
             </select></label>
-            <label><span>旧系统店铺ID</span><input name="legacy_dpid" placeholder="乐天填 dpid，用于商品页和主图"></label>
+            <label><span>平台店铺ID</span><input name="legacy_dpid" placeholder="Rakuten 填 dpid，用于商品页和主图"></label>
             <label><span>店铺缩写</span><input name="short" placeholder="如 R-01 / Yahoo-main"></label>
-            <label class="wide"><span>店铺全称</span><input name="name" placeholder="如 乐天旗舰店"></label>
+            <label class="wide"><span>店铺全称</span><input name="name" placeholder="如 Rakuten旗舰店"></label>
             <label><span>店铺扣点(%)</span><input name="profit_deduction" value="70" placeholder="默认 70"></label>
             <label><span>可见状态</span><select name="status"><option value="visible">可见</option><option value="hidden">隐藏</option></select></label>
             <label><span>API 状态</span><select name="api_status"><option>未配置</option><option>已配置</option><option>平台锁定</option></select></label>
@@ -94,7 +94,7 @@ $message = trim((string) ($message ?? ''));
                         <div class="store-row-actions">
                             <a class="btn" href="/stores/edit?tenant=<?= e($tenantKey) ?>&id=<?= e($storeId) ?>">编辑</a>
                             <?php if ($canOperateOrders && isset($platformSyncServices[$platform])): ?>
-                                <form class="store-sync-form" method="post" action="/orders/platform/sync">
+                                <form class="store-sync-form" method="post" action="/orders/platform/sync" <?= $platform === 'y' ? 'data-confirm="Yahoo 平台订单同步需要在指定 IP 环境下执行。确认当前网络符合要求后再继续同步？"' : '' ?>>
                                     <?= csrf_field() ?>
                                     <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                                     <input type="hidden" name="platform" value="<?= e($platform) ?>">

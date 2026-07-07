@@ -2,6 +2,8 @@
 $mapping = is_array($settings['logistics_mapping'] ?? null) ? $settings['logistics_mapping'] : [];
 $showapi = is_array($settings['showapi'] ?? null) ? $settings['showapi'] : [];
 $proxy = is_array($settings['proxy'] ?? null) ? $settings['proxy'] : [];
+$debug = is_array($settings['debug'] ?? null) ? $settings['debug'] : ['enabled' => true];
+$debugEnabled = (bool) ($debug['enabled'] ?? true);
 $mappingFields = [
     'yahoo' => ['title' => '雅虎', 'hint' => 'Yahoo 平台物流编号映射'],
     'rakuten' => ['title' => '乐天', 'hint' => 'Rakuten RMS 物流编号映射'],
@@ -50,6 +52,11 @@ $lineCount = static function (string $value): int {
         <div class="stat-value billing-state <?= !empty($proxy['enabled']) ? 'ok' : 'warn' ?>"><?= !empty($proxy['enabled']) ? '启用' : '关闭' ?></div>
         <div class="stat-sub">平台同步与物流查询共享</div>
     </div>
+    <div class="stat">
+        <div class="stat-label">调试模式</div>
+        <div class="stat-value billing-state <?= $debugEnabled ? 'warn' : 'ok' ?>"><?= $debugEnabled ? '开启' : '关闭' ?></div>
+        <div class="stat-sub"><?= $debugEnabled ? '显示迁移参考参数' : '隐藏迁移参考参数' ?></div>
+    </div>
 </div>
 
 <form id="admin-settings-form" class="admin-settings-form" method="post" action="/admin/settings/save">
@@ -57,7 +64,7 @@ $lineCount = static function (string $value): int {
     <section class="panel settings-wide">
         <div class="panel-head">
             <span>物流编号对照表</span>
-            <span class="sub">从 old/setting.ini 迁入，后续可拆为结构化表</span>
+            <span class="sub">用于平台物流公司与轨迹状态识别</span>
         </div>
         <div class="panel-body admin-mapping-grid">
             <?php foreach ($mappingFields as $key => $field): ?>
@@ -87,6 +94,14 @@ $lineCount = static function (string $value): int {
                 <div class="setting-muted wide">代理地址不写入 Store，也不在页面回显；请通过环境变量 `XIZHEN_ROTATION_PROXY` 配置。</div>
             </div>
         </section>
+
+        <section class="panel">
+            <div class="panel-head"><span>调试模式</span><span class="sub">迁移参考信息开关</span></div>
+            <div class="panel-body form-grid">
+                <label class="check-line admin-check"><input type="checkbox" name="debug[enabled]" value="1" <?= $debugEnabled ? 'checked' : '' ?>>开启调试模式</label>
+                <div class="setting-muted wide">开启时超管可查看迁移参考参数；关闭后隐藏这些调试参数，业务页面只保留接口用途说明。</div>
+            </div>
+        </section>
     </div>
 
     <div class="settings-submit-row settings-wide">
@@ -95,18 +110,20 @@ $lineCount = static function (string $value): int {
     </div>
 </form>
 
-<div class="settings-grid settings-page settings-reference">
-    <?php foreach ($legacyGroups as $group): ?>
-        <div class="panel">
-            <div class="panel-head"><span><?= e($group['group']) ?></span><span class="sub"><?= e($group['source']) ?></span></div>
-            <div class="panel-body">
-                <?php foreach ($group['items'] as $item): ?>
-                    <div class="setting-row">
-                        <span><?= e($item['name']) ?></span>
-                        <strong><?= e($item['value']) ?></strong>
-                    </div>
-                <?php endforeach; ?>
+<?php if ($debugEnabled): ?>
+    <div class="settings-grid settings-page settings-reference">
+        <?php foreach ($legacyGroups as $group): ?>
+            <div class="panel">
+                <div class="panel-head"><span><?= e($group['group']) ?></span><span class="sub"><?= e($group['source']) ?></span></div>
+                <div class="panel-body">
+                    <?php foreach ($group['items'] as $item): ?>
+                        <div class="setting-row">
+                            <span><?= e($item['name']) ?></span>
+                            <strong><?= e($item['value']) ?></strong>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
             </div>
-        </div>
-    <?php endforeach; ?>
-</div>
+        <?php endforeach; ?>
+    </div>
+<?php endif; ?>
