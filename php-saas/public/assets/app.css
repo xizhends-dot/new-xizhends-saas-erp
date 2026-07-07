@@ -3502,6 +3502,21 @@ label.ck.warn { color: #475569; }
   color: #64748b;
 }
 
+.drawer-readonly-value,
+.detail-readonly-value {
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid #d8e0ea;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #166534;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .drawer-body textarea {
   min-height: 66px;
   resize: vertical;

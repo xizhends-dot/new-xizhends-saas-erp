@@ -18,21 +18,23 @@ final class Alibaba1688LogisticsService
     /**
      * @return array{ok: bool, message: string, fields: array<string, string>, item_id: int}
      */
-    public function syncItem(string $tenantKey, int $itemId, string $tabaono, string $operator = '系统'): array
+    public function syncItem(string $tenantKey, int $itemId, string $tabaono, string $operator = '系统', ?array $currentUser = null): array
     {
         $tabaono = trim($tabaono);
         if (!$this->validOrderId($tabaono)) {
             return ['ok' => false, 'message' => '1688 订单号格式不正确。', 'fields' => [], 'item_id' => $itemId];
         }
 
-        $credentials = $this->credentials($tenantKey);
-        if (!$credentials) {
-            return ['ok' => false, 'message' => '缺少 1688 API 配置。请在租户设置启用 1688 接口，并配置 apikeys.conf。', 'fields' => [], 'item_id' => $itemId];
-        }
-
         $record = $this->findItemRecord($tenantKey, $itemId);
         if (!$record) {
             return ['ok' => false, 'message' => '未找到要刷新的订单明细。', 'fields' => [], 'item_id' => $itemId];
+        }
+
+        $rules = new OrderItemSaveRuleService();
+        $autoBuyer = $rules->autoBuyer(['tabaono' => $tabaono], $record['item'], $currentUser);
+        $credentials = $this->credentials($tenantKey, $this->credentialPreferences($record['item'], $currentUser, $autoBuyer));
+        if (!$credentials) {
+            return ['ok' => false, 'message' => '缺少 1688 API 配置。请在租户设置启用 1688 接口，并配置 apikeys.conf。', 'fields' => [], 'item_id' => $itemId];
         }
 
         try {
@@ -46,6 +48,9 @@ final class Alibaba1688LogisticsService
         }
 
         $changes = $this->changesFromPayload($payload, $record['item'], $tabaono);
+        if ($autoBuyer !== null) {
+            $changes['buyer'] = $autoBuyer;
+        }
         if (!$changes) {
             return ['ok' => false, 'message' => '1688 没有返回可回填的信息。', 'fields' => [], 'item_id' => $itemId];
         }
@@ -320,8 +325,11 @@ final class Alibaba1688LogisticsService
         return self::API_BASE . '/' . $urlPath . '?' . http_build_query($args, '', '&', PHP_QUERY_RFC3986);
     }
 
-    /** @return array{app_key: string, app_secret: string, access_token: string}|null */
-    private function credentials(string $tenantKey): ?array
+    /**
+     * @param array<int, string> $preferredNames
+     * @return array{app_key: string, app_secret: string, access_token: string}|null
+     */
+    private function credentials(string $tenantKey, array $preferredNames = []): ?array
     {
         $settings = $this->store->tenantSettings($tenantKey);
         $api = is_array($settings['api_1688'] ?? null) ? $settings['api_1688'] : [];
@@ -338,6 +346,7 @@ final class Alibaba1688LogisticsService
             }
         }
 
+        $accounts = [];
         foreach (preg_split('/\R/', $content) ?: [] as $line) {
             $line = trim($line);
             if ($line === '' || str_starts_with($line, '#')) {
@@ -345,24 +354,77 @@ final class Alibaba1688LogisticsService
             }
             $parts = preg_split('/\s+/', $line) ?: [];
             if (count($parts) >= 4) {
-                return [
+                $accounts[] = [
+                    'name' => trim((string) $parts[0]),
                     'app_key' => (string) $parts[1],
                     'app_secret' => (string) $parts[2],
                     'access_token' => (string) $parts[3],
                 ];
+                continue;
             }
             if (str_contains($line, '=')) {
                 parse_str(str_replace(["\t", ' '], '&', $line), $parsed);
+                $name = trim((string) ($parsed['name'] ?? $parsed['user'] ?? $parsed['username'] ?? $parsed['account'] ?? ''));
                 $appKey = trim((string) ($parsed['app_key'] ?? $parsed['AppKey'] ?? $parsed['key'] ?? ''));
                 $secret = trim((string) ($parsed['app_secret'] ?? $parsed['Secret'] ?? $parsed['secret'] ?? ''));
                 $token = trim((string) ($parsed['access_token'] ?? $parsed['Token'] ?? $parsed['token'] ?? ''));
                 if ($appKey !== '' && $secret !== '' && $token !== '') {
-                    return ['app_key' => $appKey, 'app_secret' => $secret, 'access_token' => $token];
+                    $accounts[] = ['name' => $name, 'app_key' => $appKey, 'app_secret' => $secret, 'access_token' => $token];
                 }
             }
         }
 
-        return null;
+        return $this->chooseCredentials($accounts, $preferredNames);
+    }
+
+    /**
+     * @param array<string, mixed> $item
+     * @param array<string, mixed>|null $currentUser
+     * @return array<int, string>
+     */
+    private function credentialPreferences(array $item, ?array $currentUser, ?string $autoBuyer): array
+    {
+        return array_values(array_unique(array_filter([
+            trim((string) ($item['buyer'] ?? $item['caigou_user'] ?? '')),
+            trim((string) $autoBuyer),
+            trim((string) ($currentUser['username'] ?? '')),
+            trim((string) ($currentUser['name'] ?? $currentUser['display_name'] ?? '')),
+        ], static fn (string $name): bool => $name !== '')));
+    }
+
+    /**
+     * @param array<int, array{name: string, app_key: string, app_secret: string, access_token: string}> $accounts
+     * @param array<int, string> $preferredNames
+     * @return array{app_key: string, app_secret: string, access_token: string}|null
+     */
+    private function chooseCredentials(array $accounts, array $preferredNames): ?array
+    {
+        if (!$accounts) {
+            return null;
+        }
+
+        $preferredNames = array_map(static fn (string $name): string => strtolower(trim($name)), $preferredNames);
+        foreach ($preferredNames as $preferredName) {
+            if ($preferredName === '') {
+                continue;
+            }
+            foreach ($accounts as $account) {
+                if (strtolower(trim($account['name'])) === $preferredName) {
+                    return [
+                        'app_key' => $account['app_key'],
+                        'app_secret' => $account['app_secret'],
+                        'access_token' => $account['access_token'],
+                    ];
+                }
+            }
+        }
+
+        $first = $accounts[0];
+        return [
+            'app_key' => $first['app_key'],
+            'app_secret' => $first['app_secret'],
+            'access_token' => $first['access_token'],
+        ];
     }
 
     /**

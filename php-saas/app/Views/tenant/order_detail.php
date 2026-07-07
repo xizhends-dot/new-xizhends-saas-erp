@@ -215,7 +215,7 @@ $priceQuoteAttrs = static function (array $item) use ($canPriceQuote): string {
                             <option <?= ($item['purchase_status'] ?? '') === $status ? 'selected' : '' ?>><?= e($status) ?></option>
                         <?php endforeach; ?>
                     </select></label>
-                    <label><span>采购人</span><input name="buyer" value="<?= e($item['buyer'] ?? '') ?>"></label>
+                    <label><span>采购人</span><strong class="detail-readonly-value"><?= e(($item['buyer'] ?? '') ?: '未指定') ?></strong></label>
                     <label><span>采购时间</span><input name="purchase_time" value="<?= e($item['purchase_time'] ?? '') ?>" placeholder="YYYY-MM-DD HH:MM"></label>
                     <label><span>1688订单号</span><input name="tabaono" value="<?= e($item['tabaono'] ?? '') ?>"></label>
                     <label class="detail-wide"><span>历史1688单号</span><input name="caigou_ordernums" value="<?= e($item['caigou_ordernums'] ?? '') ?>"></label>

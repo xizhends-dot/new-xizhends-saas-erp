@@ -589,9 +589,16 @@ function set1688RefreshStatus(status, message, failed) {
 function apply1688RefreshFields(form, fields) {
   Object.keys(fields).forEach(function (name) {
     var field = form.querySelector('[name="' + name + '"]');
-    if (!field || !('value' in field)) return;
-    field.value = fields[name] == null ? '' : String(fields[name]);
-    field.dispatchEvent(new Event('change', { bubbles: true }));
+    var value = fields[name] == null ? '' : String(fields[name]);
+    if (field && 'value' in field) {
+      field.value = value;
+      field.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    var display = form.querySelector('[data-field-display="' + name + '"]');
+    if (display instanceof HTMLElement) {
+      display.textContent = value || '未指定';
+    }
   });
 }
 

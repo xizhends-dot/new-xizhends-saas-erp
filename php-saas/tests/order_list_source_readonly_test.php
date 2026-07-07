@@ -138,6 +138,7 @@ $assert('编辑抽屉保持右侧编辑器结构', str_contains($html, 'class="e
 $assert('编辑抽屉没有货源地选项', !str_contains($html, 'name="source_type"') && !str_contains($html, '货源地</span>'));
 $assert('编辑抽屉内容对齐老系统侧栏字段', str_contains($html, '<summary class="drawer-section-title">编辑订单</summary>') && str_contains($html, '<div class="drawer-section-title">运单信息</div>') && str_contains($html, 'OrderId：') && str_contains($html, 'SKU产品图') && str_contains($html, '物流签收地：') && str_contains($html, '中文属性备注：'));
 $assert('编辑抽屉支持上传订单产品图和SKU产品图', str_contains($html, 'action="/orders/images/upload"') && str_contains($html, 'name="kind" value="main"') && str_contains($html, 'name="kind" value="sku"') && str_contains($html, 'type="file" name="image"') && str_contains($html, 'name="base64_image"') && str_contains($html, 'form="drawer-image-main-200"') && str_contains($html, 'form="drawer-image-sku-200"'));
+$assert('编辑抽屉采购人只读展示不再手动输入', str_contains($html, 'data-field-display="buyer"') && !str_contains($html, 'name="buyer" value='));
 $assert('编辑抽屉图片粘贴框对齐老系统', str_contains($html, 'data-image-paste-input') && str_contains($html, 'data-image-paste-area') && str_contains($html, 'data-image-base64') && str_contains($html, 'placeholder="可将图片粘贴到此"') && !str_contains($html, '粘贴 base64 图片数据'));
 $assert('编辑抽屉图片操作对齐老系统按钮', str_contains($html, '【选择图片】') && str_contains($html, '>提交保存</button>') && str_contains($html, '>削除</button>') && str_contains($html, 'action="/orders/images/delete"') && str_contains($html, 'form="drawer-image-delete-sku-200"'));
 $assert('编辑抽屉图片削除不使用内联跳转确认', str_contains($html, 'data-image-delete-button') && !str_contains($html, 'onclick="return confirm'));
@@ -156,7 +157,7 @@ $assert('编辑抽屉仍从右侧滑入', str_contains($css, 'right: 0;') && str
 $js = (string) file_get_contents($basePath . '/public/assets/app.js');
 $assert('编辑抽屉支持直接粘贴图片预览并写入隐藏字段', str_contains($js, "document.addEventListener('paste'") && str_contains($js, 'imageFileFromClipboard') && str_contains($js, 'readAsDataURL') && str_contains($js, 'data-image-base64') && str_contains($js, '已粘贴图片，点击提交保存'));
 $assert('编辑抽屉图片保存削除使用异步提交并保持抽屉', str_contains($js, 'submitDrawerImageForm') && str_contains($js, "fetch(action") && str_contains($js, 'clearDrawerImagePreview') && str_contains($js, 'ensureDrawerImageDeleteButton') && str_contains($js, 'X-Requested-With'));
-$assert('编辑抽屉1688刷新异步回填字段并保持抽屉', str_contains($js, 'refreshDrawer1688') && str_contains($js, 'apply1688RefreshFields') && str_contains($js, "fetch(url") && str_contains($js, "field.value = fields[name]"));
+$assert('编辑抽屉1688刷新异步回填字段并保持抽屉', str_contains($js, 'refreshDrawer1688') && str_contains($js, 'apply1688RefreshFields') && str_contains($js, "fetch(url") && str_contains($js, 'data-field-display'));
 
 $routes = (string) file_get_contents($basePath . '/app/Http/routes.php');
 $assert('1688单条刷新路由已注册', str_contains($routes, "post('/orders/1688/refresh'") && str_contains($routes, 'refresh1688Order'));

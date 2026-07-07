@@ -640,7 +640,7 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                         </div>
                     </div>
                     <div class="drawer-form-group"><label>历史1688单号：</label><input type="text" name="caigou_ordernums" value="<?= e($item['caigou_ordernums'] ?? '') ?>"></div>
-                    <div class="drawer-form-group"><label>采购人：</label><input type="text" name="buyer" value="<?= e($item['buyer'] ?? '') ?>"></div>
+                    <div class="drawer-form-group"><label>采购人：</label><span class="drawer-readonly-value" data-field-display="buyer"><?= e(($item['buyer'] ?? '') ?: '未指定') ?></span></div>
                     <div class="drawer-form-group"><label>采购链接：</label><textarea name="purchase_link" rows="2"><?= e($item['purchase_link'] ?? '') ?></textarea></div>
                     <div class="drawer-form-group"><label>物流公司：</label><input type="text" name="ship_company" value="<?= e($item['ship_company'] ?? '') ?>"></div>
                     <div class="drawer-form-group"><label>国内运单号：</label><input type="text" name="ship_number" value="<?= e($item['ship_number'] ?? '') ?>"></div>

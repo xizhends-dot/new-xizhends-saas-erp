@@ -327,7 +327,14 @@ final class OrderController extends TenantBaseController
         $tabaono = (string) ($_POST['tabaono'] ?? '');
         $this->ensureItemAccess($tenantKey, $itemId);
 
-        $result = $this->alibaba1688LogisticsService->syncItem($tenantKey, $itemId, $tabaono, $this->currentUserName($tenantKey));
+        $currentUser = $this->auth->currentTenantUser($tenantKey);
+        $result = $this->alibaba1688LogisticsService->syncItem(
+            $tenantKey,
+            $itemId,
+            $tabaono,
+            $this->currentUserName($tenantKey),
+            $currentUser
+        );
         $this->json($result, $result['ok'] ? 200 : 422);
     }
 
@@ -570,7 +577,6 @@ final class OrderController extends TenantBaseController
         ) {
             foreach ([
                 'purchase_status',
-                'buyer',
                 'purchase_time',
                 'purchase_link',
                 'buhuo_link',
