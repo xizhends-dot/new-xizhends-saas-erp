@@ -383,6 +383,19 @@ final class OrderController extends TenantBaseController
             }
         }
 
+        if ($this->wantsJsonResponse()) {
+            if ($saved === null) {
+                $this->json(['ok' => false, 'message' => '图片上传失败，请确认图片格式和大小。'], 422);
+            }
+            $this->json([
+                'ok' => true,
+                'message' => '图片已保存。',
+                'path' => $saved['path'],
+                'kind' => $kind,
+                'item_id' => $itemId,
+            ]);
+        }
+
         redirect_to($return);
     }
 
@@ -407,6 +420,15 @@ final class OrderController extends TenantBaseController
 
         $oldPath = $this->store->deleteOrderItemImage($tenantKey, $itemId, $kind);
         $this->deleteLocalOrderImageFile($tenantKey, $oldPath);
+
+        if ($this->wantsJsonResponse()) {
+            $this->json([
+                'ok' => true,
+                'message' => '图片已削除。',
+                'kind' => $kind,
+                'item_id' => $itemId,
+            ]);
+        }
 
         redirect_to($return);
     }
@@ -646,6 +668,13 @@ final class OrderController extends TenantBaseController
         if (is_file($absolute)) {
             @unlink($absolute);
         }
+    }
+
+    private function wantsJsonResponse(): bool
+    {
+        $accept = strtolower((string) ($_SERVER['HTTP_ACCEPT'] ?? ''));
+        $requestedWith = strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''));
+        return $requestedWith === 'xmlhttprequest' || str_contains($accept, 'application/json');
     }
 
     private function saveUploadedImage(string $tenantKey, int $orderId, int $itemId, string $kind): ?array

@@ -3572,6 +3572,10 @@ label.ck.warn { color: #475569; }
   background: #f6fffb;
 }
 
+.editor-drawer .image-upload-area.is-saving {
+  opacity: 0.72;
+}
+
 .drawer-paste-input.has-image {
   border-color: #16a34a;
   background: #f0fdf4;

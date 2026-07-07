@@ -131,11 +131,9 @@ document.addEventListener('submit', function (event) {
     return;
   }
 
-  if (form instanceof HTMLFormElement && form.matches('.drawer-image-upload-form') && form.getAttribute('action') === '/orders/images/upload') {
-    if (!drawerImageFormHasPayload(form)) {
-      event.preventDefault();
-      alert('请先选择或粘贴图片');
-    }
+  if (form instanceof HTMLFormElement && form.matches('.drawer-image-upload-form')) {
+    event.preventDefault();
+    submitDrawerImageForm(form);
     return;
   }
 
@@ -275,7 +273,12 @@ function findDrawerImageAreaByForm(form) {
   var areas = document.querySelectorAll('[data-image-paste-area]');
   for (var i = 0; i < areas.length; i++) {
     var area = areas[i];
-    if (area instanceof HTMLElement && area.getAttribute('data-paste-target') === form.id) {
+    if (!(area instanceof HTMLElement)) continue;
+    if (area.getAttribute('data-paste-target') === form.id) {
+      return area;
+    }
+    var deleteForm = drawerImageDeleteFormForArea(area);
+    if (deleteForm instanceof HTMLFormElement && deleteForm.id === form.id) {
       return area;
     }
   }
@@ -329,6 +332,145 @@ function readDrawerImageFile(area, file, mode) {
     setDrawerImagePreview(area, result, mode);
   };
   reader.readAsDataURL(file);
+}
+
+function submitDrawerImageForm(form) {
+  var action = form.getAttribute('action') || '';
+  var area = findDrawerImageAreaByForm(form);
+  if (!(area instanceof HTMLElement)) return;
+
+  if (action === '/orders/images/upload' && !drawerImageFormHasPayload(form)) {
+    alert('请先选择或粘贴图片');
+    return;
+  }
+  if (action === '/orders/images/delete' && !confirm('确定削除图片？')) {
+    return;
+  }
+
+  setDrawerImageBusy(area, true);
+  fetch(action, {
+    method: 'POST',
+    body: new FormData(form),
+    headers: {
+      'Accept': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    credentials: 'same-origin'
+  }).then(function (response) {
+    return response.json().catch(function () {
+      return { ok: false, message: '图片操作失败。' };
+    }).then(function (payload) {
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.message || '图片操作失败。');
+      }
+      return payload;
+    });
+  }).then(function (payload) {
+    if (action === '/orders/images/delete') {
+      clearDrawerImagePreview(area);
+    } else {
+      setDrawerImageSaved(area, payload.path || '');
+    }
+  }).catch(function (error) {
+    alert(error && error.message ? error.message : '图片操作失败。');
+  }).finally(function () {
+    setDrawerImageBusy(area, false);
+  });
+}
+
+function setDrawerImageBusy(area, busy) {
+  area.classList.toggle('is-saving', busy);
+  area.querySelectorAll('.drawer-image-actions button').forEach(function (button) {
+    if (button instanceof HTMLButtonElement) {
+      button.disabled = busy;
+    }
+  });
+}
+
+function setDrawerImageSaved(area, path) {
+  if (path !== '') {
+    var preview = area.querySelector('.preview-image');
+    if (preview instanceof HTMLImageElement) {
+      preview.src = path;
+    }
+    var pathNode = area.querySelector('.drawer-image-path');
+    if (!(pathNode instanceof HTMLElement)) {
+      pathNode = document.createElement('div');
+      pathNode.className = 'drawer-image-path';
+      var controls = area.querySelector('.drawer-image-controls');
+      if (controls) {
+        area.insertBefore(pathNode, controls);
+      } else {
+        area.appendChild(pathNode);
+      }
+    }
+    pathNode.textContent = path;
+  }
+  ensureDrawerImageDeleteButton(area);
+  resetDrawerImageInputs(area, '已保存');
+}
+
+function clearDrawerImagePreview(area) {
+  area.querySelectorAll('.preview-image, .drawer-image-path').forEach(function (node) {
+    node.remove();
+  });
+
+  if (!area.querySelector('.drawer-image-empty')) {
+    var empty = document.createElement('div');
+    empty.className = 'drawer-image-empty';
+    empty.textContent = '暂无图片';
+    var controls = area.querySelector('.drawer-image-controls');
+    if (controls) {
+      area.insertBefore(empty, controls);
+    } else {
+      area.appendChild(empty);
+    }
+  }
+  resetDrawerImageInputs(area, '');
+  area.classList.remove('has-image');
+  var deleteButton = area.querySelector('[data-image-delete-button]');
+  if (deleteButton) {
+    deleteButton.remove();
+  }
+}
+
+function resetDrawerImageInputs(area, pasteText) {
+  var fileInput = area.querySelector('[data-image-file-input]');
+  if (fileInput instanceof HTMLInputElement) {
+    fileInput.value = '';
+  }
+  var base64Input = area.querySelector('[data-image-base64]');
+  if (base64Input instanceof HTMLTextAreaElement) {
+    base64Input.value = '';
+  }
+  var pasteInput = area.querySelector('[data-image-paste-input]');
+  if (pasteInput instanceof HTMLInputElement) {
+    pasteInput.value = pasteText;
+    pasteInput.classList.toggle('has-image', pasteText !== '');
+  }
+}
+
+function drawerImageDeleteFormForArea(area) {
+  var uploadFormId = area.getAttribute('data-paste-target') || '';
+  if (uploadFormId === '') return null;
+  var deleteFormId = uploadFormId.replace('drawer-image-', 'drawer-image-delete-');
+  var form = document.getElementById(deleteFormId);
+  return form instanceof HTMLFormElement ? form : null;
+}
+
+function ensureDrawerImageDeleteButton(area) {
+  if (area.querySelector('[data-image-delete-button]')) return;
+  var deleteForm = drawerImageDeleteFormForArea(area);
+  var actions = area.querySelector('.drawer-image-actions');
+  if (!(deleteForm instanceof HTMLFormElement) || !(actions instanceof HTMLElement)) return;
+
+  var button = document.createElement('button');
+  button.className = 'btn btn-xs danger';
+  button.type = 'submit';
+  button.setAttribute('form', deleteForm.id);
+  button.setAttribute('data-image-delete-button', '');
+  button.textContent = '削除';
+  actions.appendChild(button);
 }
 
 function setDrawerImagePreview(area, src, mode) {

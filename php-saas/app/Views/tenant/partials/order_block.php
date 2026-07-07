@@ -590,7 +590,7 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                                         <button form="<?= e($mainImageFormId) ?>" class="btn btn-xs primary" type="submit">提交保存</button>
                                         <?php endif; ?>
                                         <?php if ($canDeleteImage && $mainImage !== ''): ?>
-                                            <button form="<?= e($mainDeleteFormId) ?>" class="btn btn-xs danger" type="submit" onclick="return confirm('确定削除订单产品图？')">削除</button>
+                                            <button form="<?= e($mainDeleteFormId) ?>" class="btn btn-xs danger" type="submit" data-image-delete-button>削除</button>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -621,7 +621,7 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                                         <button form="<?= e($skuImageFormId) ?>" class="btn btn-xs primary" type="submit">提交保存</button>
                                         <?php endif; ?>
                                         <?php if ($canDeleteImage && $skuImage !== ''): ?>
-                                            <button form="<?= e($skuDeleteFormId) ?>" class="btn btn-xs danger" type="submit" onclick="return confirm('确定削除SKU产品图？')">削除</button>
+                                            <button form="<?= e($skuDeleteFormId) ?>" class="btn btn-xs danger" type="submit" data-image-delete-button>削除</button>
                                         <?php endif; ?>
                                     </div>
                                 </div>
