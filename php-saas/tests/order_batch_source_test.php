@@ -99,6 +99,7 @@ final class BatchSourceTestStore implements StoreInterface
     public function importPurchaseRows(string $tenantKey, array $records, string $operator): array { return ['inserted' => 0, 'updated' => 0, 'skipped' => 0, 'failed' => 0, 'messages' => []]; }
     public function importShippingRows(string $tenantKey, array $records, string $operator): array { return ['inserted' => 0, 'updated' => 0, 'skipped' => 0, 'failed' => 0, 'messages' => []]; }
     public function updateOrderItemImage(string $tenantKey, int $itemId, string $kind, string $path): void {}
+    public function deleteOrderItemImage(string $tenantKey, int $itemId, string $kind): ?string { return null; }
     public function orderAttachments(string $tenantKey, int $orderId): array { return []; }
     public function addOrderAttachment(string $tenantKey, int $orderId, array $data): void {}
     public function deleteOrderAttachment(string $tenantKey, int $orderId, int $attachmentId): void {}

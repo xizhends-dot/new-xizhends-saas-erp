@@ -33,6 +33,7 @@ $canBatchOperate = true;
 $canBatchPurchase = true;
 $canBatchJp = false;
 $canUploadImage = true;
+$canDeleteImage = true;
 $receiptCityOptions = ['义乌', '深圳威通'];
 $order = [
     'id' => 100,
@@ -134,8 +135,10 @@ $assert('采购信息表显示签收地', str_contains($purchaseInfoHtml, 'CN123
 $assert('采购信息表不再显示物流状态和轨迹内容', !str_contains($purchaseInfoHtml, '运输中') && !str_contains($purchaseInfoHtml, '轨迹内容') && !str_contains($purchaseInfoHtml, '物流轨迹'));
 $assert('编辑抽屉保持右侧编辑器结构', str_contains($html, 'class="editor-drawer"') && !str_contains($html, 'legacy-sidebar-editor') && str_contains($html, '<strong>编辑订单</strong>'));
 $assert('编辑抽屉没有货源地选项', !str_contains($html, 'name="source_type"') && !str_contains($html, '货源地</span>'));
-$assert('编辑抽屉内容对齐老系统侧栏字段', str_contains($html, '<div class="drawer-section-title">编辑订单</div>') && str_contains($html, '<div class="drawer-section-title">运单信息</div>') && str_contains($html, 'OrderId：') && str_contains($html, 'SKU产品图') && str_contains($html, '物流签收地：') && str_contains($html, '中文属性备注：'));
+$assert('编辑抽屉内容对齐老系统侧栏字段', str_contains($html, '<summary class="drawer-section-title">编辑订单</summary>') && str_contains($html, '<div class="drawer-section-title">运单信息</div>') && str_contains($html, 'OrderId：') && str_contains($html, 'SKU产品图') && str_contains($html, '物流签收地：') && str_contains($html, '中文属性备注：'));
 $assert('编辑抽屉支持上传订单产品图和SKU产品图', str_contains($html, 'action="/orders/images/upload"') && str_contains($html, 'name="kind" value="main"') && str_contains($html, 'name="kind" value="sku"') && str_contains($html, 'type="file" name="image"') && str_contains($html, 'name="base64_image"') && str_contains($html, 'form="drawer-image-main-200"') && str_contains($html, 'form="drawer-image-sku-200"'));
+$assert('编辑抽屉图片操作对齐老系统按钮', str_contains($html, '【选择图片】') && str_contains($html, '>提交保存</button>') && str_contains($html, '>削除</button>') && str_contains($html, 'action="/orders/images/delete"') && str_contains($html, 'form="drawer-image-delete-sku-200"'));
+$assert('编辑订单基础信息默认收起', str_contains($html, '<details class="drawer-section drawer-collapsible">') && str_contains($html, '<summary class="drawer-section-title">编辑订单</summary>'));
 $assert('编辑抽屉不使用最初简化商品卡片', !str_contains($html, 'drawer-product'));
 $assert('编辑抽屉签收地可选择并保留当前值', str_contains($html, '<select name="receipt_city"') && preg_match('/<option value="义乌"[^>]*selected[^>]*>义乌<\/option>/', $html) === 1);
 preg_match('/data-status-options="([^"]+)"/', $html, $statusJsonMatch);

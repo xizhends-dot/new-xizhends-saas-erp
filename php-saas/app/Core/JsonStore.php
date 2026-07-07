@@ -1706,6 +1706,59 @@ final class JsonStore implements StoreInterface
         $this->save();
     }
 
+    public function deleteOrderItemImage(string $tenantKey, int $itemId, string $kind): ?string
+    {
+        if ($itemId <= 0 || !in_array($kind, ['main', 'sku'], true)) {
+            return null;
+        }
+
+        $field = $kind === 'sku' ? 'sku_image' : 'image';
+        $store = $this->all();
+        if (!isset($store['orders'][$tenantKey]) || !is_array($store['orders'][$tenantKey])) {
+            return null;
+        }
+
+        $oldValue = null;
+        foreach ($store['orders'][$tenantKey] as &$order) {
+            if (!isset($order['items']) || !is_array($order['items'])) {
+                continue;
+            }
+
+            foreach ($order['items'] as &$item) {
+                if ((int) ($item['id'] ?? 0) !== $itemId) {
+                    continue;
+                }
+
+                $oldValue = (string) ($item[$field] ?? '');
+                $item[$field] = '';
+                if ($kind === 'main') {
+                    $item['main_image'] = '';
+                }
+                $item['logs'][] = [
+                    'time' => date('m-d H:i'),
+                    'user' => '系统管理员',
+                    'action' => $kind === 'sku' ? '删除SKU图' : '删除主图',
+                    'field' => $field,
+                    'old' => $oldValue,
+                    'new' => '',
+                    'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
+                    'order_id' => (int) ($order['id'] ?? 0),
+                ];
+            }
+            unset($item);
+        }
+        unset($order);
+
+        if ($oldValue === null) {
+            return null;
+        }
+
+        $this->data = $store;
+        $this->save();
+
+        return $oldValue;
+    }
+
     /** @return array<int, array<string, mixed>> */
     public function orderAttachments(string $tenantKey, int $orderId): array
     {

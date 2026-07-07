@@ -506,6 +506,11 @@ final class MysqlStore implements StoreInterface
         $this->mediaRepository->updateOrderItemImage($tenantKey, $itemId, $kind, $path);
     }
 
+    public function deleteOrderItemImage(string $tenantKey, int $itemId, string $kind): ?string
+    {
+        return $this->mediaRepository->deleteOrderItemImage($tenantKey, $itemId, $kind);
+    }
+
 
 
     /** @return array<int, array<string, mixed>> */

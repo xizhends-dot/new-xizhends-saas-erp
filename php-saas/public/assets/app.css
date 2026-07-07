@@ -3443,6 +3443,27 @@ label.ck.warn { color: #475569; }
   font-weight: 800;
 }
 
+.drawer-collapsible > summary.drawer-section-title {
+  cursor: pointer;
+  list-style: none;
+}
+
+.drawer-collapsible > summary.drawer-section-title::-webkit-details-marker {
+  display: none;
+}
+
+.drawer-collapsible > summary.drawer-section-title::after {
+  content: "展开";
+  float: right;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.drawer-collapsible[open] > summary.drawer-section-title::after {
+  content: "收起";
+}
+
 .drawer-form-group {
   display: flex;
   align-items: center;
@@ -3516,12 +3537,30 @@ label.ck.warn { color: #475569; }
   margin-top: 8px;
 }
 
+.drawer-file-btn {
+  justify-self: flex-start;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.drawer-file-btn input {
+  display: none;
+}
+
 .drawer-image-controls textarea {
   min-height: 48px;
 }
 
-.drawer-image-controls .btn {
-  justify-self: flex-start;
+.drawer-image-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.drawer-image-actions .btn {
+  min-height: 26px;
 }
 
 .drawer-image-empty,

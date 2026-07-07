@@ -133,6 +133,7 @@ final class OrderController extends TenantBaseController
             'canBatchPurchase' => $canEditFeature && $this->service->tenantFeatureEnabled($tenantKey, 'orders.purchase') && Permission::hasAny($currentUser, ['批量操作', '采购状态', '订单编辑']),
             'canBatchJp' => $canEditFeature && $this->service->tenantFeatureEnabled($tenantKey, 'orders.jp') && Permission::hasAny($currentUser, ['批量操作', '日本仓发货', '订单编辑']),
             'canUploadImage' => $this->service->tenantFeatureEnabled($tenantKey, 'media.library') && $this->service->tenantFeatureEnabled($tenantKey, 'media.upload') && $this->auth->tenantCan($tenantKey, '图片上传'),
+            'canDeleteImage' => $this->service->tenantFeatureEnabled($tenantKey, 'media.library') && $this->service->tenantFeatureEnabled($tenantKey, 'media.delete') && $this->auth->tenantCan($tenantKey, '图片删除'),
             'canImportExport' => $canPlatformImportExport || $canPurchaseImportExport || $canFinanceExport,
             'canFullImportExport' => $canPlatformImportExport || $canFinanceExport,
             'canPlatformImportExport' => $canPlatformImportExport,
@@ -385,6 +386,31 @@ final class OrderController extends TenantBaseController
         redirect_to($return);
     }
 
+    public function deleteOrderImage(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'media.library');
+        $this->requireTenantFeature($tenantKey, 'media.delete');
+        $this->auth->requireTenantPermission($tenantKey, '图片删除');
+        $orderId = (int) ($_POST['order_id'] ?? 0);
+        $itemId = (int) ($_POST['item_id'] ?? 0);
+        $kind = (string) ($_POST['kind'] ?? '');
+        $kind = in_array($kind, ['main', 'sku'], true) ? $kind : '';
+        $fallback = '/orders/detail?tenant=' . rawurlencode($tenantKey) . '&id=' . $orderId;
+        $return = $this->safeReturn((string) ($_POST['return'] ?? $fallback), $fallback);
+        $this->ensureOrderAccess($tenantKey, $orderId);
+        $this->ensureItemAccess($tenantKey, $itemId);
+        $itemOrder = $this->accessibleOrderForItem($tenantKey, $itemId, $this->auth->currentTenantUser($tenantKey));
+        if ($kind === '' || (int) ($itemOrder['id'] ?? 0) !== $orderId) {
+            $this->forbid('当前账号没有该子商品图片的操作权限。');
+        }
+
+        $oldPath = $this->store->deleteOrderItemImage($tenantKey, $itemId, $kind);
+        $this->deleteLocalOrderImageFile($tenantKey, $oldPath);
+
+        redirect_to($return);
+    }
+
     public function serveOrderImage(): void
     {
         $tenantKey = $this->tenantKeyFromRoute();
@@ -601,6 +627,25 @@ final class OrderController extends TenantBaseController
         header('Cache-Control: private, max-age=86400');
         readfile($path);
         exit;
+    }
+
+    private function deleteLocalOrderImageFile(string $tenantKey, ?string $path): void
+    {
+        $path = trim((string) $path);
+        $prefix = "storage/tenants/{$tenantKey}/images/orders/";
+        if ($path === '' || !str_starts_with($path, $prefix)) {
+            return;
+        }
+
+        $absolute = realpath(BASE_PATH . '/' . $path);
+        $base = realpath(BASE_PATH . "/storage/tenants/{$tenantKey}/images/orders");
+        if ($absolute === false || $base === false || !str_starts_with(str_replace('\\', '/', $absolute), str_replace('\\', '/', $base) . '/')) {
+            return;
+        }
+
+        if (is_file($absolute)) {
+            @unlink($absolute);
+        }
     }
 
     private function saveUploadedImage(string $tenantKey, int $orderId, int $itemId, string $kind): ?array

@@ -66,6 +66,7 @@ return static function (Container $container, Router $router): void {
         $router->post('/orders/attachments/add', [OrderController::class, 'addOrderAttachment']);
         $router->post('/orders/attachments/delete', [OrderController::class, 'deleteOrderAttachment']);
         $router->post('/orders/images/upload', [OrderController::class, 'uploadOrderImage']);
+        $router->post('/orders/images/delete', [OrderController::class, 'deleteOrderImage']);
         $router->get('/features', [DashboardController::class, 'features']);
         $router->get('/search', [DashboardController::class, 'search']);
         $router->get('/analytics/profit', [StatsController::class, 'profit']);

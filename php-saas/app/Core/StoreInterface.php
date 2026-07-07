@@ -216,6 +216,8 @@ interface StoreInterface
 
     public function updateOrderItemImage(string $tenantKey, int $itemId, string $kind, string $path): void;
 
+    public function deleteOrderItemImage(string $tenantKey, int $itemId, string $kind): ?string;
+
     /** @return array<int, array<string, mixed>> */
     public function orderAttachments(string $tenantKey, int $orderId): array;
 

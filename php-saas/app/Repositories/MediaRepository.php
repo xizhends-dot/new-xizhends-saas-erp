@@ -36,6 +36,37 @@ final class MediaRepository extends BaseRepository
         );
     }
 
+    public function deleteOrderItemImage(string $tenantKey, int $itemId, string $kind): ?string
+    {
+        $tenantPdo = $this->db->tenantPdo($tenantKey);
+        if (!$tenantPdo || $itemId <= 0 || !in_array($kind, ['main', 'sku'], true)) {
+            return null;
+        }
+
+        $column = $kind === 'sku' ? 'sku_image' : 'main_image';
+        $stmt = $tenantPdo->prepare("SELECT id, order_id, {$column} AS old_path FROM order_items WHERE id = ? LIMIT 1");
+        $stmt->execute([$itemId]);
+        $item = $stmt->fetch();
+        if (!$item) {
+            return null;
+        }
+
+        $oldPath = (string) ($item['old_path'] ?? '');
+        $update = $tenantPdo->prepare("UPDATE order_items SET {$column} = '' WHERE id = ?");
+        $update->execute([$itemId]);
+        $this->insertItemLog(
+            $tenantPdo,
+            (int) $item['order_id'],
+            $itemId,
+            $kind === 'sku' ? '删除SKU图' : '删除主图',
+            $column,
+            $oldPath,
+            ''
+        );
+
+        return $oldPath;
+    }
+
 
 
     /** @return array<int, array<string, mixed>> */

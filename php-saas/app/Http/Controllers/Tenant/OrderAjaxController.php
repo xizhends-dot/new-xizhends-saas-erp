@@ -65,6 +65,7 @@ final class OrderAjaxController extends TenantBaseController
             'canBatchPurchase' => Permission::hasAny($currentUser, ['批量操作', '采购状态', '订单编辑']),
             'canBatchJp' => Permission::hasAny($currentUser, ['批量操作', '日本仓发货', '订单编辑']),
             'canUploadImage' => $this->service->tenantFeatureEnabled($tenantKey, 'media.library') && $this->service->tenantFeatureEnabled($tenantKey, 'media.upload') && $this->auth->tenantCan($tenantKey, '图片上传'),
+            'canDeleteImage' => $this->service->tenantFeatureEnabled($tenantKey, 'media.library') && $this->service->tenantFeatureEnabled($tenantKey, 'media.delete') && $this->auth->tenantCan($tenantKey, '图片删除'),
         ]);
         $this->json($result, (int) $result['status']);
     }
