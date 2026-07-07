@@ -33,7 +33,7 @@ $statusOptions = ['未处理的订单', '国内采购-准备'];
 $jpStockStatusOptions = ['日本仓待处理', '日本仓已完成'];
 $filterFields = [];
 $exportTools = [];
-$canEditOrders = false;
+$canEditOrders = true;
 $canEditPurchase = false;
 $canEditJp = false;
 $canChangeSource = true;
@@ -56,6 +56,8 @@ $html = (string) ob_get_clean();
 
 $assert('订单批量工具栏存在', preg_match('/<div class="tbar order-toolbar">.*?<\/div>\s*<\/div>/s', $html, $matches) === 1);
 $toolbar = $matches[0] ?? '';
+$assert('订单页不再显示无效手动录入按钮', !str_contains($html, '手动录入'));
+$assert('订单页不再显示无效手动出库按钮', !str_contains($html, '手动出库'));
 
 $expectedOrder = [
     '已选择',

@@ -293,9 +293,6 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
 <div class="order-page">
     <div class="page-head compact-head">
         <h1><?= e($activeTitle) ?> <span class="plat-tag"><?= e($orderView === 'jp' ? 'JP 仓库现货' : $platformLabel) ?></span></h1>
-        <div class="head-actions">
-            <?php if ($canEditOrders): ?><button class="btn btn-p" type="button"><?= e($orderView === 'jp' ? '+ 手动出库' : '+ 手动录入') ?></button><?php endif; ?>
-        </div>
     </div>
 
     <?php if ($message !== ''): ?>
