@@ -139,7 +139,7 @@ final class MailController extends TenantBaseController
         $return = (string) ($_POST['return'] ?? '/mail/settings?tenant=' . rawurlencode($tenantKey));
         try {
             $this->mailService->saveFolder($tenantKey, $_POST);
-            redirect_to($return);
+            redirect_to($this->urlWithNotice($return, 'message', '文件夹已保存'));
         } catch (RuntimeException $exception) {
             redirect_to($this->urlWithNotice($return, 'error', $exception->getMessage()));
         }
@@ -283,16 +283,4 @@ final class MailController extends TenantBaseController
         }
     }
 
-    private function urlWithNotice(string $url, string $key, string $message): string
-    {
-        $key = $key === 'error' ? 'error' : 'message';
-        $fragment = '';
-        $hashPos = strpos($url, '#');
-        if ($hashPos !== false) {
-            $fragment = substr($url, $hashPos);
-            $url = substr($url, 0, $hashPos);
-        }
-
-        return $url . (str_contains($url, '?') ? '&' : '?') . $key . '=' . rawurlencode($message) . $fragment;
-    }
 }

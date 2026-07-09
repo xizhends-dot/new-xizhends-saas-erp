@@ -66,6 +66,7 @@ final class StoreController extends TenantBaseController
             'billingAccount' => $this->store->tenantBillingAccount($tenantKey),
             'currentUser' => $this->auth->currentTenantUser($tenantKey),
             'message' => (string) ($_GET['message'] ?? ''),
+            'error' => (string) ($_GET['error'] ?? ''),
         ]);
     }
 
@@ -110,7 +111,7 @@ final class StoreController extends TenantBaseController
             $this->forbid('店铺新增失败，已自动退回本次扣除的积分，请检查店铺资料后重试。');
         }
 
-        redirect_to('/stores?tenant=' . rawurlencode($tenantKey));
+        redirect_to('/stores?tenant=' . rawurlencode($tenantKey) . '&message=' . rawurlencode('店铺已新增。'));
     }
 
     public function editStore(): void
@@ -161,7 +162,9 @@ final class StoreController extends TenantBaseController
             'hidden_reason' => $_POST['hidden_reason'] ?? '',
         ]);
 
-        redirect_to('/stores?tenant=' . rawurlencode($tenantKey));
+        $fallback = '/stores?tenant=' . rawurlencode($tenantKey);
+        $return = $this->safeReturn((string) ($_POST['return'] ?? $fallback), $fallback);
+        redirect_to($this->urlWithNotice($return, 'message', '店铺已保存。'));
     }
 
     public function importOrdersForm(): void

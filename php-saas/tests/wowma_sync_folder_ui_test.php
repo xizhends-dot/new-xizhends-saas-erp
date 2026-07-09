@@ -45,6 +45,14 @@ $settingsHtml = (string) ob_get_clean();
 
 $assert('系统设置显示 Wowma 文件夹配置项', str_contains($settingsHtml, 'Wowma 文件夹名称') && str_contains($settingsHtml, 'name="wowma_sync_folders"'));
 $assert('系统设置保留 Wowma 文件夹名单', str_contains($settingsHtml, 'XIZHENDS') && str_contains($settingsHtml, 'Ready_buy') && str_contains($settingsHtml, 'Custom_folder'));
+$assert('系统设置保存会提交当前页签', str_contains($settingsHtml, 'name="active_tab"') && str_contains($settingsHtml, 'data-settings-active-tab'));
+
+$appJs = file_get_contents($basePath . '/public/assets/app.js') ?: '';
+$assert('系统设置保存前同步当前页签', str_contains($appJs, 'syncSettingsActiveTabFields') && str_contains($appJs, 'currentSettingsTab'));
+$assert('租户保存后由全局弹窗提示并清理参数', str_contains($appJs, 'initTenantFlashFromUrl') && str_contains($appJs, "url.searchParams.delete('message')") && str_contains($appJs, "url.searchParams.delete('error')") && str_contains($appJs, "url.searchParams.delete('saved')"));
+$assert('租户保存失败弹窗带失败提示', str_contains($appJs, "alert(error !== '' ? '保存失败：' + text : text)"));
+$assert('同步订单弹窗不被普通保存提示重复处理', str_contains($appJs, "url.searchParams.has('sync_message')"));
+$assert('租户侧边栏滚动位置会按租户恢复', str_contains($appJs, 'initTenantSidebarScroll') && str_contains($appJs, "tenant_sidebar_scroll:' + (tenant || 'default')"));
 
 $_SESSION = [];
 $_GET = [];

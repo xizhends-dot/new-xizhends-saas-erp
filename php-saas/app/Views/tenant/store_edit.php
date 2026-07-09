@@ -24,6 +24,9 @@ $jsonFlags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JS
 $storeApiFieldsJson = json_encode($storeApiFields, $jsonFlags) ?: '{}';
 $storeApiValuesJson = json_encode($storeApiValues, $jsonFlags) ?: '{}';
 $apiConfigRaw = (string) ($store['api_config'] ?? '');
+$selfReturnUrl = '/stores/edit?tenant=' . rawurlencode((string) $tenantKey)
+    . '&id=' . rawurlencode((string) ($store['id'] ?? ''))
+    . '&return=' . rawurlencode((string) $returnUrl);
 ?>
 
 <div class="panel form-panel">
@@ -33,6 +36,7 @@ $apiConfigRaw = (string) ($store['api_config'] ?? '');
                 <?= csrf_field() ?>
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
             <input type="hidden" name="id" value="<?= e($store['id'] ?? '') ?>">
+            <input type="hidden" name="return" value="<?= e($selfReturnUrl) ?>">
             <input type="hidden" name="api_fields_original" value="<?= e($storeApiValuesJson) ?>">
             <input type="hidden" name="api_config_original" value="<?= e($apiConfigRaw) ?>">
             <input type="hidden" name="api_config_platform_original" value="<?= e($store['platform'] ?? '') ?>">

@@ -491,6 +491,19 @@ abstract class TenantBaseController
         return str_starts_with($return, '/') && !str_starts_with($return, '//') ? $return : $fallback;
     }
 
+    protected function urlWithNotice(string $url, string $key, string $message): string
+    {
+        $key = $key === 'error' ? 'error' : 'message';
+        $fragment = '';
+        $hashPos = strpos($url, '#');
+        if ($hashPos !== false) {
+            $fragment = substr($url, $hashPos);
+            $url = substr($url, 0, $hashPos);
+        }
+
+        return $url . (str_contains($url, '?') ? '&' : '?') . $key . '=' . rawurlencode($message) . $fragment;
+    }
+
     protected function intList(mixed $value): array
     {
         $values = is_array($value) ? $value : [$value];

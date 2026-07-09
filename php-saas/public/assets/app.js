@@ -177,8 +177,13 @@ document.addEventListener('submit', function (event) {
   }
 
   if (form instanceof HTMLFormElement && form.id === 'purchase-status-form') {
+    syncSettingsActiveTabFields();
     serializePurchaseStatuses(form);
     return;
+  }
+
+  if (form instanceof HTMLFormElement && form.id === 'tenant-settings-form') {
+    syncSettingsActiveTabFields();
   }
 
   if (form instanceof HTMLFormElement && form.matches('.drawer-image-upload-form')) {
@@ -782,6 +787,8 @@ function activateSettingsPane(key, syncHash) {
   window.history.replaceState(null, '', nextHash);
     }
   }
+
+  syncSettingsActiveTabFields(targetKey);
 }
 
 function csrfToken() {
@@ -917,6 +924,52 @@ function initSettingsPane() {
   activateSettingsPane((window.location.hash || '').replace(/^#/, ''), false);
 }
 
+function currentSettingsTab() {
+  var activeTab = document.querySelector('[data-settings-tab].active');
+  return activeTab instanceof HTMLElement ? (activeTab.getAttribute('data-settings-tab') || 'company') : 'company';
+}
+
+function syncSettingsActiveTabFields(tabKey) {
+  var key = tabKey || currentSettingsTab();
+  document.querySelectorAll('[data-settings-active-tab]').forEach(function (input) {
+    if (input instanceof HTMLInputElement) input.value = key;
+  });
+}
+
+function initTenantFlashFromUrl() {
+  if (!document.body || !document.body.classList.contains('tenant-shell')) return;
+  var url = new URL(window.location.href);
+  if (url.searchParams.has('sync_message')) return;
+  var error = (url.searchParams.get('error') || '').trim();
+  var message = (url.searchParams.get('message') || '').trim();
+  var saved = (url.searchParams.get('saved') || '').trim();
+  var text = error || message;
+  if (text === '' && saved !== '') {
+    text = saved === 'purchase_statuses' ? '采购状态已保存成功。' : '保存成功。';
+  }
+  if (text === '') return;
+  alert(error !== '' ? '保存失败：' + text : text);
+  if (!window.history || !window.history.replaceState) return;
+  url.searchParams.delete('message');
+  url.searchParams.delete('error');
+  url.searchParams.delete('saved');
+  window.history.replaceState(null, '', url.pathname + url.search + window.location.hash);
+}
+
+function initTenantSidebarScroll() {
+  var sidebar = document.querySelector('[data-tenant-sidebar]');
+  if (!(sidebar instanceof HTMLElement) || !window.localStorage) return;
+  var tenant = new URL(window.location.href).searchParams.get('tenant') || '';
+  var brand = sidebar.querySelector('.brand-mark');
+  if (tenant === '' && brand instanceof HTMLElement) tenant = brand.textContent || '';
+  var key = 'tenant_sidebar_scroll:' + (tenant || 'default');
+  var saved = parseInt(window.localStorage.getItem(key) || '0', 10);
+  if (saved > 0) sidebar.scrollTop = saved;
+  sidebar.addEventListener('scroll', function () {
+    window.localStorage.setItem(key, String(sidebar.scrollTop));
+  }, { passive: true });
+}
+
 function movePurchaseStatusRow(row, direction) {
   if (!(row instanceof HTMLElement)) return;
   if (direction === 'up' && row.previousElementSibling) {
@@ -987,9 +1040,15 @@ function serializePurchaseStatuses(form) {
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initSettingsPane);
+  document.addEventListener('DOMContentLoaded', function () {
+    initSettingsPane();
+    initTenantFlashFromUrl();
+    initTenantSidebarScroll();
+  });
 } else {
   initSettingsPane();
+  initTenantFlashFromUrl();
+  initTenantSidebarScroll();
 }
 
 window.addEventListener('hashchange', initSettingsPane);

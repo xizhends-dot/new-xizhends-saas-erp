@@ -42,6 +42,7 @@ $settingsTabs = [
 <form id="tenant-settings-form" method="post" action="/settings/save" class="settings-page">
                 <?= csrf_field() ?>
     <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
+    <input type="hidden" name="active_tab" value="company" data-settings-active-tab>
 
     <div class="tenant-settings-layout" data-settings-layout>
         <aside class="settings-nav-panel" aria-label="系统设置导航">
@@ -212,6 +213,7 @@ $settingsTabs = [
 <form id="purchase-status-form" method="post" action="/settings/purchase-statuses/save">
                 <?= csrf_field() ?>
     <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
+    <input type="hidden" name="active_tab" value="purchase-statuses" data-settings-active-tab>
     <input type="hidden" name="statuses_json" value="" data-purchase-status-json="statuses_json">
     <input type="hidden" name="jp_stock_statuses_json" value="" data-purchase-status-json="jp_stock_statuses_json">
 </form>

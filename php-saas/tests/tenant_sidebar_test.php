@@ -40,6 +40,8 @@ $html = (string) ob_get_clean();
 
 $assert('左侧栏展示签收地入口', str_contains($html, '>签收地</a>'));
 $assert('签收地入口指向国内快递设置页签', str_contains($html, 'href="/settings?tenant=erp#logistics"'));
+$assert('租户侧边栏不显示 SaaS 管理入口', !str_contains($html, 'SaaS 管理') && !str_contains($html, 'href="/admin"'));
+$assert('租户侧边栏带滚动位置恢复标记', str_contains($html, 'data-tenant-sidebar'));
 
 $assert('Rakuten platform tag uses brand color', str_contains($html, 'class="dot platform-nav-tag" style="background: #bf0000"'));
 $assert('Yahoo platform tag uses brand color', str_contains($html, 'class="dot platform-nav-tag" style="background: #ff0033"'));

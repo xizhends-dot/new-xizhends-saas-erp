@@ -231,7 +231,7 @@ final class SettingsController extends TenantBaseController
             ],
         ]);
 
-        redirect_to('/settings?tenant=' . rawurlencode($tenantKey) . '&saved=1');
+        redirect_to($this->settingsRedirectUrl($tenantKey, ['saved' => '1'], 'company'));
     }
 
     public function savePurchaseStatuses(): void
@@ -256,7 +256,23 @@ final class SettingsController extends TenantBaseController
 
         $queryKey = ($result['ok'] ?? false) ? 'saved' : 'error';
         $message = ($result['ok'] ?? false) ? 'purchase_statuses' : (string) ($result['message'] ?? '采购状态保存失败。');
-        redirect_to('/settings?tenant=' . rawurlencode($tenantKey) . '&' . $queryKey . '=' . rawurlencode($message) . '#purchase-statuses');
+        redirect_to($this->settingsRedirectUrl($tenantKey, [$queryKey => $message], 'purchase-statuses'));
+    }
+
+    /**
+     * @param array<string, string> $params
+     */
+    private function settingsRedirectUrl(string $tenantKey, array $params, string $fallbackTab): string
+    {
+        $query = http_build_query(['tenant' => $tenantKey] + $params, '', '&', PHP_QUERY_RFC3986);
+        return '/settings?' . $query . '#' . rawurlencode($this->settingsActiveTabFromPost($fallbackTab));
+    }
+
+    private function settingsActiveTabFromPost(string $fallback): string
+    {
+        $allowed = ['company', 'orders', 'purchase-statuses', 'profit', 'logistics', 'api1688'];
+        $tab = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($_POST['active_tab'] ?? '')) ?: $fallback;
+        return in_array($tab, $allowed, true) ? $tab : $fallback;
     }
 
     private function tenant1688ConfigRelativePath(string $tenantKey): string

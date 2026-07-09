@@ -175,7 +175,7 @@ final class OrderController extends TenantBaseController
             $this->store->changeItemSource($tenantKey, $itemId, $source);
         }
 
-        redirect_to($return);
+        redirect_to($this->urlWithNotice($return, 'message', '货源地已保存。'));
     }
 
     public function batchOrders(): void
@@ -204,18 +204,22 @@ final class OrderController extends TenantBaseController
             if (!$orderIds && $itemIds) {
                 $orderIds = $this->orderIdsForItems($tenantKey, $itemIds);
             }
+            $count = count($orderIds);
             $this->store->deleteOrders($tenantKey, $orderIds);
-            redirect_to($return);
+            redirect_to($this->urlWithNotice($return, 'message', "已删除 {$count} 单。"));
         }
 
         if ($action === 'set_source') {
             $source = (string) ($_POST['source'] ?? '');
+            $affected = 0;
             if (in_array($source, ['cn_purchase', 'jp_stock', 'pending'], true)) {
-                foreach ($this->itemIdsForOrders($tenantKey, $itemIds, $orderIds) as $itemId) {
+                $targetItemIds = $this->itemIdsForOrders($tenantKey, $itemIds, $orderIds);
+                foreach ($targetItemIds as $itemId) {
                     $this->store->changeItemSource($tenantKey, $itemId, $source);
                 }
+                $affected = count($targetItemIds);
             }
-            redirect_to($return);
+            redirect_to($this->urlWithNotice($return, 'message', "货源地已保存，处理 {$affected} 条明细。"));
         }
 
         $changes = match ($action) {
@@ -241,7 +245,8 @@ final class OrderController extends TenantBaseController
             );
         }
 
-        redirect_to($return);
+        $message = $changes ? $this->batchActionLogName($action) . '已保存。' : '没有可保存的变更。';
+        redirect_to($this->urlWithNotice($return, $changes ? 'message' : 'error', $message));
     }
 
     public function orderDetail(): void
@@ -316,7 +321,7 @@ final class OrderController extends TenantBaseController
                 '同品项同步修改'
             );
         }
-        redirect_to($return);
+        redirect_to($this->urlWithNotice($return, 'message', '订单明细已保存。'));
     }
 
     public function refresh1688Order(): void
@@ -359,7 +364,7 @@ final class OrderController extends TenantBaseController
             'size' => $_POST['size'] ?? '',
         ]);
 
-        redirect_to('/orders/detail?tenant=' . rawurlencode($tenantKey) . '&id=' . $orderId);
+        redirect_to('/orders/detail?tenant=' . rawurlencode($tenantKey) . '&id=' . $orderId . '&message=' . rawurlencode('附件已登记。'));
     }
 
     public function deleteOrderAttachment(): void
@@ -371,7 +376,7 @@ final class OrderController extends TenantBaseController
         $orderId = (int) ($_POST['order_id'] ?? 0);
         $this->ensureOrderAccess($tenantKey, $orderId);
         $this->store->deleteOrderAttachment($tenantKey, $orderId, (int) ($_POST['attachment_id'] ?? 0));
-        redirect_to('/orders/detail?tenant=' . rawurlencode($tenantKey) . '&id=' . $orderId);
+        redirect_to('/orders/detail?tenant=' . rawurlencode($tenantKey) . '&id=' . $orderId . '&message=' . rawurlencode('附件已删除。'));
     }
 
     public function uploadOrderImage(): void
@@ -421,7 +426,7 @@ final class OrderController extends TenantBaseController
             ]);
         }
 
-        redirect_to($return);
+        redirect_to($this->urlWithNotice($return, $saved === null ? 'error' : 'message', $saved === null ? '图片上传失败，请确认图片格式和大小。' : '图片已保存。'));
     }
 
     public function deleteOrderImage(): void
@@ -455,7 +460,7 @@ final class OrderController extends TenantBaseController
             ]);
         }
 
-        redirect_to($return);
+        redirect_to($this->urlWithNotice($return, 'message', '图片已删除。'));
     }
 
     public function serveOrderImage(): void

@@ -17,7 +17,7 @@ $tenantUrl = static fn (string $path, array $params = []): string => $path . '?'
     <link rel="stylesheet" href="/assets/app.css?v=<?= e($assetVersion('/assets/app.css')) ?>">
 </head>
 <body class="tenant-shell">
-<aside class="sidebar">
+<aside class="sidebar" data-tenant-sidebar>
     <div class="brand">
         <div class="brand-mark"><?= e(substr((string) ($tenant['key'] ?? 'T'), 0, 2)) ?></div>
         <div>
@@ -82,7 +82,6 @@ $tenantUrl = static fn (string $path, array $params = []): string => $path . '?'
         <?php if ($featureEnabled('management.jobs')): ?><a class="<?= ($active ?? '') === 'jobs' ? 'active' : '' ?>" href="/jobs?tenant=<?= e($tenantKey) ?>">定时任务</a><?php endif; ?>
         <?php if ($featureEnabled('management.logs') && $can('订单日志')): ?><a class="<?= ($active ?? '') === 'logs' ? 'active' : '' ?>" href="/logs?tenant=<?= e($tenantKey) ?>">操作日志</a><?php endif; ?>
         <?php if ($featureEnabled('management.settings') && $canAny(['公司设置', '系统设置'])): ?><a class="<?= ($active ?? '') === 'settings' ? 'active' : '' ?>" href="/settings?tenant=<?= e($tenantKey) ?>">系统设置</a><?php endif; ?>
-        <a href="/admin">SaaS 管理</a>
     </nav>
 </aside>
 

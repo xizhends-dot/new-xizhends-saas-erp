@@ -2,6 +2,9 @@
 $allPermissions = array_unique(array_merge(...array_values($rolePermissions)));
 $userPermissions = $user['permissions'] ?? [];
 $userStores = $user['stores'] ?? [];
+$selfReturnUrl = '/users/edit?tenant=' . rawurlencode((string) $tenantKey)
+    . '&id=' . rawurlencode((string) ($user['id'] ?? ''))
+    . '&return=' . rawurlencode((string) $returnUrl);
 ?>
 
 <div class="page-head">
@@ -23,6 +26,7 @@ $userStores = $user['stores'] ?? [];
                 <?= csrf_field() ?>
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
             <input type="hidden" name="id" value="<?= e($user['id'] ?? '') ?>">
+            <input type="hidden" name="return" value="<?= e($selfReturnUrl) ?>">
 
             <label>
                 <span>姓名</span>

@@ -80,7 +80,7 @@ final class UserController extends TenantBaseController
             'status' => $_POST['status'] ?? 'active',
         ]);
 
-        redirect_to('/users?tenant=' . rawurlencode($tenantKey));
+        redirect_to('/users?tenant=' . rawurlencode($tenantKey) . '&message=' . rawurlencode('员工已新增。'));
     }
 
     public function editUser(): void
@@ -123,7 +123,9 @@ final class UserController extends TenantBaseController
             'status' => $_POST['status'] ?? 'active',
         ]);
 
-        redirect_to('/users?tenant=' . rawurlencode($tenantKey));
+        $fallback = '/users?tenant=' . rawurlencode($tenantKey);
+        $return = $this->safeReturn((string) ($_POST['return'] ?? $fallback), $fallback);
+        redirect_to($this->urlWithNotice($return, 'message', '员工已保存。'));
     }
 
     public function userPermissions(): void
@@ -219,6 +221,6 @@ final class UserController extends TenantBaseController
             );
         }
 
-        redirect_to('/assignments?tenant=' . rawurlencode($tenantKey));
+        redirect_to('/assignments?tenant=' . rawurlencode($tenantKey) . '&message=' . rawurlencode('店铺分配已保存。'));
     }
 }
