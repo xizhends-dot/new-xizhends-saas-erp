@@ -155,7 +155,7 @@ SQL);
     /** @return array<string, mixed> */
     private function mapOrder(\PDO $pdo, array $row): array
     {
-        $items = $this->itemsForOrder($pdo, (int) $row['id']);
+        $items = $this->itemsForOrder($pdo, (int) $row['id'], (string) ($row['platform'] ?? ''));
         $extra = $this->jsonArray($row['platform_extra'] ?? null);
         $customerName = (string) (($row['customer_name'] ?? '') ?: $this->firstExtra($extra, ['ShipName', 'senderName']));
         $customerKana = (string) (($row['customer_kana'] ?? '') ?: $this->firstExtra($extra, ['senderKana']));
@@ -198,7 +198,7 @@ SQL);
 
 
     /** @return array<int, array<string, mixed>> */
-    private function itemsForOrder(\PDO $pdo, int $orderId): array
+    private function itemsForOrder(\PDO $pdo, int $orderId, string $platform = ''): array
     {
         $stmt = $pdo->prepare(<<<'SQL'
 SELECT i.*, p.tabaono, p.caigou_link, p.buhuo_link, p.caigou_user AS purchase_user, p.caigou_time,
@@ -216,7 +216,7 @@ ORDER BY i.id
 SQL);
         $stmt->execute([$orderId]);
 
-        return array_map(function (array $row) use ($pdo, $orderId): array {
+        return array_map(function (array $row) use ($pdo, $orderId, $platform): array {
             $extra = $this->jsonArray($row['platform_extra'] ?? null);
             $quantity = (int) ($row['quantity'] ?? 0);
             $unitPrice = $this->moneyValue($row['unit_price'] ?? null);
@@ -240,6 +240,13 @@ SQL);
             }
             $purchaseAmount = $this->moneyValue($row['amount'] ?? null);
 
+            $rakutenSubCodeOption = $platform === 'r' ? $this->firstExtra($extra, ['SubCodeOption']) : '';
+            $rakutenSelectedChoice = $platform === 'r' ? $this->firstExtra($extra, ['selectedChoice']) : '';
+            $itemOption = (string) (($row['item_option'] ?? '') ?: $this->firstExtra($extra, ['SubCodeOption', 'itemOption', 'selectedChoice']));
+            if ($platform === 'r' && $rakutenSubCodeOption !== '') {
+                $itemOption = $rakutenSubCodeOption;
+            }
+
             return [
                 'id' => (int) $row['id'],
                 'order_detail_id' => (string) (($row['order_detail_id'] ?? '') ?: $this->firstExtra($extra, ['orderDetailId'])),
@@ -249,7 +256,8 @@ SQL);
                 'item_management_id' => (string) (($row['item_management_id'] ?? '') ?: $this->firstExtra($extra, ['ItemManagerId', 'itemManagementId'])),
                 'jp_warehouse_id' => (string) ($row['jp_warehouse_id'] ?? ''),
                 'title' => (string) (($row['product_title'] ?? '') ?: $this->firstExtra($extra, ['product_title', 'ItemTitle', 'itemName'])),
-                'option' => (string) (($row['item_option'] ?? '') ?: $this->firstExtra($extra, ['SubCodeOption', 'itemOption', 'selectedChoice'])),
+                'option' => $itemOption,
+                'selected_choice' => $rakutenSelectedChoice,
                 'chinese_option' => (string) (($row['chinese_option'] ?? '') ?: $this->firstExtra($extra, ['chinese_option'])),
                 'quantity' => $quantity,
                 'source_type' => (string) $row['source_type'],

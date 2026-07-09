@@ -326,7 +326,7 @@ final class RakutenOrderService implements PlatformOrderSyncInterface
             'item_code' => $itemCode,
             'item_management_id' => (string) ($item['itemNumber'] ?? ''),
             'title' => (string) ($item['itemName'] ?? ''),
-            'option' => $subCodeOption !== '' ? $subCodeOption : $selectedChoice,
+            'option' => $subCodeOption,
             'quantity' => $quantity,
             'unit_price' => $unitPrice,
             'postage_price' => (float) ($model['postagePrice'] ?? 0),

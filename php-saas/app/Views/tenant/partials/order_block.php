@@ -299,7 +299,7 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
             <th class="c5">ItemId / lotNumber</th>
             <th class="c6">日本仓ID / 管理ID</th>
             <th class="c7">商品属性</th>
-            <th class="c8" colspan="2">商品标题 / 项目选择</th>
+            <th class="c8" colspan="2"><?= e($isRakuten ? '項目・選択肢' : '商品标题 / 项目选择') ?></th>
             <th class="c10">数量</th>
             <th class="c11">单价</th>
             <th class="c12">邮费/手续费</th>
@@ -349,7 +349,13 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
             $warehouseMeta = $joinLines([
                 (string) ($item['item_management_id'] ?? ''),
             ]);
-            $optionMeta = $joinLines([
+            $isRakutenItem = (string) ($order['platform'] ?? '') === 'r';
+            $displayOption = $isRakutenItem
+                ? ($extraValue($itemExtra, ['SubCodeOption']) ?: (string) ($item['option'] ?? ''))
+                : (string) ($item['option'] ?? '');
+            $selectedChoice = $extraValue($itemExtra, ['selectedChoice']);
+            $titleCellText = $isRakutenItem ? $selectedChoice : (string) ($item['title'] ?? '');
+            $optionMeta = $isRakutenItem ? '' : $joinLines([
                 (string) ($item['option'] ?? ''),
                 (string) ($item['chinese_option'] ?? ''),
                 $commissionMeta,
@@ -394,9 +400,9 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                     <span class="stack-main"><?= e($item['jp_warehouse_id']) ?></span>
                     <?php if ($warehouseMeta !== ''): ?><span class="oid-sub"><?= e($warehouseMeta) ?></span><?php endif; ?>
                 </td>
-                <td><?= e($item['option']) ?></td>
-                <td colspan="2" class="stack-cell product-title-cell" title="<?= e($item['title']) ?>">
-                    <span class="stack-main"><?= e($item['title']) ?></span>
+                <td><?= e($displayOption) ?></td>
+                <td colspan="2" class="stack-cell product-title-cell" title="<?= e($titleCellText) ?>">
+                    <span class="stack-main"><?= e($titleCellText) ?></span>
                     <?php if ($optionMeta !== ''): ?><span class="oid-sub"><?= e($optionMeta) ?></span><?php endif; ?>
                 </td>
                 <td><span class="qty-val">×<?= e($item['quantity']) ?></span></td>
@@ -534,6 +540,12 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
         <?php
         $itemExtra = is_array($item['platform_extra'] ?? null) ? $item['platform_extra'] : [];
         $entryPoint = $extraValue($itemExtra, ['EntryPoint', 'entryPoint', 'product_url', 'url']);
+        $drawerOption = $isRakuten
+            ? ($extraValue($itemExtra, ['SubCodeOption']) ?: (string) ($item['option'] ?? ''))
+            : (string) ($item['option'] ?? '');
+        $drawerChoice = $isRakuten
+            ? $extraValue($itemExtra, ['selectedChoice'])
+            : $extraValue($itemExtra, ['selectedChoice', 'SubCodeOption']);
         $shipName = (string) (($customer['name'] ?? '') ?: $extraValue($orderExtra, ['ShipName', 'senderName']));
         $shipAddress1 = (string) (($customer['address'] ?? '') ?: $extraValue($orderExtra, ['ShipAddress1', 'senderAddress', 'shipping_address_1']));
         $shipAddress2 = $extraValue($orderExtra, ['ShipAddress2', 'shipping_address_2']);
@@ -602,7 +614,7 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                     <div class="drawer-form-group"><label>LineId：</label><input type="text" value="<?= e($item['line_id'] ?? '') ?>" readonly class="readonly"></div>
                     <div class="drawer-form-group"><label>ItemId：</label><input type="text" value="<?= e($item['item_code'] ?? '') ?>" readonly class="readonly"></div>
                     <div class="drawer-form-group"><label>Quantity：</label><input type="text" value="<?= e($item['quantity'] ?? '') ?>" readonly class="readonly"></div>
-                    <div class="drawer-form-group"><label>SubCodeOption：</label><input type="text" value="<?= e($item['option'] ?? '') ?>" readonly class="readonly"></div>
+                    <div class="drawer-form-group"><label>SubCodeOption：</label><input type="text" value="<?= e($drawerOption) ?>" readonly class="readonly"></div>
                     <div class="drawer-form-group"><label>OrderTime：</label><input type="text" value="<?= e($order['order_date'] ?? '') ?>" readonly class="readonly"></div>
                     <div class="drawer-form-group"><label>OrderStatus：</label><input type="text" value="<?= e($orderStatus) ?>" readonly class="readonly"></div>
                     <div class="drawer-form-group"><label>EntryPoint：</label><input type="text" value="<?= e($entryPoint) ?>" readonly class="readonly"></div>
@@ -722,8 +734,8 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                             <textarea name="chinese_option" rows="2"><?= e($item['chinese_option'] ?? '') ?></textarea>
                             <div class="drawer-readonly-note">
                                 <div><strong>商品数量：</strong><?= e($item['quantity'] ?? '-') ?></div>
-                                <div><strong>日语商品属性：</strong><?= e($item['option'] ?? '-') ?></div>
-                                <div><strong>項目・選択肢：</strong><?= e($extraValue($itemExtra, ['selectedChoice', 'SubCodeOption']) ?: '-') ?></div>
+                                <div><strong>日语商品属性：</strong><?= e($drawerOption !== '' ? $drawerOption : '-') ?></div>
+                                <div><strong>項目・選択肢：</strong><?= e($drawerChoice !== '' ? $drawerChoice : '-') ?></div>
                             </div>
                         </div>
                     </div>

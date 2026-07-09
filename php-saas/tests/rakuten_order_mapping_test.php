@@ -48,6 +48,11 @@ assert_true(str_starts_with((string) ($item['image'] ?? ''), 'https://image.raku
 assert_same($item['image'] ?? null, $item['platform_extra']['zhutu'] ?? null, 'legacy zhutu');
 assert_same('', $item['platform_extra']['skuimg'] ?? null, 'legacy skuimg');
 assert_same('', $item['main_image'] ?? null, 'main_image waits for local downloader');
+assert_same($item['platform_extra']['SubCodeOption'] ?? null, $item['option'] ?? null, 'item option keeps SubCodeOption only');
+assert_true(
+    ($item['platform_extra']['selectedChoice'] ?? '') !== '' && ($item['platform_extra']['selectedChoice'] ?? '') !== ($item['option'] ?? ''),
+    'selectedChoice remains separate from item option'
+);
 
 $legacyApiFields = [
     'OrderId',
