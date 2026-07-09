@@ -1,9 +1,11 @@
 .codegraph/
 vendor/
 composer.phar
+config/runtime_env.php
 storage/*
 !storage/reference/
 !storage/reference/no-pic-*.gif
 docs/project_id_*
 *.log
+*.rar
 .tmp-server-*.log
