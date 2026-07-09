@@ -89,6 +89,40 @@ $assertSame('采购页兼容老系统全部订单状态值但不跨货源地', [
 $jpExplicitAll = $service->filterOrdersForView($orders, 'jp', null, 'all', null, array_merge($purchaseDefaultFilters, ['status' => '__ALL__', 'all_orders' => '1']));
 $assertSame('日本仓页显式全部订单只显示日本仓订单项', [13], array_column($jpExplicitAll[0]['items'] ?? [], 'id'));
 
+$multiOrderSearch = $service->filterOrdersForView([
+    [
+        'id' => 2,
+        'platform' => 'r',
+        'platform_order_id' => 'R-SEARCH-1',
+        'imported_at' => '2026-07-06 10:00:00',
+        'order_date' => '2026-07-06 10:00:00',
+        'store' => '测试店铺',
+        'customer' => ['name' => '客户一', 'phone' => ''],
+        'items' => [['id' => 21, 'source_type' => 'pending', 'purchase_status' => '未处理的订单', 'item_code' => 'SKU-21', 'title' => '商品一']],
+    ],
+    [
+        'id' => 3,
+        'platform' => 'r',
+        'platform_order_id' => 'R-SEARCH-2',
+        'imported_at' => '2026-07-06 10:00:00',
+        'order_date' => '2026-07-06 10:00:00',
+        'store' => '测试店铺',
+        'customer' => ['name' => '客户二', 'phone' => ''],
+        'items' => [['id' => 31, 'source_type' => 'pending', 'purchase_status' => '未处理的订单', 'item_code' => 'SKU-31', 'title' => '商品二']],
+    ],
+    [
+        'id' => 4,
+        'platform' => 'r',
+        'platform_order_id' => 'R-SEARCH-3',
+        'imported_at' => '2026-07-06 10:00:00',
+        'order_date' => '2026-07-06 10:00:00',
+        'store' => '测试店铺',
+        'customer' => ['name' => '客户三', 'phone' => ''],
+        'items' => [['id' => 41, 'source_type' => 'pending', 'purchase_status' => '未处理的订单', 'item_code' => 'SKU-41', 'title' => '商品三']],
+    ],
+], 'platform', 'r', 'all', 'R-SEARCH-1 R-SEARCH-3', array_merge($platformDefaultFilters, ['status' => '__ALL__', 'all_orders' => '1']));
+$assertSame('订单号搜索支持空格分隔多个订单号', ['R-SEARCH-1', 'R-SEARCH-3'], array_column($multiOrderSearch, 'platform_order_id'));
+
 if ($failures !== []) {
     fwrite(STDERR, "Order purchase status visibility test FAILED:\n - " . implode("\n - ", $failures) . "\n");
     exit(1);

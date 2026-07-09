@@ -21,7 +21,7 @@ $orderView = 'platform';
 $returnUrl = '/orders?tenant=erp&view=platform';
 $batchFormId = 'batch-platform';
 $seq = 1;
-$stores = [];
+$stores = [['id' => 10, 'platform' => 'y', 'name' => '测试店铺', 'short' => '测店']];
 $statusOptions = ['未处理的订单', '国内采购-准备'];
 $jpStockStatusOptions = ['日本仓待处理'];
 $currentUser = ['permissions' => ['订单查看', '订单编辑', '货源改判']];
@@ -38,6 +38,7 @@ $can1688Logistics = true;
 $receiptCityOptions = ['义乌', '深圳威通'];
 $order = [
     'id' => 100,
+    'store_id' => 10,
     'platform' => 'y',
     'platform_order_id' => 'Y-SOURCE-100',
     'order_date' => '2026-07-06 10:00:00',
@@ -53,6 +54,7 @@ $order = [
         'jp_warehouse_id' => '',
         'item_management_id' => '',
         'image' => '/assets/img/placeholder.png',
+        'main_image' => 'storage/tenants/erp/images/orders/100/200/main.jpg',
         'sku_image' => '/storage/tenants/erp/images/orders/100/200/sku.png',
         'title' => '测试商品',
         'option' => '黑色',
@@ -104,7 +106,20 @@ ob_start();
 require $basePath . '/app/Views/tenant/partials/order_block.php';
 $requestOnlyHtml = (string) ob_get_clean();
 
+$skuOnlyOrder = $order;
+$skuOnlyOrder['items'][0]['image'] = '/assets/no-image.svg';
+$skuOnlyOrder['items'][0]['main_image'] = '';
+$skuOnlyOrder['items'][0]['sku_image'] = 'storage/tenants/erp/images/orders/100/200/sku-only.png';
+$order = $skuOnlyOrder;
+ob_start();
+require $basePath . '/app/Views/tenant/partials/order_block.php';
+$skuOnlyHtml = (string) ob_get_clean();
+
 $assert('列表展示国内采购货源地标签', str_contains($html, '<span class="src-tag cn">国内采购</span>'));
+$assert('订单图片通过系统入口展示', str_contains($html, 'class="order-img" src="/orders/item-image?tenant=erp&amp;order_id=100&amp;item_id=200"'));
+$assert('订单图片链接使用系统入口', str_contains($html, 'class="order-image-link" href="/orders/item-image?tenant=erp&amp;order_id=100&amp;item_id=200"'));
+$assert('缺图时不使用商品标题作为图片替代文本', str_contains($html, '<img class="order-img" src="/orders/item-image?tenant=erp&amp;order_id=100&amp;item_id=200" alt=""'));
+$assert('订单列表没有主图时仍走系统图片入口兜底', str_contains($skuOnlyHtml, 'class="order-img" src="/orders/item-image?tenant=erp&amp;order_id=100&amp;item_id=200"'));
 $assert('列表不出现单项货源地修改表单', !str_contains($html, 'action="/orders/source"'));
 $assert('列表不出现单项 source 下拉', !str_contains($html, 'name="source" aria-label="货源地"'));
 $assert('列表编辑抽屉不提交 source_type', !str_contains($html, 'name="source_type"'));
@@ -113,9 +128,11 @@ $assert('平台订单国际物流默认收起', str_contains($html, 'otable sec-
 $assert('订单栏合并客人姓名和片假名表头', str_contains($html, '<th class="c3">客人姓名/片假名</th>'));
 $assert('订单栏不再单独显示收件人表头', !str_contains($html, '<th class="c3">收件人</th>'));
 $assert('订单栏不再单独显示假名表头', !str_contains($html, '<th class="c4">假名</th>'));
-$assert('订单栏地址列加宽', str_contains($html, '<th class="c4" colspan="4">地址</th>'));
+$assert('订单栏地址列让出宽度给邮箱', str_contains($html, '<th class="c4" colspan="3">地址</th>') && str_contains($html, '<th class="c8" colspan="2">邮箱</th>'));
 $assert('订单栏不再显示付款状态表头', !str_contains($html, '<th class="c12">付款状态</th>'));
 $assert('订单栏不再显示付款日期表头', !str_contains($html, '<th class="c13">付款日期</th>'));
+$assert('商品表头按审查顺序显示订单明细和店铺', str_contains($html, '订单ID / 明细ID') && str_contains($html, '订单时间 / 店铺') && !str_contains($html, '订单ID / 店铺') && !str_contains($html, '订单时间 / 明细ID'));
+$assert('店铺展示为缩写和全称', str_contains($html, '测店 / 测试店铺') && !str_contains($html, '店铺番号'));
 
 $assert('商品价格列改为单价表头', str_contains($html, '<th class="c11">单价</th>'));
 $assert('商品金额列显示总价请求金额表头', str_contains($html, '<th class="c13">总价/请求金额</th>'));
@@ -161,6 +178,9 @@ $assert('编辑抽屉1688刷新异步回填字段并保持抽屉', str_contains(
 
 $routes = (string) file_get_contents($basePath . '/app/Http/routes.php');
 $assert('1688单条刷新路由已注册', str_contains($routes, "post('/orders/1688/refresh'") && str_contains($routes, 'refresh1688Order'));
+$assert('订单图片查询入口已注册以避开远程图片直连', str_contains($routes, "get('/orders/item-image'") && str_contains($routes, 'serveItemImage'));
+$assert('订单图片下载路由已注册', str_contains($routes, "post('/orders/images/download'") && str_contains($routes, 'downloadProductImages'));
+$assert('缺图占位资源存在', is_file($basePath . '/public/assets/no-image.svg'));
 
 if ($failures !== []) {
     fwrite(STDERR, "Order list source readonly test FAILED:\n - " . implode("\n - ", $failures) . "\n");

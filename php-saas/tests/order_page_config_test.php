@@ -191,7 +191,7 @@ $toolsByKey = static function (array $tools): array {
 };
 
 $adminTools = $toolMap($registry->exportToolsFor('r', ['role' => '公司管理员', 'is_company_admin' => true]));
-foreach (['sync_orders', 'platform_orders_import', 'purchase_import', 'shipping_import', 'shipment_export', 'platform_export', 'finance_export', 'customers_export', 'delivery_notice_export', 'xizhen_delivery_export', 'export_template'] as $key) {
+foreach (['sync_orders', 'platform_orders_import', 'product_image_download', 'purchase_import', 'shipping_import', 'shipment_export', 'platform_export', 'finance_export', 'customers_export', 'delivery_notice_export', 'xizhen_delivery_export', 'export_template'] as $key) {
     $checkTrue("公司管理员可见 {$key}", $adminTools[$key] ?? false);
 }
 
@@ -202,6 +202,7 @@ $visibleToolKeys = array_values(array_map(
 $check('可见导出工具顺序', $visibleToolKeys, [
     'sync_orders',
     'platform_orders_import',
+    'product_image_download',
     'purchase_import',
     'shipping_import',
     'shipment_export',
@@ -213,7 +214,7 @@ $check('可见导出工具顺序', $visibleToolKeys, [
     'export_template',
 ]);
 $adminToolsByKey = $toolsByKey($registry->exportToolsFor('r', ['role' => '公司管理员', 'is_company_admin' => true]));
-foreach (['platform_orders_import', 'purchase_import', 'shipping_import', 'shipment_export', 'platform_export', 'export_template'] as $key) {
+foreach (['platform_orders_import', 'product_image_download', 'purchase_import', 'shipping_import', 'shipment_export', 'platform_export', 'export_template'] as $key) {
     $check("常用工具 {$key} 分组", $adminToolsByKey[$key]['group'] ?? null, 'primary');
 }
 foreach (['finance_export', 'customers_export', 'delivery_notice_export', 'xizhen_delivery_export'] as $key) {
@@ -223,6 +224,7 @@ foreach (['finance_export', 'customers_export', 'delivery_notice_export', 'xizhe
 $importUserTools = $toolMap($registry->exportToolsFor('r', ['role' => '客服', 'permissions' => ['导入导出']]));
 $checkTrue('导入导出用户可见同步订单', $importUserTools['sync_orders'] ?? false);
 $checkTrue('导入导出用户可见平台订单导入', $importUserTools['platform_orders_import'] ?? false);
+$checkTrue('导入导出用户可见下载订单图', $importUserTools['product_image_download'] ?? false);
 $checkTrue('导入导出用户可见国际运单导入', $importUserTools['shipping_import'] ?? false);
 $checkTrue('导入导出用户可见发货表导出', $importUserTools['shipment_export'] ?? false);
 $checkFalse('导入导出用户不可见财务表导出', $importUserTools['finance_export'] ?? false);
@@ -232,6 +234,7 @@ $buyerRakutenTools = $toolMap($registry->exportToolsFor('r', ['role' => '采购'
 $checkTrue('采购角色有导入导出时乐天可见采购单导入', $buyerRakutenTools['purchase_import'] ?? false);
 $checkTrue('采购角色有导入导出时沿用现有权限可见同步订单', $buyerRakutenTools['sync_orders'] ?? false);
 $checkTrue('采购角色有导入导出时可见平台订单导入', $buyerRakutenTools['platform_orders_import'] ?? false);
+$checkTrue('采购角色有导入导出时可见下载订单图', $buyerRakutenTools['product_image_download'] ?? false);
 $buyerPurchaseOnlyTools = $toolMap($registry->exportToolsFor('r', ['role' => '采购', 'permissions' => ['采购导入导出']]));
 $checkFalse('采购角色仅采购导入导出无导入导出不可见采购单导入', $buyerPurchaseOnlyTools['purchase_import'] ?? false);
 $buyerMercariTools = $toolMap($registry->exportToolsFor('m', ['role' => '采购', 'permissions' => []]));
@@ -256,6 +259,7 @@ $checkTrue('客户资料用户有导入导出时可见发货表导出', $custome
 
 $editorTools = $toolMap($registry->exportToolsFor('r', ['role' => '客服', 'permissions' => ['订单编辑']]));
 $checkTrue('订单编辑用户可见同步订单', $editorTools['sync_orders'] ?? false);
+$checkTrue('订单编辑用户可见下载订单图', $editorTools['product_image_download'] ?? false);
 $checkFalse('订单编辑用户不可见平台订单导入', $editorTools['platform_orders_import'] ?? false);
 
 $noImportExportTools = $toolMap($registry->exportToolsFor('r', [
@@ -266,6 +270,7 @@ $checkTrue('无导入导出但有订单编辑仍可见同步订单', $noImportEx
 foreach (['platform_orders_import', 'purchase_import', 'shipping_import', 'shipment_export', 'platform_export', 'finance_export', 'customers_export', 'delivery_notice_export', 'xizhen_delivery_export', 'export_template'] as $key) {
     $checkFalse("无导入导出权限用户不可见导入导出工具 {$key}", $noImportExportTools[$key] ?? false);
 }
+$checkTrue('无导入导出但有订单编辑仍可见下载订单图', $noImportExportTools['product_image_download'] ?? false);
 
 $plainTools = $toolMap($registry->exportToolsFor('r', [
     'role' => '客服',

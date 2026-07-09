@@ -47,7 +47,7 @@ $tenantUrl = static fn (string $path, array $params = []): string => $path . '?'
                 <?php $platformUrl = $tenantUrl('/orders', ['view' => 'platform', 'platform' => (string) ($item['code'] ?? '')]); ?>
                 <a class="<?= ($active ?? '') === 'platform' && ($_GET['platform'] ?? '') === $item['code'] ? 'active' : '' ?> <?= $item['locked'] ? 'locked' : '' ?>"
                    href="<?= e($item['locked'] ? '#' : $platformUrl) ?>">
-                    <span class="dot" style="background: <?= e($item['color']) ?>"></span>
+                    <span class="dot platform-nav-tag" style="background: <?= e($item['color']) ?>"></span>
                     <?= e($item['name']) ?>
                     <?php if ($item['locked']): ?><span class="lock">锁</span><?php endif; ?>
                 </a>

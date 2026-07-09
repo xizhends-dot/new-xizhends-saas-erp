@@ -9,9 +9,6 @@ if (!defined('BASE_PATH')) {
 require $basePath . '/vendor/autoload.php';
 require $basePath . '/app/Core/helpers.php';
 
-$childScript = sys_get_temp_dir() . '/xizhen-order-batch-source-' . bin2hex(random_bytes(6)) . '.php';
-$resultFile = sys_get_temp_dir() . '/xizhen-order-batch-source-' . bin2hex(random_bytes(6)) . '.json';
-
 $code = <<<'PHP'
 <?php
 
@@ -19,6 +16,7 @@ declare(strict_types=1);
 
 $basePath = %BASE_PATH%;
 $resultFile = %RESULT_FILE%;
+$post = %POST_DATA%;
 if (!defined('BASE_PATH')) {
     define('BASE_PATH', $basePath);
 }
@@ -72,7 +70,7 @@ final class BatchSourceTestStore implements StoreInterface
     public function updateStore(string $tenantKey, int $storeId, array $data): void {}
     public function mergeStoreApiConfig(string $tenantKey, int $storeId, array $patch, string $apiStatus = '已配置'): void {}
     public function users(string $tenantKey): array { return [$this->user($tenantKey, 1)]; }
-    public function user(string $tenantKey, int $userId): ?array { return ['id' => 1, 'username' => 'admin', 'name' => '管理员', 'role' => '客服', 'status' => 'active', 'permissions' => ['货源改判'], 'stores' => ['全部店铺'], 'is_company_admin' => false]; }
+    public function user(string $tenantKey, int $userId): ?array { return ['id' => 1, 'username' => 'admin', 'name' => '管理员', 'role' => '客服', 'status' => 'active', 'permissions' => ['货源改判', '批量操作'], 'stores' => ['全部店铺'], 'is_company_admin' => false]; }
     public function tenantUserByUsername(string $tenantKey, string $username): ?array { return $this->user($tenantKey, 1); }
     public function updateTenantUserPassword(string $tenantKey, int $userId, string $passwordHash): void {}
     public function touchTenantUserLogin(string $tenantKey, int $userId): void {}
@@ -140,13 +138,7 @@ session_id('batch-source-test-' . bin2hex(random_bytes(3)));
 session_start();
 $_SESSION['xizhen_auth']['tenants']['erp'] = ['id' => 1, 'username' => 'admin'];
 $_GET = ['tenant' => 'erp'];
-$_POST = [
-    'batch_action' => 'set_source',
-    'item_ids' => ['1001', '1002'],
-    'order_ids' => [],
-    'source' => 'cn_purchase',
-    'return' => '/orders?tenant=erp&view=platform',
-];
+$_POST = $post;
 $_SERVER['REQUEST_METHOD'] = 'POST';
 $_SERVER['REQUEST_URI'] = '/orders/batch?tenant=erp';
 $_SERVER['HTTP_HOST'] = '127.0.0.1';
@@ -165,21 +157,31 @@ $controller = new OrderController($store, new View($basePath . '/app/Views'), ne
 $controller->batchOrders();
 PHP;
 
-$code = str_replace(
-    ['%BASE_PATH%', '%RESULT_FILE%'],
-    [var_export($basePath, true), var_export($resultFile, true)],
-    $code
-);
-file_put_contents($childScript, $code);
+/**
+ * @param array<string, mixed> $post
+ * @return array{exit_code: int, output: array<int, string>, result: mixed}
+ */
+$runCase = static function (array $post) use ($basePath, $code): array {
+    $childScript = sys_get_temp_dir() . '/xizhen-order-batch-source-' . bin2hex(random_bytes(6)) . '.php';
+    $resultFile = sys_get_temp_dir() . '/xizhen-order-batch-source-' . bin2hex(random_bytes(6)) . '.json';
+    $caseCode = str_replace(
+        ['%BASE_PATH%', '%RESULT_FILE%', '%POST_DATA%'],
+        [var_export($basePath, true), var_export($resultFile, true), var_export($post, true)],
+        $code
+    );
+    file_put_contents($childScript, $caseCode);
 
-$php = PHP_BINARY ?: 'php';
-$output = [];
-$exitCode = 0;
-exec('"' . $php . '" ' . escapeshellarg($childScript) . ' 2>&1', $output, $exitCode);
-$result = is_file($resultFile) ? json_decode((string) file_get_contents($resultFile), true) : null;
+    $php = PHP_BINARY ?: 'php';
+    $output = [];
+    $exitCode = 0;
+    exec('"' . $php . '" ' . escapeshellarg($childScript) . ' 2>&1', $output, $exitCode);
+    $result = is_file($resultFile) ? json_decode((string) file_get_contents($resultFile), true) : null;
 
-@unlink($childScript);
-@unlink($resultFile);
+    @unlink($childScript);
+    @unlink($resultFile);
+
+    return ['exit_code' => $exitCode, 'output' => $output, 'result' => $result];
+};
 
 $failures = [];
 $assertSame = static function (string $label, mixed $expected, mixed $actual) use (&$failures): void {
@@ -193,18 +195,44 @@ $assert = static function (string $label, bool $ok) use (&$failures): void {
     }
 };
 
-$assertSame('子进程退出码', 0, $exitCode);
-$assert('子进程写出结果', is_array($result));
-$changes = is_array($result) ? ($result['changes'] ?? []) : [];
-$assertSame('批量改货源地调用次数', 2, count($changes));
-$assertSame('第一条 item 走 changeItemSource', ['tenant' => 'erp', 'item_id' => 1001, 'source' => 'cn_purchase'], $changes[0] ?? null);
-$assertSame('第二条 item 走 changeItemSource', ['tenant' => 'erp', 'item_id' => 1002, 'source' => 'cn_purchase'], $changes[1] ?? null);
-$assertSame('批量改货源地 303 跳转状态码', 303, (int) ($result['status'] ?? 0));
+$cases = [
+    '明细勾选' => [
+        'batch_action' => 'set_source',
+        'item_ids' => ['1001', '1002'],
+        'order_ids' => [],
+        'source' => 'cn_purchase',
+        'return' => '/orders?tenant=erp&view=platform',
+    ],
+    '订单勾选' => [
+        'batch_action' => 'set_source',
+        'item_ids' => [],
+        'order_ids' => ['10'],
+        'source' => 'jp_stock',
+        'return' => '/orders?tenant=erp&view=platform',
+    ],
+];
+
+$caseOutputs = [];
+foreach ($cases as $label => $post) {
+    $case = $runCase($post);
+    $caseOutputs[$label] = $case['output'];
+    $result = $case['result'];
+    $source = (string) ($post['source'] ?? '');
+    $assertSame($label . '子进程退出码', 0, $case['exit_code']);
+    $assert($label . '子进程写出结果', is_array($result));
+    $changes = is_array($result) ? ($result['changes'] ?? []) : [];
+    $assertSame($label . '批量改货源地调用次数', 2, count($changes));
+    $assertSame($label . '第一条 item 走 changeItemSource', ['tenant' => 'erp', 'item_id' => 1001, 'source' => $source], $changes[0] ?? null);
+    $assertSame($label . '第二条 item 走 changeItemSource', ['tenant' => 'erp', 'item_id' => 1002, 'source' => $source], $changes[1] ?? null);
+    $assertSame($label . '批量改货源地 303 跳转状态码', 303, (int) ($result['status'] ?? 0));
+}
 
 if ($failures !== []) {
     fwrite(STDERR, "Order batch source test FAILED:\n - " . implode("\n - ", $failures) . "\n");
-    if ($output !== []) {
-        fwrite(STDERR, "\nChild output:\n" . implode("\n", $output) . "\n");
+    foreach ($caseOutputs as $label => $output) {
+        if ($output !== []) {
+            fwrite(STDERR, "\n{$label} child output:\n" . implode("\n", $output) . "\n");
+        }
     }
     exit(1);
 }

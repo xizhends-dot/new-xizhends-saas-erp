@@ -425,12 +425,21 @@ SQL);
         if ($lineTotal <= 0 && $unitPrice > 0) {
             $lineTotal = ($unitPrice * max(1, $quantity)) + $postage + $payCharge;
         }
+        $sourceType = (string) ($item['source_type'] ?? 'pending');
+        if (!in_array($sourceType, ['cn_purchase', 'jp_stock', 'pending'], true)) {
+            $sourceType = 'pending';
+        }
+        $mainImage = trim((string) ($item['image'] ?? $item['main_image'] ?? ''));
+        if ($this->isRemoteImage($mainImage)) {
+            $extra['zhutu'] = (string) ($extra['zhutu'] ?? $mainImage);
+            $mainImage = '';
+        }
 
         return [
             'order_id' => $orderId,
             'order_detail_id' => trim((string) ($item['order_detail_id'] ?? '')),
             'line_id' => trim((string) (($item['line_id'] ?? '') !== '' ? $item['line_id'] : (string) ($index + 1))),
-            'source_type' => in_array(($item['source_type'] ?? 'pending'), ['cn_purchase', 'jp_stock', 'pending'], true) ? (string) $item['source_type'] : 'pending',
+            'source_type' => $sourceType,
             'purchase_status' => trim((string) ($item['purchase_status'] ?? '未处理的订单')),
             'item_code' => trim((string) ($item['item_code'] ?? '')),
             'lot_number' => trim((string) ($item['lot_number'] ?? '')),
@@ -449,10 +458,16 @@ SQL);
             'amount' => $this->moneyValue($item['amount'] ?? 0),
             'item_comment' => trim((string) ($item['comment'] ?? $item['item_comment'] ?? '')),
             'caigou_user' => trim((string) ($item['buyer'] ?? $item['caigou_user'] ?? '')),
-            'main_image' => trim((string) ($item['image'] ?? $item['main_image'] ?? '')),
+            'main_image' => $mainImage,
             'sku_image' => trim((string) ($item['sku_image'] ?? '')),
             'platform_extra' => $extra,
         ];
+    }
+
+
+    private function isRemoteImage(string $path): bool
+    {
+        return preg_match('/^https?:\/\//i', $path) === 1;
     }
 
 

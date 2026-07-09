@@ -242,6 +242,12 @@ a { color: inherit; text-decoration: none; }
   display: inline-block;
 }
 
+.platform-nav-tag {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+}
+
 .lock {
   margin-left: auto;
   font-size: 11px;
@@ -1240,6 +1246,105 @@ button.order-tool-button:disabled {
   min-width: 0;
   color: #64748b;
   font-size: 11px;
+}
+
+.sync-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, .46);
+  padding: 18px;
+}
+
+.sync-modal-backdrop.show {
+  display: flex;
+}
+
+.sync-modal {
+  width: min(520px, 94vw);
+  background: #fff;
+  border: 1px solid #86c3a7;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, .22);
+}
+
+.sync-modal-title {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #047857;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  padding: 7px 14px;
+}
+
+.sync-modal-body {
+  padding: 14px 30px 16px;
+}
+
+.sync-modal-status {
+  min-height: 24px;
+  color: #064e3b;
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.35;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.sync-modal-progress {
+  width: min(400px, 100%);
+  height: 14px;
+  overflow: hidden;
+  background: #e5e7eb;
+  border-radius: 4px;
+  margin: 0 auto 10px;
+}
+
+.sync-modal-progress span {
+  display: block;
+  width: 24%;
+  height: 100%;
+  background: #0e8ac6;
+  border-radius: inherit;
+  transition: width .22s ease;
+}
+
+.sync-modal-log {
+  width: 100%;
+  min-height: 126px;
+  resize: vertical;
+  border: 1px solid #9aa4b2;
+  background: #f8fafc;
+  color: #111827;
+  padding: 6px 8px;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.sync-modal-close {
+  display: block;
+  min-width: 86px;
+  min-height: 30px;
+  margin: 14px auto 0;
+  border: 1px solid #047857;
+  background: #059669;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sync-modal-close:hover {
+  background: #047857;
 }
 
 .order-tool-empty {
@@ -2382,6 +2487,7 @@ label.ck.warn { color: #475569; }
   max-height: 60px;
   object-fit: contain;
   background: #fff;
+  border: 1px solid #e5e7eb;
 }
 
 .img-cell {
@@ -2403,6 +2509,16 @@ label.ck.warn { color: #475569; }
 .order-image-link:hover .order-img {
   border-color: #64748b;
   box-shadow: 0 2px 8px rgba(15, 23, 42, .18);
+}
+
+.order-page .address-cell,
+.order-page .mail-cell {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.order-page .mail-cell {
+  word-break: normal;
 }
 
 .order-image-preview {

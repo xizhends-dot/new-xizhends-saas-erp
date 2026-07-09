@@ -4036,12 +4036,12 @@ final class JsonStore implements StoreInterface
         return [
             'admins' => $this->seedAdmins(),
             'platforms' => [
-                ['code' => 'r', 'name' => 'Rakuten', 'short' => 'Rakuten', 'color' => '#2563eb'],
-                ['code' => 'y', 'name' => 'Yahoo', 'short' => 'Yahoo', 'color' => '#ef4444'],
-                ['code' => 'w', 'name' => 'Wowma', 'short' => 'Wowma', 'color' => '#14b8a6'],
-                ['code' => 'm', 'name' => 'Mercari', 'short' => 'Mercari', 'color' => '#06b6d4'],
-                ['code' => 'q', 'name' => 'Qoo10', 'short' => 'Qoo10', 'color' => '#8b5cf6'],
-                ['code' => 'yp', 'name' => '雅虎拍卖', 'short' => 'Y Auction', 'color' => '#64748b'],
+                ['code' => 'r', 'name' => 'Rakuten', 'short' => 'Rakuten', 'color' => '#bf0000'],
+                ['code' => 'y', 'name' => 'Yahoo', 'short' => 'Yahoo', 'color' => '#ff0033'],
+                ['code' => 'w', 'name' => 'Wowma', 'short' => 'Wowma', 'color' => '#ff6a00'],
+                ['code' => 'm', 'name' => 'Mercari', 'short' => 'Mercari', 'color' => '#ff0211'],
+                ['code' => 'q', 'name' => 'Qoo10', 'short' => 'Qoo10', 'color' => '#527fef'],
+                ['code' => 'yp', 'name' => '雅虎拍卖', 'short' => 'Y Auction', 'color' => '#f6a400'],
             ],
             'tenants' => [
                 [

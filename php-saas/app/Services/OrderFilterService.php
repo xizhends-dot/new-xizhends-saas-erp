@@ -88,7 +88,7 @@ final class OrderFilterService
                         $item['tabaono'] ?? '',
                     ]), $copy['items'])),
                 ]);
-                if (!str_contains(strtolower($haystack), strtolower($keyword))) {
+                if (!$this->containsFilterValue($haystack, $keyword)) {
                     continue;
                 }
             }

@@ -140,6 +140,27 @@ document.addEventListener('submit', function (event) {
     }
   }
 
+  if (form instanceof HTMLFormElement && form.classList.contains('order-tool-sync')) {
+    var submitter = event.submitter;
+    if (!(submitter instanceof HTMLElement) || submitter.closest('.order-tool-sync') === form) {
+      showSyncModal({
+        title: form.getAttribute('data-sync-modal-title') || '批量同步平台订单 — 精品【XIZHENDS】',
+        status: '正在同步订单，请等待页面返回结果...',
+        log: '已提交同步请求，正在连接平台 API。'
+      });
+    }
+  }
+
+  if (form instanceof HTMLFormElement && form.matches('.batch-form')) {
+    var batchSubmitter = event.submitter;
+    if (batchSubmitter instanceof HTMLElement && batchSubmitter.getAttribute('name') === 'batch_action' && batchSubmitter.getAttribute('value') === 'delete_orders') {
+      if (!confirmBatchDelete(form, batchSubmitter)) {
+        event.preventDefault();
+        return;
+      }
+    }
+  }
+
   if (form instanceof HTMLFormElement && form.id === 'purchase-status-form') {
     serializePurchaseStatuses(form);
     return;
@@ -163,6 +184,103 @@ document.addEventListener('submit', function (event) {
     event.preventDefault();
   }
 });
+
+document.addEventListener('DOMContentLoaded', function () {
+  var page = document.querySelector('.order-page[data-sync-message]');
+  if (!(page instanceof HTMLElement)) return;
+  var message = page.getAttribute('data-sync-message') || '';
+  if (message === '') return;
+  showSyncModal({
+    title: page.getAttribute('data-sync-title') || '批量同步平台订单 — 精品【XIZHENDS】',
+    status: '同步完成',
+    log: message,
+    done: true
+  });
+  if (window.history && window.history.replaceState) {
+    var url = new URL(window.location.href);
+    url.searchParams.delete('sync_message');
+    url.searchParams.delete('message');
+    window.history.replaceState({}, document.title, url.toString());
+  }
+});
+
+function showSyncModal(options) {
+  options = options || {};
+  var modal = document.querySelector('[data-sync-modal]');
+  if (!(modal instanceof HTMLElement)) {
+    modal = document.createElement('div');
+    modal.className = 'sync-modal-backdrop';
+    modal.setAttribute('data-sync-modal', '1');
+    modal.innerHTML = [
+      '<div class="sync-modal" role="dialog" aria-modal="true">',
+      '<div class="sync-modal-title" data-sync-modal-title></div>',
+      '<div class="sync-modal-body">',
+      '<div class="sync-modal-status" data-sync-modal-status></div>',
+      '<div class="sync-modal-progress"><span data-sync-modal-progress></span></div>',
+      '<textarea class="sync-modal-log" data-sync-modal-log readonly></textarea>',
+      '<button class="sync-modal-close" type="button" data-sync-modal-close>关闭</button>',
+      '</div>',
+      '</div>'
+    ].join('');
+    document.body.appendChild(modal);
+    modal.addEventListener('click', function (event) {
+      var target = event.target;
+      if (target instanceof HTMLElement && target.hasAttribute('data-sync-modal-close')) {
+        modal.classList.remove('show');
+      }
+    });
+  }
+
+  var title = modal.querySelector('[data-sync-modal-title]');
+  var status = modal.querySelector('[data-sync-modal-status]');
+  var progress = modal.querySelector('[data-sync-modal-progress]');
+  var log = modal.querySelector('[data-sync-modal-log]');
+  if (title) title.textContent = options.title || '批量同步平台订单 — 精品【XIZHENDS】';
+  if (status) status.textContent = options.status || '正在同步订单...';
+  if (progress) progress.style.width = options.done ? '100%' : '24%';
+  if (log) log.value = options.log || '';
+  modal.classList.add('show');
+}
+
+function confirmBatchDelete(form, button) {
+  var selected = 0;
+  Array.prototype.forEach.call(form.elements, function (field) {
+    if (!(field instanceof HTMLInputElement) || !field.checked) return;
+    if (field.name === 'order_ids[]' || field.name === 'item_ids[]') {
+      selected += 1;
+    }
+  });
+  if (selected <= 0) {
+    alert('请先勾选要删除的订单。');
+    return false;
+  }
+
+  var challenge = button.getAttribute('data-delete-challenge') || '';
+  var promptText = challenge !== ''
+    ? '批量删除不可恢复。请输入验证答案：' + challenge + ' = ?'
+    : '批量删除不可恢复。请输入 DELETE 确认删除。';
+  var answer = window.prompt(promptText, '');
+  if (answer === null) {
+    return false;
+  }
+  answer = answer.trim();
+  if (challenge === '' && answer !== 'DELETE') {
+    alert('验证失败，已取消批量删除。');
+    return false;
+  }
+  var math = challenge.match(/^(\d+)\s*\+\s*(\d+)$/);
+  if (math && parseInt(answer, 10) !== parseInt(math[1], 10) + parseInt(math[2], 10)) {
+    alert('验证答案错误，已取消批量删除。');
+    return false;
+  }
+
+  var answerInput = form.querySelector('input[name="delete_challenge_answer"]');
+  if (answerInput instanceof HTMLInputElement) {
+    answerInput.value = answer;
+  }
+
+  return confirm('最后确认：确定要批量删除已选订单吗？');
+}
 
 function refreshOrderSelection(page) {
   if (!(page instanceof HTMLElement)) return;

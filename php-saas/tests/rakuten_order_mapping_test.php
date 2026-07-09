@@ -47,6 +47,7 @@ assert_same('未处理的订单', $item['purchase_status'] ?? null, 'item purcha
 assert_true(str_starts_with((string) ($item['image'] ?? ''), 'https://image.rakuten.co.jp/testshop/cabinet/main/'), 'item main image');
 assert_same($item['image'] ?? null, $item['platform_extra']['zhutu'] ?? null, 'legacy zhutu');
 assert_same('', $item['platform_extra']['skuimg'] ?? null, 'legacy skuimg');
+assert_same('', $item['main_image'] ?? null, 'main_image waits for local downloader');
 
 $legacyApiFields = [
     'OrderId',

@@ -8,7 +8,22 @@ $advancedId = 'adv-' . $orderView;
 $platformLabel = $platform ? ($platformNames[$platform] ?? $platform) : '全部平台';
 $resultLabel = $orderView === 'jp' ? '件待发' : $resultUnit . '结果';
 $filters = $filters ?? [];
-$returnUrl = $_SERVER['REQUEST_URI'] ?? '/orders?tenant=' . $tenantKey;
+$currentRequestUri = $_SERVER['REQUEST_URI'] ?? '/orders?tenant=' . $tenantKey;
+$returnUrlWithoutNotice = static function (string $url): string {
+    $parts = parse_url($url);
+    if (!is_array($parts)) {
+        return $url;
+    }
+
+    $path = (string) ($parts['path'] ?? '/orders');
+    parse_str((string) ($parts['query'] ?? ''), $params);
+    unset($params['sync_message'], $params['message']);
+    $query = http_build_query($params);
+
+    return $path . ($query !== '' ? '?' . $query : '');
+};
+$returnUrl = $returnUrlWithoutNotice($currentRequestUri);
+$deleteChallenge = is_array($deleteChallenge ?? null) ? $deleteChallenge : ['question' => '', 'answer' => ''];
 $batchFormId = 'batch-' . $orderView;
 $canEditOrders = (bool) ($canEditOrders ?? false);
 $canEditPurchase = (bool) ($canEditPurchase ?? false);
@@ -42,7 +57,11 @@ $platformSyncServices = is_array($platformSyncServices ?? null) ? $platformSyncS
 $currentPlatform = (string) ($platform ?? '');
 $platformSyncName = $currentPlatform !== '' ? (string) ($platformSyncServices[$currentPlatform] ?? '') : '';
 $platformSyncStores = $platformSyncName !== '' ? array_values(array_filter($stores, static fn (array $store): bool => ($store['platform'] ?? '') === $currentPlatform)) : [];
+$platformSyncModalTitle = $platformSyncName !== ''
+    ? '批量同步 ' . $platformSyncName . ' 订单 — 精品【XIZHENDS】'
+    : '批量同步平台订单 — 精品【XIZHENDS】';
 $message = trim((string) ($_GET['message'] ?? ''));
+$syncMessage = !empty($_GET['sync_message']) ? $message : '';
 $hiddenFilters = [
     'tenant' => $tenantKey,
     'view' => $orderView,
@@ -279,6 +298,12 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
         <?php
         return;
     }
+    if ($method === 'post' && $action === '/orders/images/download') {
+        ?>
+        <button class="order-tool-action" type="submit" form="product-image-download-form"><span><?= e($label) ?></span><em>补齐缺失主图</em></button>
+        <?php
+        return;
+    }
     if ($method === 'post') {
         ?>
         <button class="order-tool-action" type="submit" name="type" value="<?= e((string) ($tool['type'] ?? '')) ?>" form="order-export-form"><span><?= e($label) ?></span><em><?= e($desc) ?></em></button>
@@ -290,7 +315,7 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
     <?php
 };
 ?>
-<div class="order-page">
+<div class="order-page"<?= $syncMessage !== '' ? ' data-sync-message="' . e($syncMessage) . '"' : '' ?> data-sync-title="<?= e($platformSyncModalTitle) ?>">
     <div class="page-head compact-head">
         <h1><?= e($activeTitle) ?> <span class="plat-tag"><?= e($orderView === 'jp' ? 'JP 仓库现货' : $platformLabel) ?></span></h1>
     </div>
@@ -386,7 +411,7 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
             <div class="order-tool-list">
                 <?php if ($syncTool !== null): ?>
                     <?php if ($orderView === 'platform' && $platformSyncName !== '' && $platformSyncStores): ?>
-                        <form class="order-tool-row order-tool-form order-tool-sync" method="post" action="<?= e((string) ($syncTool['action'] ?? '/orders/platform/sync')) ?>" <?= $currentPlatform === 'y' ? 'data-confirm="Yahoo 平台订单同步需要在指定 IP 环境下执行。确认当前网络符合要求后再继续同步？"' : '' ?>>
+                        <form class="order-tool-row order-tool-form order-tool-sync" method="post" action="<?= e((string) ($syncTool['action'] ?? '/orders/platform/sync')) ?>" data-sync-modal-title="<?= e($platformSyncModalTitle) ?>" <?= $currentPlatform === 'y' ? 'data-confirm="Yahoo 平台订单同步需要在指定 IP 环境下执行。确认当前网络符合要求后再继续同步？"' : '' ?>>
                             <?= csrf_field() ?>
                             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
                             <input type="hidden" name="return" value="<?= e($returnUrl) ?>">
@@ -444,6 +469,7 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
             <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
             <input type="hidden" name="view" value="<?= e($orderView) ?>">
             <input type="hidden" name="return" value="<?= e($returnUrl) ?>">
+            <input type="hidden" name="delete_challenge_answer" value="">
         </form>
     <?php endif; ?>
     <?php if ($canImportExport): ?>
@@ -460,6 +486,12 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
             <?php endforeach; ?>
         </form>
     <?php endif; ?>
+    <form id="product-image-download-form" method="post" action="/orders/images/download" class="batch-form">
+        <?= csrf_field() ?>
+        <input type="hidden" name="tenant" value="<?= e($tenantKey) ?>">
+        <input type="hidden" name="return" value="<?= e($returnUrl) ?>">
+        <input type="hidden" name="platform" value="<?= e((string) ($platform ?? '')) ?>">
+    </form>
     <?php if ($can1688Logistics || $canExpressLogistics || $canJpLogistics): ?>
         <form id="order-logistics-form" method="post" action="/orders/logistics/update" class="batch-form">
             <?= csrf_field() ?>
@@ -533,7 +565,7 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
                     <?php endif; ?>
                 </select>
                 <button class="btn-xs batch-setting-btn" type="submit" name="batch_action" value="set_purchase_status" form="<?= e($batchFormId) ?>">采购状态设置</button>
-                <?php if ($orderView === 'platform' && $canBatchOperate): ?><span class="sep">|</span><button class="btn-xs danger-text" type="submit" name="batch_action" value="delete_orders" form="<?= e($batchFormId) ?>">批量删除</button><?php endif; ?>
+                <?php if ($orderView === 'platform' && $canBatchOperate): ?><span class="sep">|</span><button class="btn-xs danger-text" type="submit" name="batch_action" value="delete_orders" form="<?= e($batchFormId) ?>" data-batch-delete-button data-delete-challenge="<?= e((string) ($deleteChallenge['question'] ?? '')) ?>">批量删除</button><?php endif; ?>
             <?php endif; ?>
         </div>
     </div>

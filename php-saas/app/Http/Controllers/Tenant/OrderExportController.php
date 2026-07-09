@@ -29,6 +29,7 @@ use Xizhen\Services\PerformanceStatsService;
 use Xizhen\Services\PlatformExportService;
 use Xizhen\Services\PlatformOrderSyncRegistry;
 use Xizhen\Services\PriceCalculatorService;
+use Xizhen\Services\ProductImageDownloadService;
 use Xizhen\Services\PurchaseStatsService;
 use Xizhen\Services\PurchaseStatusService;
 use Xizhen\Services\ShippingAnomalyService;
@@ -265,7 +266,49 @@ final class OrderExportController extends TenantBaseController
 
         $defaultReturn = tenant_url('/orders?view=platform&platform=' . rawurlencode($platform), $tenantKey);
         $returnUrl = $this->safeReturn((string) ($_POST['return'] ?? $defaultReturn), $defaultReturn);
-        redirect_to($returnUrl . (str_contains($returnUrl, '?') ? '&' : '?') . 'message=' . rawurlencode($result['message']));
+        $separator = str_contains($returnUrl, '?') ? '&' : '?';
+        redirect_to($returnUrl . $separator . 'sync_message=1&message=' . rawurlencode($result['message']));
+    }
+
+    public function downloadProductImages(): void
+    {
+        $tenantKey = current_tenant_key();
+        $this->requireTenantFeature($tenantKey, 'orders.platform');
+        $this->requireTenantFeature($tenantKey, 'import_export.center');
+        $this->auth->requireAnyTenantPermission($tenantKey, ['导入导出', '订单编辑']);
+
+        $platform = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($_POST['platform'] ?? '')) ?: '';
+        $this->ensurePlatformFeatureAccess($tenantKey, $platform);
+
+        $settings = $this->store->tenantSettings($tenantKey);
+        $ordersSettings = is_array($settings['orders'] ?? null) ? $settings['orders'] : [];
+        $dayLimit = $this->boundedInt($ordersSettings['platform_sync_default_days'] ?? 7, 1, 30);
+        $countLimit = $this->boundedInt($_POST['count_limit'] ?? 30, 1, 100);
+        $result = (new ProductImageDownloadService($this->store))->run($tenantKey, [
+            'day_limit' => $dayLimit,
+            'count_limit' => $countLimit,
+        ]);
+
+        $this->store->addImportExportLog($tenantKey, [
+            'type' => 'import',
+            'name' => '订单图片下载',
+            'status' => $result['ok'] ? '下载完成' : '下载异常',
+            'file_name' => 'Product Image Download',
+            'rows' => (int) ($result['updated'] ?? 0),
+            'message' => $result['message'],
+            'preview' => [[
+                '扫描' => (string) ($result['scanned'] ?? 0),
+                '下载' => (string) ($result['updated'] ?? 0),
+                '跳过' => (string) ($result['skipped'] ?? 0),
+                '失败' => (string) ($result['failed'] ?? 0),
+            ]],
+            'created_by' => $this->currentUserName($tenantKey),
+        ]);
+
+        $defaultReturn = tenant_url('/orders?view=platform' . ($platform !== '' ? '&platform=' . rawurlencode($platform) : ''), $tenantKey);
+        $returnUrl = $this->safeReturn((string) ($_POST['return'] ?? $defaultReturn), $defaultReturn);
+        $separator = str_contains($returnUrl, '?') ? '&' : '?';
+        redirect_to($returnUrl . $separator . 'message=' . rawurlencode('订单图片下载完成：' . $result['message']));
     }
 
     private function featureForLogisticsType(string $type): string

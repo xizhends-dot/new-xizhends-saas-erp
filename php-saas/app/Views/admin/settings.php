@@ -21,7 +21,6 @@ $lineCount = static function (string $value): int {
     </div>
     <div class="head-actions">
         <a class="btn" href="/admin/system">系统状态</a>
-        <button class="btn admin" type="submit" form="admin-settings-form">保存设置</button>
     </div>
 </div>
 

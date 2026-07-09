@@ -292,6 +292,8 @@ SQL);
                 'tranship_comment' => (string) ($row['tranship_comment'] ?? ''),
                 'intl_comment' => (string) ($row['intl_comment'] ?? ''),
                 'image' => (string) (($row['main_image'] ?? '') ?: $this->firstExtra($extra, ['zhutu'], '/assets/no-image.svg')),
+                'main_image' => (string) ($row['main_image'] ?? ''),
+                'sku_image' => (string) ($row['sku_image'] ?? ''),
                 'platform_extra' => $extra,
                 'logs' => $this->logsForItem($pdo, $orderId, (int) $row['id']),
             ];

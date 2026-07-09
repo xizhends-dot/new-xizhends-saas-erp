@@ -2,10 +2,6 @@
     <div>
         <h1>租户图片库 <span class="sub">订单图片、上传附件与缓存清理</span></h1>
     </div>
-    <div class="head-actions">
-        <button class="btn primary" type="button">上传附件</button>
-        <button class="btn" type="button">清理临时缓存</button>
-    </div>
 </div>
 
 <div class="notice">图片管理不是全局图片仓库，而是当前公司独立的图片文件区。订单主图、SKU 图、采购凭证、客服截图和日本仓发货照片都必须按租户隔离存储，避免不同公司之间互相看到或覆盖。</div>

@@ -65,6 +65,61 @@ $safeHttpUrl = static function (mixed $url): string {
     $scheme = strtolower((string) (parse_url($url, PHP_URL_SCHEME) ?? ''));
     return in_array($scheme, ['http', 'https'], true) ? $url : '';
 };
+$imageUrl = static function (mixed $url): string {
+    $url = trim((string) $url);
+    if ($url === '') {
+        return '/assets/no-image.svg';
+    }
+    $scheme = strtolower((string) (parse_url($url, PHP_URL_SCHEME) ?? ''));
+    if (in_array($scheme, ['http', 'https'], true)) {
+        return $url;
+    }
+    $path = ltrim($url, '/');
+    if (preg_match('#^storage/tenants/(?P<tenant>[^/]+)/images/orders/(?P<order>\d+)/(?P<item>\d+)/(?P<file>[^/]+)$#', $path, $matches) === 1) {
+        return '/orders/image?tenant_key=' . rawurlencode($matches['tenant'])
+            . '&order_id=' . rawurlencode($matches['order'])
+            . '&item_id=' . rawurlencode($matches['item'])
+            . '&filename=' . rawurlencode($matches['file']);
+    }
+    if (preg_match('#^storage/tenants/(?P<tenant>[^/]+)/images/uploads/(?P<order>\d+)/(?P<file>[^/]+)$#', $path, $matches) === 1) {
+        return '/orders/uploaded-image?tenant_key=' . rawurlencode($matches['tenant'])
+            . '&order_id=' . rawurlencode($matches['order'])
+            . '&filename=' . rawurlencode($matches['file']);
+    }
+    if (str_starts_with($url, '/')) {
+        return $url;
+    }
+
+    return '/' . $path;
+};
+$itemImageValue = static function (array $item): string {
+    $extra = is_array($item['platform_extra'] ?? null) ? $item['platform_extra'] : [];
+    foreach (['main_image', 'image', 'sku_image'] as $field) {
+        $value = trim((string) ($item[$field] ?? ''));
+        if ($value !== '' && $value !== '/assets/no-image.svg') {
+            return $value;
+        }
+    }
+
+    $value = trim((string) ($extra['zhutu'] ?? ''));
+    return $value !== '' ? $value : '/assets/no-image.svg';
+};
+$itemMainImageValue = static function (array $item): string {
+    $extra = is_array($item['platform_extra'] ?? null) ? $item['platform_extra'] : [];
+    foreach (['main_image', 'image'] as $field) {
+        $value = trim((string) ($item[$field] ?? ''));
+        if ($value !== '' && $value !== '/assets/no-image.svg') {
+            return $value;
+        }
+    }
+
+    return trim((string) ($extra['zhutu'] ?? ''));
+};
+$itemImageEndpoint = static function (string $tenantKey, array $order, array $item): string {
+    return '/orders/item-image?tenant=' . rawurlencode($tenantKey)
+        . '&order_id=' . rawurlencode((string) ($order['id'] ?? 0))
+        . '&item_id=' . rawurlencode((string) ($item['id'] ?? 0));
+};
 $moneyText = static function (mixed $value, string $empty = '-'): string {
     $raw = trim((string) $value);
     if ($raw === '') {
@@ -132,10 +187,14 @@ if ($storeMeta === null && count($storesForPlatform[(string) ($order['platform']
 }
 $storeLegacyId = trim((string) ($storeMeta['legacy_dpid'] ?? ''));
 $storeShort = trim((string) ($storeMeta['short'] ?? ''));
-$storeLabel = $joinLines([
-    $storeShort,
-    $storeLegacyId !== '' ? '店铺番号 ' . $storeLegacyId : '',
-]);
+$storeFull = trim((string) (($storeMeta['name'] ?? '') ?: ($order['store'] ?? '')));
+$storeLabelParts = [];
+foreach ([$storeShort, $storeFull] as $storeLabelPart) {
+    if ($storeLabelPart !== '' && !in_array($storeLabelPart, $storeLabelParts, true)) {
+        $storeLabelParts[] = $storeLabelPart;
+    }
+}
+$storeLabel = $joinLines($storeLabelParts);
 $productUrlFor = static function (array $order, array $item, string $legacyDpid) use ($extraValue, $safeHttpUrl): string {
     $itemExtra = is_array($item['platform_extra'] ?? null) ? $item['platform_extra'] : [];
     $url = $safeHttpUrl($extraValue($itemExtra, ['EntryPoint', 'entryPoint', 'product_url', 'url']));
@@ -187,10 +246,10 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                 <th class="c0"><span class="seq-no"><?= e($seq) ?></span></th>
                 <th class="c1" colspan="2">导入时间</th>
                 <th class="c3">客人姓名/片假名</th>
-                <th class="c4" colspan="4">地址</th>
+                <th class="c4" colspan="3">地址</th>
                 <th class="c6">邮编</th>
                 <th class="c7">电话</th>
-                <th class="c8">邮箱</th>
+                <th class="c8" colspan="2">邮箱</th>
                 <th class="c9">支付方式</th>
                 <th class="c10">运送方式</th>
                 <th class="c11">订单状态</th>
@@ -205,10 +264,10 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                     <span class="stack-main"><?= e($customer['name'] ?? '') ?></span>
                     <?php if (trim((string) ($customer['kana'] ?? '')) !== ''): ?><span class="oid-sub"><?= e($customer['kana']) ?></span><?php endif; ?>
                 </td>
-                <td colspan="4" title="<?= e($customer['address'] ?? '') ?>"><?= e($customer['address'] ?? '') ?></td>
+                <td colspan="3" class="address-cell" title="<?= e($customer['address'] ?? '') ?>"><?= e($customer['address'] ?? '') ?></td>
                 <td><?= e($customer['zip'] ?? '') ?></td>
                 <td><?= e($customer['phone'] ?? '') ?></td>
-                <td><?= e($customer['mail'] ?? '') ?></td>
+                <td colspan="2" class="mail-cell" title="<?= e($customer['mail'] ?? '') ?>"><?= e($customer['mail'] ?? '') ?></td>
                 <td><?= e($payMethod) ?></td>
                 <td><?= e($shipMethod) ?></td>
                 <td><span class="order-state-tag"><?= e($orderStatus) ?></span></td>
@@ -229,13 +288,13 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
         <tr>
             <?php if ($showA): ?>
                 <th class="c0">图片</th>
-                <th class="c1" colspan="2">订单ID / 店铺</th>
+                <th class="c1" colspan="2">订单ID / 明细ID</th>
             <?php else: ?>
                 <th class="c0"><span class="seq-no"><?= e($seq) ?></span></th>
                 <th class="c1">图片</th>
-                <th class="c2">订单ID / 店铺</th>
+                <th class="c2">订单ID / 明细ID</th>
             <?php endif; ?>
-            <th class="c3">订单时间 / 明细ID</th>
+            <th class="c3">订单时间 / 店铺</th>
             <th class="c4">货源地 / 采购状态</th>
             <th class="c5">ItemId / lotNumber</th>
             <th class="c6">日本仓ID / 管理ID</th>
@@ -267,10 +326,7 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
             $quoteSalePrice = $unitPrice > 0 ? ($unitPrice + $shippingFee) : $lineTotal;
             $quoteCost = (float) (($item['amount'] ?? 0) ?: ($item['purchase_amount'] ?? 0) ?: ($item['cn_amount'] ?? 0));
             $productUrl = $productUrlFor($order, $item, $storeLegacyId);
-            $shopLine = $joinLines([
-                (string) ($order['store'] ?? ''),
-                $storeLabel,
-            ]);
+            $shopLine = $storeLabel !== '' ? $storeLabel : trim((string) ($order['store'] ?? ''));
             $shippingRequestMeta = $joinLines([
                 $extraValue($itemExtra, ['ShipNotes', 'deliveryRequest1']),
                 $extraValue($itemExtra, ['ShipRequestDate', 'deliveryRequest2']),
@@ -308,17 +364,18 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                     </td>
                 <?php endif; ?>
                 <td class="img-cell">
-                    <a class="order-image-link" href="<?= e($item['image']) ?>" target="_blank" rel="noopener noreferrer" data-preview-src="<?= e($item['image']) ?>">
-                        <img class="order-img" src="<?= e($item['image']) ?>" alt="<?= e($item['title']) ?>">
+                    <?php $displayImage = $itemImageEndpoint((string) $tenantKey, $order, $item); ?>
+                    <a class="order-image-link" href="<?= e($displayImage) ?>" target="_blank" rel="noopener noreferrer" data-preview-src="<?= e($displayImage) ?>">
+                        <img class="order-img" src="<?= e($displayImage) ?>" alt="" loading="lazy" onerror="this.onerror=null;this.src='/assets/no-image.svg';">
                     </a>
                 </td>
                 <td<?php if ($showA): ?> colspan="2"<?php endif; ?> class="stack-cell">
                     <a href="<?= e($detailUrl) ?>" class="oid-link"><?= e($order['platform_order_id']) ?></a>
-                    <?php if ($shopLine !== ''): ?><span class="oid-sub"><?= e($shopLine) ?></span><?php endif; ?>
+                    <?php if ($itemDetailMeta !== ''): ?><span class="oid-sub">明细 <?= e($itemDetailMeta) ?></span><?php endif; ?>
                 </td>
                 <td class="stack-cell">
                     <span class="stack-main"><?= e($order['order_date']) ?></span>
-                    <?php if ($itemDetailMeta !== ''): ?><span class="oid-sub">明细 <?= e($itemDetailMeta) ?></span><?php endif; ?>
+                    <?php if ($shopLine !== ''): ?><span class="oid-sub"><?= e($shopLine) ?></span><?php endif; ?>
                     <?php if ($shippingRequestMeta !== ''): ?><span class="oid-sub" title="<?= e($shippingRequestMeta) ?>">发货要求 <?= e($shortText($shippingRequestMeta, 32)) ?></span><?php endif; ?>
                 </td>
                 <td class="source-status-cell">
@@ -490,8 +547,10 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
         if ($currentReceiptCity !== '' && !in_array($currentReceiptCity, $receiptCityChoices, true)) {
             array_unshift($receiptCityChoices, $currentReceiptCity);
         }
-        $mainImage = trim((string) ($item['image'] ?? ''));
+        $mainImage = $itemMainImageValue($item);
         $skuImage = trim((string) ($item['sku_image'] ?? ''));
+        $mainImageSrc = $mainImage !== '' && $mainImage !== '/assets/no-image.svg' ? $imageUrl($mainImage) : '';
+        $skuImageSrc = $skuImage !== '' ? $imageUrl($skuImage) : '';
         $mainImageFormId = 'drawer-image-main-' . (int) $item['id'];
         $skuImageFormId = 'drawer-image-sku-' . (int) $item['id'];
         $mainDeleteFormId = 'drawer-image-delete-main-' . (int) $item['id'];
@@ -571,8 +630,8 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                     <div class="drawer-form-group">
                         <label>订单产品图：</label>
                         <div class="image-upload-area" tabindex="0" data-image-paste-area data-paste-target="<?= e($mainImageFormId) ?>" title="点击此处聚焦后可 Ctrl+V 粘贴图片">
-                            <?php if ($mainImage !== ''): ?>
-                                <img class="preview-image" src="<?= e($mainImage) ?>" alt="<?= e($item['title']) ?>">
+                            <?php if ($mainImageSrc !== ''): ?>
+                                <img class="preview-image" src="<?= e($mainImageSrc) ?>" alt="<?= e($item['title']) ?>" onerror="this.onerror=null;this.src='/assets/no-image.svg';">
                             <?php else: ?>
                                 <div class="drawer-image-empty">暂无图片</div>
                             <?php endif; ?>
@@ -601,8 +660,8 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                     <div class="drawer-form-group">
                         <label>SKU产品图：</label>
                         <div class="image-upload-area" tabindex="0" data-image-paste-area data-paste-target="<?= e($skuImageFormId) ?>" title="点击此处聚焦后可 Ctrl+V 粘贴图片">
-                            <?php if ($skuImage !== ''): ?>
-                                <img class="preview-image" src="<?= e($skuImage) ?>" alt="SKU产品图">
+                            <?php if ($skuImageSrc !== ''): ?>
+                                <img class="preview-image" src="<?= e($skuImageSrc) ?>" alt="SKU产品图" onerror="this.onerror=null;this.src='/assets/no-image.svg';">
                                 <div class="drawer-image-path"><?= e($skuImage) ?></div>
                             <?php else: ?>
                                 <div class="drawer-image-empty">暂无图片</div>

@@ -144,6 +144,7 @@ final class OrderController extends TenantBaseController
             'canJpLogistics' => $this->service->tenantFeatureEnabled($tenantKey, 'logistics.jp') && Permission::hasAny($currentUser, ['日本物流日志', '物流查看']),
             'tenantNotices' => $this->tenantNoticeService->orderPageNotices($tenantKey, $currentUser),
             'currentUser' => $currentUser,
+            'deleteChallenge' => $this->batchDeleteChallenge($tenantKey),
         ]);
     }
 
@@ -198,6 +199,7 @@ final class OrderController extends TenantBaseController
         $this->ensureBatchAccess($tenantKey, $itemIds, $orderIds);
 
         if ($action === 'delete_orders') {
+            $this->assertBatchDeleteChallenge($tenantKey);
             if (!$orderIds && $itemIds) {
                 $orderIds = $this->orderIdsForItems($tenantKey, $itemIds);
             }
@@ -208,7 +210,7 @@ final class OrderController extends TenantBaseController
         if ($action === 'set_source') {
             $source = (string) ($_POST['source'] ?? '');
             if (in_array($source, ['cn_purchase', 'jp_stock', 'pending'], true)) {
-                foreach ($itemIds as $itemId) {
+                foreach ($this->itemIdsForOrders($tenantKey, $itemIds, $orderIds) as $itemId) {
                     $this->store->changeItemSource($tenantKey, $itemId, $source);
                 }
             }
@@ -461,10 +463,10 @@ final class OrderController extends TenantBaseController
         $orderId = (int) ($_GET['order_id'] ?? 0);
         $itemId = (int) ($_GET['item_id'] ?? 0);
         $this->auth->requireTenant($tenantKey);
-        $this->ensureOrderAccess($tenantKey, $orderId);
-        $this->ensureItemAccess($tenantKey, $itemId);
-        $itemOrder = $this->accessibleOrderForItem($tenantKey, $itemId, $this->auth->currentTenantUser($tenantKey));
-        if ((int) ($itemOrder['id'] ?? 0) !== $orderId) {
+        $currentUser = $this->auth->currentTenantUser($tenantKey);
+        $this->closeSessionForImageResponse();
+        $order = $this->store->order($tenantKey, $orderId);
+        if (!$this->canServeOrderItemImage($order, $itemId, $currentUser)) {
             http_response_code(404);
             return;
         }
@@ -472,12 +474,40 @@ final class OrderController extends TenantBaseController
         $this->sendTenantImage($tenantKey, "images/orders/{$orderId}/{$itemId}", (string) ($_GET['filename'] ?? ''));
     }
 
+    public function serveItemImage(): void
+    {
+        $tenantKey = current_tenant_key();
+        $orderId = (int) ($_GET['order_id'] ?? 0);
+        $itemId = (int) ($_GET['item_id'] ?? 0);
+        $this->auth->requireTenant($tenantKey);
+        $currentUser = $this->auth->currentTenantUser($tenantKey);
+        $this->closeSessionForImageResponse();
+        $order = $this->store->order($tenantKey, $orderId);
+        if (!$order || !Permission::canAccessStore($currentUser, (string) ($order['store'] ?? ''))) {
+            $this->sendNoImage();
+        }
+
+        foreach (($order['items'] ?? []) as $item) {
+            if ((int) ($item['id'] ?? 0) === $itemId) {
+                $this->sendItemImageSource($tenantKey, $orderId, $itemId, $order, is_array($item) ? $item : []);
+            }
+        }
+
+        $this->sendNoImage();
+    }
+
     public function serveUploadedImage(): void
     {
         $tenantKey = $this->tenantKeyFromRoute();
         $orderId = (int) ($_GET['order_id'] ?? 0);
         $this->auth->requireTenant($tenantKey);
-        $this->ensureOrderAccess($tenantKey, $orderId);
+        $currentUser = $this->auth->currentTenantUser($tenantKey);
+        $this->closeSessionForImageResponse();
+        $order = $this->store->order($tenantKey, $orderId);
+        if (!$order || !Permission::canAccessStore($currentUser, (string) ($order['store'] ?? ''))) {
+            http_response_code(404);
+            return;
+        }
 
         $this->sendTenantImage($tenantKey, "images/uploads/{$orderId}", (string) ($_GET['filename'] ?? ''));
     }
@@ -636,10 +666,128 @@ final class OrderController extends TenantBaseController
         return array_values(array_unique(array_filter($ids)));
     }
 
+    private function itemIdsForOrders(string $tenantKey, array $itemIds, array $orderIds): array
+    {
+        $ids = $itemIds;
+        if (!$orderIds) {
+            return array_values(array_unique(array_filter($ids)));
+        }
+
+        foreach ($this->service->ordersForUser($tenantKey, $this->auth->currentTenantUser($tenantKey)) as $order) {
+            if (!in_array((int) ($order['id'] ?? 0), $orderIds, true)) {
+                continue;
+            }
+            foreach ($order['items'] ?? [] as $item) {
+                $ids[] = (int) ($item['id'] ?? 0);
+            }
+        }
+
+        return array_values(array_unique(array_filter($ids)));
+    }
+
     private function tenantKeyFromRoute(): string
     {
         $tenantKey = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($_GET['tenant_key'] ?? '')) ?: '';
         return $tenantKey !== '' ? $tenantKey : current_tenant_key();
+    }
+
+    /** @return array{question: string, answer: int} */
+    private function batchDeleteChallenge(string $tenantKey): array
+    {
+        $left = random_int(3, 19);
+        $right = random_int(2, 17);
+        $challenge = ['question' => "{$left} + {$right}", 'answer' => $left + $right];
+        $_SESSION['batch_delete_challenge'][$tenantKey] = $challenge;
+
+        return $challenge;
+    }
+
+    private function assertBatchDeleteChallenge(string $tenantKey): void
+    {
+        $expected = $_SESSION['batch_delete_challenge'][$tenantKey]['answer'] ?? null;
+        unset($_SESSION['batch_delete_challenge'][$tenantKey]);
+        $provided = trim((string) ($_POST['delete_challenge_answer'] ?? ''));
+        if (!is_int($expected) || $provided === '' || (int) $provided !== $expected) {
+            $this->forbid('批量删除验证失败，请返回订单页重新输入验证答案。');
+        }
+    }
+
+    /** @param array<string, mixed> $item */
+    private function sendItemImageSource(string $tenantKey, int $orderId, int $itemId, array $order, array $item): never
+    {
+        foreach ($this->itemImageCandidates($tenantKey, $order, $item) as $source) {
+            if ($this->isLocalOrderImagePath($tenantKey, $orderId, $itemId, $source)) {
+                $this->sendTenantImage($tenantKey, "images/orders/{$orderId}/{$itemId}", basename($source));
+            }
+        }
+        foreach ($this->itemImageCandidates($tenantKey, $order, $item) as $source) {
+            if ($this->isRemoteImageUrl($source)) {
+                header('Location: ' . $source, true, 302);
+                header('Cache-Control: private, max-age=300');
+                exit;
+            }
+        }
+
+        $this->sendNoImage();
+    }
+
+    /** @param array<string, mixed> $order @param array<string, mixed> $item @return array<int, string> */
+    private function itemImageCandidates(string $tenantKey, array $order, array $item): array
+    {
+        $extra = is_array($item['platform_extra'] ?? null) ? $item['platform_extra'] : [];
+        $candidates = [];
+        foreach (['main_image', 'image', 'sku_image'] as $field) {
+            $value = trim((string) ($item[$field] ?? ''));
+            if ($value !== '' && $value !== '/assets/no-image.svg') {
+                $candidates[] = $value;
+            }
+        }
+        foreach (['zhutu', 'skuimg'] as $field) {
+            $value = trim((string) ($extra[$field] ?? ''));
+            if ($value !== '' && $value !== '/assets/no-image.svg') {
+                $candidates[] = $value;
+            }
+        }
+        return array_values(array_unique($candidates));
+    }
+
+    private function isRemoteImageUrl(string $source): bool
+    {
+        $source = trim($source);
+        if (!preg_match('#^https?://#i', $source)) {
+            return false;
+        }
+        $path = (string) (parse_url($source, PHP_URL_PATH) ?: '');
+        return preg_match('/\.(?:jpe?g|png|gif|webp)(?:$|\?)/i', $path) === 1;
+    }
+
+    private function isLocalOrderImagePath(string $tenantKey, int $orderId, int $itemId, string $source): bool
+    {
+        $source = ltrim(trim($source), '/');
+        return str_starts_with($source, "storage/tenants/{$tenantKey}/images/orders/{$orderId}/{$itemId}/");
+    }
+
+    /** @param array<string, mixed>|null $order @param array<string, mixed>|null $user */
+    private function canServeOrderItemImage(?array $order, int $itemId, ?array $user): bool
+    {
+        if (!$order || $itemId <= 0 || !Permission::canAccessStore($user, (string) ($order['store'] ?? ''))) {
+            return false;
+        }
+
+        foreach (($order['items'] ?? []) as $item) {
+            if ((int) ($item['id'] ?? 0) === $itemId) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function closeSessionForImageResponse(): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
     }
 
     private function sendTenantImage(string $tenantKey, string $relativeFolder, string $filename): never
@@ -669,6 +817,21 @@ final class OrderController extends TenantBaseController
         header('Content-Length: ' . filesize($path));
         header('Cache-Control: private, max-age=86400');
         readfile($path);
+        exit;
+    }
+
+    private function sendNoImage(): never
+    {
+        $path = BASE_PATH . '/public/assets/no-image.svg';
+        if (is_file($path)) {
+            header('Content-Type: image/svg+xml');
+            header('Content-Length: ' . filesize($path));
+            header('Cache-Control: private, max-age=300');
+            readfile($path);
+            exit;
+        }
+
+        http_response_code(404);
         exit;
     }
 

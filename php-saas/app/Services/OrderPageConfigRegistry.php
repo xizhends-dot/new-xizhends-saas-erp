@@ -298,6 +298,7 @@ final class OrderPageConfigRegistry
         $canSyncOrders = in_array($platform, ['r', 'w', 'y'], true) && Permission::hasAny($user, ['导入导出', '订单编辑']);
         $canImportExport = Permission::has($user, '导入导出');
         $canPlatformImportExport = $canImportExport;
+        $canDownloadImages = in_array($platform, ['r', 'w', 'y', 'yp'], true) && Permission::hasAny($user, ['导入导出', '订单编辑']);
         $canPurchaseImport = $canImportExport && $platform === 'r' && Permission::has($user, '采购导入导出');
         $isFinanceIdentity = in_array($username, ['caiwu', 'xizhends'], true);
         $canFinanceExport = $canImportExport && (
@@ -327,6 +328,15 @@ final class OrderPageConfigRegistry
                 'group' => 'primary',
                 'needsDateRange' => false,
                 'visibleWhen' => $canPlatformImportExport,
+            ],
+            [
+                'key' => 'product_image_download',
+                'label' => '下载订单图',
+                'action' => '/orders/images/download',
+                'method' => 'post',
+                'group' => 'primary',
+                'needsDateRange' => false,
+                'visibleWhen' => $canDownloadImages,
             ],
             [
                 'key' => 'purchase_import',

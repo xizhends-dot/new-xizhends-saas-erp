@@ -65,7 +65,8 @@ final class CronTaskRegistry
      *     updated: int,
      *     skipped: int,
      *     failed: int,
-     *     tenants: array<int, string>
+     *     tenants: array<int, string>,
+     *     logs: array<int, string>
      * }
      */
     public function run(string $key, ?string $tenantKey, array $options = []): array
@@ -119,7 +120,8 @@ final class CronTaskRegistry
      *     updated: int,
      *     skipped: int,
      *     failed: int,
-     *     tenants: array<int, string>
+     *     tenants: array<int, string>,
+     *     logs: array<int, string>
      * }
      */
     private function normalizeResult(array $result, ?string $tenantKey): array
@@ -138,6 +140,7 @@ final class CronTaskRegistry
             'skipped' => $this->intValue($result['skipped'] ?? 0),
             'failed' => $failed,
             'tenants' => $tenants,
+            'logs' => array_values(array_map('strval', is_array($result['logs'] ?? null) ? $result['logs'] : [])),
         ];
     }
 

@@ -334,7 +334,7 @@ final class RakutenOrderService implements PlatformOrderSyncInterface
             'line_total' => $unitPrice * max(1, $quantity),
             'purchase_status' => '未处理的订单',
             'image' => $mainImage,
-            'main_image' => $mainImage,
+            'main_image' => '',
             'sku_image' => '',
             'platform_extra' => [
                 'OrderId' => (string) ($model['orderNumber'] ?? ''),

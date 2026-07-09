@@ -26,6 +26,12 @@ abstract class BaseRepository
         'ph_mail_rule_account',
     ];
 
+    /** @var array<string, bool> */
+    private static array $tableExistsCache = [];
+
+    /** @var array<string, bool> */
+    private static array $columnExistsCache = [];
+
     public function __construct(protected readonly Db $db)
     {
     }
@@ -45,21 +51,41 @@ abstract class BaseRepository
 
     protected function tableExists(\PDO $pdo, string $table): bool
     {
+        $cacheKey = $this->schemaCacheKey($pdo, $table);
+        if (array_key_exists($cacheKey, self::$tableExistsCache)) {
+            return self::$tableExistsCache[$cacheKey];
+        }
+
         $stmt = $pdo->prepare('SHOW TABLES LIKE ?');
         $stmt->execute([$table]);
-        return $stmt->fetchColumn() !== false;
+        self::$tableExistsCache[$cacheKey] = $stmt->fetchColumn() !== false;
+
+        return self::$tableExistsCache[$cacheKey];
     }
 
 
 
     protected function columnExists(\PDO $pdo, string $table, string $column): bool
     {
+        $cacheKey = $this->schemaCacheKey($pdo, $table . '.' . $column);
+        if (array_key_exists($cacheKey, self::$columnExistsCache)) {
+            return self::$columnExistsCache[$cacheKey];
+        }
+
         $stmt = $pdo->prepare(
             'SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?'
         );
         $stmt->execute([$table, $column]);
 
-        return (int) $stmt->fetchColumn() > 0;
+        self::$columnExistsCache[$cacheKey] = (int) $stmt->fetchColumn() > 0;
+
+        return self::$columnExistsCache[$cacheKey];
+    }
+
+
+    private function schemaCacheKey(\PDO $pdo, string $name): string
+    {
+        return spl_object_id($pdo) . ':' . $name;
     }
 
 

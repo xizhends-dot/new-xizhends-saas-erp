@@ -14,6 +14,12 @@ final class AuthService
     private const FAILURE_LOCK_SECONDS = 600;
     private const MAX_FAILURES = 5;
 
+    /** @var array<string, mixed>|null */
+    private ?array $currentAdminCache = null;
+
+    /** @var array<string, array<string, mixed>|null> */
+    private array $currentTenantUserCache = [];
+
     public function __construct(private readonly StoreInterface $store)
     {
         if (!isset($_SESSION) || !is_array($_SESSION)) {
@@ -24,6 +30,10 @@ final class AuthService
     /** @return array<string, mixed>|null */
     public function currentAdmin(): ?array
     {
+        if ($this->currentAdminCache !== null) {
+            return $this->currentAdminCache;
+        }
+
         $session = $_SESSION[self::SESSION_KEY]['admin'] ?? null;
         if (!is_array($session)) {
             return null;
@@ -35,32 +45,42 @@ final class AuthService
             return null;
         }
 
-        return array_merge($session, [
+        $this->currentAdminCache = array_merge($session, [
             'display_name' => (string) (($admin['display_name'] ?? '') ?: ($admin['username'] ?? '超管')),
         ]);
+
+        return $this->currentAdminCache;
     }
 
     /** @return array<string, mixed>|null */
     public function currentTenantUser(string $tenantKey): ?array
     {
+        if (array_key_exists($tenantKey, $this->currentTenantUserCache)) {
+            return $this->currentTenantUserCache[$tenantKey];
+        }
+
         $session = $_SESSION[self::SESSION_KEY]['tenants'][$tenantKey] ?? null;
         if (!is_array($session)) {
+            $this->currentTenantUserCache[$tenantKey] = null;
             return null;
         }
 
         $user = $this->store->user($tenantKey, (int) ($session['id'] ?? 0));
         if (!$user || ($user['status'] ?? '') !== 'active') {
             unset($_SESSION[self::SESSION_KEY]['tenants'][$tenantKey]);
+            $this->currentTenantUserCache[$tenantKey] = null;
             return null;
         }
 
-        return array_merge($session, [
+        $this->currentTenantUserCache[$tenantKey] = array_merge($session, [
             'name' => (string) (($user['name'] ?? '') ?: ($user['username'] ?? '员工')),
             'role' => (string) ($user['role'] ?? ''),
             'is_company_admin' => (bool) ($user['is_company_admin'] ?? false),
             'permissions' => $user['permissions'] ?? [],
             'stores' => $user['stores'] ?? [],
         ]);
+
+        return $this->currentTenantUserCache[$tenantKey];
     }
 
     public function requireAdmin(): void
@@ -209,15 +229,19 @@ final class AuthService
     {
         if ($scope === 'admin') {
             unset($_SESSION[self::SESSION_KEY]['admin']);
+            $this->currentAdminCache = null;
             return;
         }
 
         if ($tenantKey !== '') {
             unset($_SESSION[self::SESSION_KEY]['tenants'][$tenantKey]);
+            unset($this->currentTenantUserCache[$tenantKey]);
             return;
         }
 
         unset($_SESSION[self::SESSION_KEY]);
+        $this->currentAdminCache = null;
+        $this->currentTenantUserCache = [];
     }
 
     /** @param array<string, mixed> $user */

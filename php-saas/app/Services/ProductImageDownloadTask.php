@@ -43,16 +43,19 @@ final class ProductImageDownloadTask implements CronTaskInterface
         $tenants = $tenantKey !== null && $tenantKey !== ''
             ? [$tenantKey]
             : array_values(array_filter(array_map(static fn (array $tenant): string => (string) ($tenant['key'] ?? ''), $this->store->tenants())));
-        $summary = ['ok' => true, 'message' => '', 'scanned' => 0, 'updated' => 0, 'skipped' => 0, 'failed' => 0, 'tenants' => []];
+        $summary = ['ok' => true, 'message' => '', 'scanned' => 0, 'updated' => 0, 'skipped' => 0, 'failed' => 0, 'tenants' => [], 'logs' => []];
         $messages = [];
+        $logger = is_callable($options['logger'] ?? null) ? $options['logger'] : null;
 
         foreach ($tenants as $key) {
+            $this->appendLog($summary, "租户: {$key}", $logger);
             $result = $service->run($key, $options);
             foreach (['scanned', 'updated', 'skipped', 'failed'] as $field) {
                 $summary[$field] += (int) ($result[$field] ?? 0);
             }
             $summary['tenants'][] = $key;
             $messages[] = "{$key}: " . (string) ($result['message'] ?? '');
+            array_push($summary['logs'], ...(array) ($result['logs'] ?? []));
         }
 
         $summary['ok'] = $summary['failed'] === 0;
@@ -60,5 +63,13 @@ final class ProductImageDownloadTask implements CronTaskInterface
 
         return $summary;
     }
-}
 
+    /** @param array<string, mixed> $summary */
+    private function appendLog(array &$summary, string $line, ?callable $logger): void
+    {
+        $summary['logs'][] = $line;
+        if ($logger !== null) {
+            $logger($line);
+        }
+    }
+}

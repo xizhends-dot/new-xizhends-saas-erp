@@ -38,6 +38,15 @@ final class AppService
 
     private readonly ExportDatasetService $exportDatasetService;
 
+    /** @var array<string, array<string, mixed>> */
+    private array $tenantCache = [];
+
+    /** @var array<string, array<int, array<string, mixed>>> */
+    private array $tenantFeatureRowsCache = [];
+
+    /** @var array<string, array<string, bool>> */
+    private array $tenantFeatureMapCache = [];
+
     public function __construct(private readonly StoreInterface $store)
     {
         $this->orderFilterService = new OrderFilterService($store);
@@ -60,7 +69,7 @@ final class AppService
             return [];
         }
 
-        $tenant = $this->store->tenant($tenantKey);
+        $tenant = $this->tenantRow($tenantKey);
         $auth = [];
         foreach ($tenant['platforms'] ?? [] as $item) {
             $auth[$item['code']] = $item;
@@ -85,20 +94,20 @@ final class AppService
 
     public function tenantFeatureEnabled(string $tenantKey, string $featureKey): bool
     {
-        $tenant = $this->store->tenant($tenantKey);
+        $tenant = $this->tenantRow($tenantKey);
         if (($tenant['status'] ?? '') === 'suspended') {
             return false;
         }
 
-        return TenantFeature::mapFromRows($this->store->tenantFeatures($tenantKey))[$featureKey] ?? false;
+        return $this->cachedTenantFeatureMap($tenantKey)[$featureKey] ?? false;
     }
 
 
     /** @return array<string, bool> */
     public function tenantFeatureMap(string $tenantKey): array
     {
-        $features = TenantFeature::mapFromRows($this->store->tenantFeatures($tenantKey));
-        if (($this->store->tenant($tenantKey)['status'] ?? '') === 'suspended') {
+        $features = $this->cachedTenantFeatureMap($tenantKey);
+        if (($this->tenantRow($tenantKey)['status'] ?? '') === 'suspended') {
             return array_map(static fn (): bool => false, $features);
         }
 
@@ -119,7 +128,7 @@ final class AppService
     /** @return array<int, string> */
     public function enabledPlatformCodes(string $tenantKey, bool $includeLocked = false): array
     {
-        $tenant = $this->store->tenant($tenantKey);
+        $tenant = $this->tenantRow($tenantKey);
         if (($tenant['status'] ?? '') === 'suspended') {
             return [];
         }
@@ -172,6 +181,39 @@ final class AppService
             $this->store->stores($tenantKey),
             static fn (array $store): bool => isset($allowed[(string) ($store['platform'] ?? '')])
         ));
+    }
+
+
+    /** @return array<string, mixed> */
+    private function tenantRow(string $tenantKey): array
+    {
+        if (!array_key_exists($tenantKey, $this->tenantCache)) {
+            $this->tenantCache[$tenantKey] = $this->store->tenant($tenantKey);
+        }
+
+        return $this->tenantCache[$tenantKey];
+    }
+
+
+    /** @return array<int, array<string, mixed>> */
+    private function tenantFeatureRows(string $tenantKey): array
+    {
+        if (!array_key_exists($tenantKey, $this->tenantFeatureRowsCache)) {
+            $this->tenantFeatureRowsCache[$tenantKey] = $this->store->tenantFeatures($tenantKey);
+        }
+
+        return $this->tenantFeatureRowsCache[$tenantKey];
+    }
+
+
+    /** @return array<string, bool> */
+    private function cachedTenantFeatureMap(string $tenantKey): array
+    {
+        if (!array_key_exists($tenantKey, $this->tenantFeatureMapCache)) {
+            $this->tenantFeatureMapCache[$tenantKey] = TenantFeature::mapFromRows($this->tenantFeatureRows($tenantKey));
+        }
+
+        return $this->tenantFeatureMapCache[$tenantKey];
     }
 
 

@@ -50,7 +50,6 @@ $priceQuoteAttrs = static function (array $item) use ($canPriceQuote): string {
     </div>
     <div class="head-actions">
         <a class="btn" href="<?= e($returnUrl) ?>">返回列表</a>
-        <?php if ($canEditAnyItemField): ?><button class="btn primary" type="submit" form="item-save-<?= e((int) (($order['items'][0]['id'] ?? 0))) ?>">保存首个明细</button><?php endif; ?>
     </div>
 </div>
 

@@ -46,6 +46,9 @@ return static function (Container $container, Router $router): void {
     $router->get('/login', [AuthController::class, 'loginForm']);
     $router->post('/login', [AuthController::class, 'login']);
     $router->post('/logout', [AuthController::class, 'logout']);
+    $router->get('/orders/item-image', [OrderController::class, 'serveItemImage']);
+    $router->get('/orders/image', [OrderController::class, 'serveOrderImage']);
+    $router->get('/orders/uploaded-image', [OrderController::class, 'serveUploadedImage']);
     $router->get('/storage/tenants/{tenant_key}/images/orders/{order_id}/{item_id}/{filename}', [OrderController::class, 'serveOrderImage']);
     $router->get('/storage/tenants/{tenant_key}/images/uploads/{order_id}/{filename}', [OrderController::class, 'serveUploadedImage']);
     $router->group([TenantAuthMiddleware::class], static function (Router $router): void {
@@ -59,6 +62,7 @@ return static function (Container $container, Router $router): void {
         $router->post('/orders/xizhen-delivery/export', [OrderExportController::class, 'exportXizhenDelivery']);
         $router->post('/orders/logistics/update', [OrderExportController::class, 'updateLogistics']);
         $router->post('/orders/platform/sync', [OrderExportController::class, 'syncPlatformOrders']);
+        $router->post('/orders/images/download', [OrderExportController::class, 'downloadProductImages']);
     });
     $router->post('/orders/rakuten/sync', [OrderExportController::class, 'syncRakutenOrders']);
     $router->group([TenantAuthMiddleware::class], static function (Router $router): void {

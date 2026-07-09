@@ -26,9 +26,6 @@ $settingsTabs = [
     <div>
         <h1>系统设置 <span class="sub">当前租户独立设置：资料、订单参数、国内快递、1688 与利润口径</span></h1>
     </div>
-    <div class="head-actions">
-        <button class="btn primary" type="submit" form="tenant-settings-form">保存设置</button>
-    </div>
 </div>
 
 <?php if ($settingsSaved): ?>
@@ -117,7 +114,6 @@ $settingsTabs = [
                         <div class="purchase-status-add">
                             <input type="text" maxlength="32" placeholder="新增状态名称" data-purchase-status-new>
                             <button class="btn" type="button" data-purchase-status-add>新增状态</button>
-                            <button class="btn primary" type="submit" form="purchase-status-form">保存两套采购状态</button>
                             <button class="btn" type="submit" name="reset_purchase_statuses" value="1" form="purchase-status-form" onclick="return confirm('确定恢复默认国内采购状态清单?')">恢复国内默认</button>
                         </div>
                         <div class="setting-muted">系统状态可移动顺序，但不能改名或删除；服务端会再次校验完整清单。</div>

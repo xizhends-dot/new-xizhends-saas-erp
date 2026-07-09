@@ -37,6 +37,30 @@ assert_same(
     'Rakuten og:image fallback'
 );
 
+$directUrls = invoke_private($service, 'rakutenDirectImageUrls', [['legacy_dpid' => 'shop'], 'SKU-1']);
+assert_same(
+    [
+        'https://image.rakuten.co.jp/shop/cabinet/main/sku-1.jpg',
+        'https://image.rakuten.co.jp/shop/cabinet/main1/sku-1.jpg',
+        'https://image.rakuten.co.jp/shop/cabinet/main2/sku-1.jpg',
+        'https://image.rakuten.co.jp/shop/cabinet/main3/sku-1.jpg',
+        'https://image.rakuten.co.jp/shop/cabinet/main4/sku-1.jpg',
+    ],
+    $directUrls,
+    'Rakuten direct image retry URLs'
+);
+
+assert_same(
+    true,
+    invoke_private($service, 'needsLocalImage', [['image' => 'https://image.rakuten.co.jp/shop/cabinet/main/sku.jpg', 'main_image' => '']]),
+    'remote display image still needs local download'
+);
+assert_same(
+    false,
+    invoke_private($service, 'needsLocalImage', [['image' => 'storage/tenants/erp/images/orders/1/2/main.jpg', 'main_image' => 'storage/tenants/erp/images/orders/1/2/main.jpg']]),
+    'local image path does not need download'
+);
+
 $wowmaHtml = '<meta property="og:image" content="https://img.wowma.jp/item/123.jpg" />';
 assert_same(
     'https://img.wowma.jp/item/123.jpg',
@@ -61,3 +85,11 @@ function assert_same(mixed $expected, mixed $actual, string $label): void
     }
 }
 
+/** @param array<int, mixed> $args */
+function invoke_private(object $object, string $method, array $args): mixed
+{
+    $reflection = new ReflectionMethod($object, $method);
+    $reflection->setAccessible(true);
+
+    return $reflection->invokeArgs($object, $args);
+}

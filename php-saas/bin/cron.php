@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 define('BASE_PATH', dirname(__DIR__));
 
+$runtimeEnv = BASE_PATH . '/config/runtime_env.php';
+if (is_file($runtimeEnv)) {
+    require $runtimeEnv;
+}
+
 require BASE_PATH . '/vendor/autoload.php';
 require BASE_PATH . '/app/Core/helpers.php';
 
@@ -53,7 +58,21 @@ function main(array $argv): int
         }
 
         $tenantKey = tenantKeyFromOptions($options);
+        $startedAt = time();
+        if (wantsPlainLog($options)) {
+            writePlainLogStart($startedAt);
+            $options['logger'] = static function (string $line): void {
+                echo $line . PHP_EOL;
+                flushOutput();
+            };
+        }
+
         $result = $registry->run($key, $tenantKey, $options);
+        if (wantsPlainLog($options)) {
+            writePlainLogEnd($result, $startedAt);
+            return $result['ok'] ? 0 : 1;
+        }
+
         writeJson([
             'ok' => $result['ok'],
             'task' => $key,
@@ -136,6 +155,37 @@ function tenantKeyFromOptions(array $options): ?string
 
     $tenant = trim((string) ($options['tenant'] ?? ''));
     return $tenant !== '' ? $tenant : null;
+}
+
+/** @param array<string, mixed> $options */
+function wantsPlainLog(array $options): bool
+{
+    return !empty($options['log']) || !empty($options['plain']);
+}
+
+function writePlainLogStart(int $startedAt): void
+{
+    echo str_repeat('=', 50) . PHP_EOL;
+    echo '任务启动[' . date('Y-m-d H:i:s', $startedAt) . ']' . PHP_EOL;
+    flushOutput();
+}
+
+/** @param array<string, mixed> $result */
+function writePlainLogEnd(array $result, int $startedAt): void
+{
+    echo '本次任务总共耗时: ' . max(0, time() - $startedAt) . '秒' . PHP_EOL . PHP_EOL;
+    echo str_repeat('-', 76) . PHP_EOL;
+    echo '★[' . date('Y-m-d H:i:s') . '] ' . (!empty($result['ok']) ? 'Successful' : 'Failed') . PHP_EOL;
+    echo str_repeat('-', 76) . PHP_EOL;
+    flushOutput();
+}
+
+function flushOutput(): void
+{
+    if (function_exists('ob_flush')) {
+        @ob_flush();
+    }
+    @flush();
 }
 
 /** @param array<string, mixed> $payload */

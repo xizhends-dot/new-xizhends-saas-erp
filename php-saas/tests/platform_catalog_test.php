@@ -24,9 +24,10 @@ $assertSame = static function (string $label, mixed $expected, mixed $actual) us
     }
 };
 
-$assertSame('平台目录顺序', ['r', 'y', 'w', 'm', 'q', 'yp'], array_column($platforms, 'code'));
-$assertSame('平台目录名称', ['Rakuten', 'Yahoo', 'Wowma', 'Mercari', 'Qoo10', '雅虎拍卖'], array_column($platforms, 'name'));
-$assertSame('ERP 左侧平台菜单顺序', ['r', 'y', 'w', 'm', 'q'], array_column($menu, 'code'));
+$assertSame('platform order', ['r', 'y', 'w', 'm', 'q', 'yp'], array_column($platforms, 'code'));
+$assertSame('platform names', ['Rakuten', 'Yahoo', 'Wowma', 'Mercari', 'Qoo10', '雅虎拍卖'], array_column($platforms, 'name'));
+$assertSame('platform colors', ['#bf0000', '#ff0033', '#ff6a00', '#ff0211', '#527fef', '#f6a400'], array_column($platforms, 'color'));
+$assertSame('tenant sidebar platform order', ['r', 'y', 'w', 'm', 'q'], array_column($menu, 'code'));
 
 if ($failures !== []) {
     fwrite(STDERR, "Platform catalog test FAILED:\n - " . implode("\n - ", $failures) . "\n");

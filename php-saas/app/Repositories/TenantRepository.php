@@ -11,6 +11,15 @@ use Xizhen\Services\TenantProvisioningService;
 
 final class TenantRepository extends BaseRepository
 {
+    /** @var array<int, array<string, mixed>>|null */
+    private ?array $tenantsCache = null;
+
+    /** @var array<string, array<string, mixed>> */
+    private array $tenantCache = [];
+
+    /** @var array<string, array<int, array<string, mixed>>> */
+    private array $tenantFeaturesCache = [];
+
     public function __construct(
         Db $db,
         private readonly Config $config,
@@ -44,6 +53,10 @@ final class TenantRepository extends BaseRepository
     /** @return array<int, array<string, mixed>> */
     public function tenants(): array
     {
+        if ($this->tenantsCache !== null) {
+            return $this->tenantsCache;
+        }
+
         $master = $this->db->master();
         $billingSelect = '0 AS billing_balance';
         $billingJoin = '';
@@ -63,7 +76,7 @@ ORDER BY t.id DESC
 SQL;
         $rows = $this->db->master()->query($sql)->fetchAll();
 
-        return array_map(function (array $row): array {
+        $this->tenantsCache = array_map(function (array $row): array {
             $key = (string) ($row['subdomain'] ?? $row['id']);
 
             return [
@@ -83,6 +96,8 @@ SQL;
                 'features' => $this->tenantFeatures($key),
             ];
         }, $rows);
+
+        return $this->tenantsCache;
     }
 
 
@@ -115,18 +130,26 @@ SQL;
     /** @return array<string, mixed> */
     public function tenant(string $key): array
     {
+        if (array_key_exists($key, $this->tenantCache)) {
+            return $this->tenantCache[$key];
+        }
+
         foreach ($this->tenants() as $tenant) {
             if (($tenant['key'] ?? '') === $key) {
-                return $tenant;
+                $this->tenantCache[$key] = $tenant;
+
+                return $this->tenantCache[$key];
             }
         }
 
-        return $this->tenants()[0] ?? [
+        $this->tenantCache[$key] = $this->tenants()[0] ?? [
             'key' => $key,
             'company_name' => $key,
             'plan' => 'basic',
             'platforms' => [],
         ];
+
+        return $this->tenantCache[$key];
     }
 
 
@@ -174,16 +197,13 @@ SQL;
     /** @return array<int, array<string, mixed>> */
     public function tenantFeatures(string $tenantKey): array
     {
+        if (array_key_exists($tenantKey, $this->tenantFeaturesCache)) {
+            return $this->tenantFeaturesCache[$tenantKey];
+        }
+
         $tenantId = $this->tenantId($tenantKey);
         if ($tenantId === null || !$this->tableExists($this->db->master(), 'tenant_features')) {
             return TenantFeature::defaultRows();
-        }
-
-        $insert = $this->db->master()->prepare(
-            'INSERT IGNORE INTO tenant_features (tenant_id, feature_key, enabled) VALUES (?, ?, ?)'
-        );
-        foreach (TenantFeature::defaultMap() as $featureKey => $enabled) {
-            $insert->execute([$tenantId, $featureKey, (int) $enabled]);
         }
 
         $stmt = $this->db->master()->prepare(
@@ -195,7 +215,24 @@ SQL;
             'enabled' => (bool) $row['enabled'],
         ], $stmt->fetchAll());
 
-        return TenantFeature::normalizeRows($rows);
+        $existing = array_fill_keys(array_map(static fn (array $row): string => (string) $row['key'], $rows), true);
+        $missing = array_diff_key(TenantFeature::defaultMap(), $existing);
+        if ($missing) {
+            $insert = $this->db->master()->prepare(
+                'INSERT IGNORE INTO tenant_features (tenant_id, feature_key, enabled) VALUES (?, ?, ?)'
+            );
+            foreach ($missing as $featureKey => $enabled) {
+                $insert->execute([$tenantId, $featureKey, (int) $enabled]);
+                $rows[] = [
+                    'key' => (string) $featureKey,
+                    'enabled' => (bool) $enabled,
+                ];
+            }
+        }
+
+        $this->tenantFeaturesCache[$tenantKey] = TenantFeature::normalizeRows($rows);
+
+        return $this->tenantFeaturesCache[$tenantKey];
     }
 
 
@@ -238,6 +275,9 @@ SQL;
             'UPDATE tenant_features SET enabled = CASE WHEN enabled = 1 THEN 0 ELSE 1 END WHERE tenant_id = ? AND feature_key = ?'
         );
         $stmt->execute([$tenantId, $featureKey]);
+
+        unset($this->tenantFeaturesCache[$tenantKey], $this->tenantCache[$tenantKey]);
+        $this->tenantsCache = null;
     }
 
 
@@ -245,12 +285,12 @@ SQL;
     private function platformColor(string $code): string
     {
         return [
-            'y' => '#ef4444',
-            'r' => '#2563eb',
-            'w' => '#14b8a6',
-            'm' => '#06b6d4',
-            'q' => '#8b5cf6',
-            'yp' => '#64748b',
+            'r' => '#bf0000',
+            'y' => '#ff0033',
+            'w' => '#ff6a00',
+            'm' => '#ff0211',
+            'q' => '#527fef',
+            'yp' => '#f6a400',
         ][$code] ?? '#64748b';
     }
 }
