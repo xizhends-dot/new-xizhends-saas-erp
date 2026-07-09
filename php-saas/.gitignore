@@ -2,6 +2,7 @@
 vendor/
 composer.phar
 config/runtime_env.php
+public/.user.ini
 storage/*
 !storage/reference/
 !storage/reference/no-pic-*.gif
