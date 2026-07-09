@@ -58,7 +58,7 @@ $order = [
         'line_total' => 1000,
         'platform_extra' => [
             'SubCodeOption' => '颜色:黑色 サイズ:M',
-            'selectedChoice' => '包装:不要包装:不要包装:不要包装:不要包装:不要包装:不要包装:不要包装:不要包装:不要包装:不要包装:不要',
+            'selectedChoice' => str_repeat('選', 41),
         ],
         'buyer' => '',
         'purchase_time' => '',
@@ -93,9 +93,18 @@ $html = (string) ob_get_clean();
 
 assert_true(str_contains($html, '<th class="c8" colspan="2">項目・選択肢</th>'), 'Rakuten header uses selected choice label');
 assert_true(str_contains($html, '<td>颜色:黑色 サイズ:M</td>'), 'Rakuten product attributes show SubCodeOption');
-assert_true(str_contains($html, 'data-choice-toggle') && str_contains($html, '>显示更多</button>'), 'Rakuten long selected choice has show more button');
+assert_true(str_contains($html, 'data-choice-toggle') && str_contains($html, '>显示更多</button>'), 'Rakuten selected choice longer than 40 chars has show more button');
+assert_true(str_contains($html, str_repeat('選', 40) . '...'), 'Rakuten long selected choice is shortened to 40 chars');
 assert_true(str_contains($html, 'class="stack-main rakuten-choice-full" hidden'), 'Rakuten long selected choice keeps hidden full text');
 assert_true(!str_contains($html, '<span class="stack-main">不应展示的商品标题</span>'), 'Rakuten item choice column does not show product title');
+
+$order['items'][0]['platform_extra']['selectedChoice'] = str_repeat('選', 40);
+ob_start();
+require $basePath . '/app/Views/tenant/partials/order_block.php';
+$fortyCharHtml = (string) ob_get_clean();
+
+assert_true(!str_contains($fortyCharHtml, 'data-choice-toggle'), 'Rakuten selected choice with 40 chars has no show more button');
+assert_true(str_contains($fortyCharHtml, '<span class="stack-main">' . str_repeat('選', 40) . '</span>'), 'Rakuten selected choice with 40 chars is shown as full text');
 
 $order['items'][0]['option'] = '包装:不要';
 $order['items'][0]['platform_extra']['SubCodeOption'] = '';

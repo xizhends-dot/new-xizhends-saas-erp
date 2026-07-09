@@ -361,10 +361,10 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
             }
             $titleCellText = $isRakutenItem ? $selectedChoice : (string) ($item['title'] ?? '');
             $choiceNeedsToggle = $isRakutenItem && (
-                function_exists('mb_strlen') ? mb_strlen($titleCellText, 'UTF-8') > 50 : strlen($titleCellText) > 50
+                function_exists('mb_strlen') ? mb_strlen($titleCellText, 'UTF-8') > 40 : strlen($titleCellText) > 40
             );
             $choiceShortText = $choiceNeedsToggle
-                ? (function_exists('mb_substr') ? mb_substr($titleCellText, 0, 50, 'UTF-8') : substr($titleCellText, 0, 50))
+                ? (function_exists('mb_substr') ? mb_substr($titleCellText, 0, 40, 'UTF-8') : substr($titleCellText, 0, 40))
                 : $titleCellText;
             $optionMeta = $isRakutenItem ? '' : $joinLines([
                 (string) ($item['option'] ?? ''),
