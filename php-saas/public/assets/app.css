@@ -2761,6 +2761,16 @@ label.ck.warn { color: #475569; }
   color: #64748b;
 }
 
+.order-page .order-list .source-status-cell .src-tag,
+.order-page .order-list .source-status-cell .src-tag.cn,
+.order-page .order-list .source-status-cell .src-tag.jp,
+.order-page .order-list .source-status-cell .src-tag.pending {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #6b7280;
+  font-weight: 500;
+}
+
 .qty-val {
   color: #e5484d;
   font-weight: 700;
