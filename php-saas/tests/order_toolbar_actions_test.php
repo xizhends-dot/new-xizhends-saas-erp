@@ -76,7 +76,7 @@ $js = file_get_contents(__DIR__ . '/../public/assets/app.js') ?: '';
 $assert('同步结果页面加载后使用老系统风格弹窗提示', str_contains($js, '.order-page[data-sync-message]') && str_contains($js, 'showSyncModal') && str_contains($js, 'sync-modal-log'));
 $assert('同步弹窗后清理 URL 参数避免重复弹窗', str_contains($js, "url.searchParams.delete('sync_message')") && str_contains($js, "url.searchParams.delete('message')") && str_contains($js, 'window.history.replaceState'));
 $css = file_get_contents(__DIR__ . '/../public/assets/app.css') ?: '';
-$assert('同步弹窗改为当前绿色小尺寸样式', str_contains($css, '.sync-modal-title') && str_contains($css, 'background: #047857;') && str_contains($css, 'width: min(520px, 94vw);') && str_contains($css, 'min-height: 126px;'));
+$assert('同步弹窗改为当前绿色小尺寸样式', str_contains($css, '.sync-modal-title') && str_contains($css, '--brand-main: #006400;') && str_contains($css, '--brand-hover: #368C36;') && str_contains($css, 'background: var(--brand-main);') && str_contains($css, 'width: min(520px, 94vw);') && str_contains($css, 'min-height: 126px;'));
 $assert('批量表单返回地址移除同步提示参数', str_contains($html, 'name="return" value="/orders?tenant=erp&amp;view=platform"') && !str_contains($html, 'name="return" value="/orders?tenant=erp&amp;view=platform&amp;sync_message=1'));
 
 $expectedOrder = [
