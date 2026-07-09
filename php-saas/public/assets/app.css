@@ -2194,14 +2194,14 @@ label.ck.warn { color: #475569; }
 }
 
 .order-page .order-panel-head {
-  border-color: var(--brand-main);
-  background: var(--green);
-  color: #fff;
+  border-color: var(--line);
+  background: #f8fafc;
+  color: #000;
 }
 
 .order-page .order-panel-head .sub {
-  color: #fff;
-  opacity: .9;
+  color: #000;
+  opacity: 1;
 }
 
 .order-page .order-search-panel .order-filter-modern {
@@ -2210,8 +2210,22 @@ label.ck.warn { color: #475569; }
 
 .order-page .order-filter-modern .order-search-field > .lb,
 .order-page .order-filter-modern .order-page-size-field > .lb {
-  color: var(--brand-dark);
+  color: #000;
   font-weight: 700;
+}
+
+.order-page .order-search-summary,
+.order-page .fsum,
+.order-page .fsum strong,
+.order-page .order-tool-action span,
+.order-page .order-tool-more summary span,
+.order-page .order-tool-action em,
+.order-page .order-tool-more summary em,
+.order-page .order-tool-row,
+.order-page .order-tool-row > span:last-child,
+.order-page .order-tool-row > button + span,
+.order-page .order-tool-empty {
+  color: #000;
 }
 
 .order-page .order-filter-modern .order-search-field input,
@@ -2237,10 +2251,8 @@ label.ck.warn { color: #475569; }
   background: var(--green-soft);
 }
 
-.order-page .order-tool-action span,
-.order-page .order-tool-more summary span,
 .order-page .order-tool-button {
-  color: var(--brand-dark);
+  color: #000;
 }
 
 .order-page .order-toolbar {
