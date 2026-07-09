@@ -65,6 +65,10 @@
 ## 本仓库红线
 
 - **不要 git push**。是否 commit 以任务提示词的明确要求为准；未提及则不 commit。
+- **生产部署流程固定为 Git 驱动**：后续不要再直接登录服务器修改生产代码；代码改动只在本地仓库完成，本地验证后 commit，再由本地 `git push` 到 GitHub，服务器只通过 `git pull` 更新。
+- 本地推送远程仓库时需要走代理：`git -c http.proxy=http://127.0.0.1:7890 -c https.proxy=http://127.0.0.1:7890 push origin main`。如果用户明确要求 push，默认使用这个代理命令。
+- 服务器 Git 根目录是 `/www/wwwroot/xizhends`，不是 `/www/wwwroot/xizhends/php-saas`；服务器更新命令固定为 `cd /www/wwwroot/xizhends && git pull --ff-only origin main`。宝塔站点目录仍是 `/www/wwwroot/xizhends/php-saas/public`。
+- 服务器运行时内容必须保留，不要纳入 Git 或覆盖：`php-saas/vendor/`、`php-saas/storage/`、`php-saas/config/runtime_env.php`、`php-saas/public/.user.ini`。
 - 视图所有输出走 `e()` 转义；所有 POST 表单带 `csrf_field()`。
 - MySQL 是唯一生产驱动；JsonStore 只作演示/测试替身，被 tests/*.php 使用的方法须保持可用。
 - `20251217/`、`old/`、`rust-backup/` 为只读参考资料，禁止修改。
