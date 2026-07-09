@@ -58,7 +58,7 @@ $order = [
         'line_total' => 1000,
         'platform_extra' => [
             'SubCodeOption' => '颜色:黑色 サイズ:M',
-            'selectedChoice' => '包装:不要',
+            'selectedChoice' => '包装:不要包装:不要包装:不要包装:不要包装:不要包装:不要包装:不要包装:不要包装:不要包装:不要包装:不要',
         ],
         'buyer' => '',
         'purchase_time' => '',
@@ -93,11 +93,13 @@ $html = (string) ob_get_clean();
 
 assert_true(str_contains($html, '<th class="c8" colspan="2">項目・選択肢</th>'), 'Rakuten header uses selected choice label');
 assert_true(str_contains($html, '<td>颜色:黑色 サイズ:M</td>'), 'Rakuten product attributes show SubCodeOption');
-assert_true(str_contains($html, '<span class="stack-main">包装:不要</span>'), 'Rakuten selected choice is shown in item choice column');
+assert_true(str_contains($html, 'data-choice-toggle') && str_contains($html, '>显示更多</button>'), 'Rakuten long selected choice has show more button');
+assert_true(str_contains($html, 'class="stack-main rakuten-choice-full" hidden'), 'Rakuten long selected choice keeps hidden full text');
 assert_true(!str_contains($html, '<span class="stack-main">不应展示的商品标题</span>'), 'Rakuten item choice column does not show product title');
 
 $order['items'][0]['option'] = '包装:不要';
 $order['items'][0]['platform_extra']['SubCodeOption'] = '';
+$order['items'][0]['platform_extra']['selectedChoice'] = '包装:不要';
 ob_start();
 require $basePath . '/app/Views/tenant/partials/order_block.php';
 $legacyHtml = (string) ob_get_clean();

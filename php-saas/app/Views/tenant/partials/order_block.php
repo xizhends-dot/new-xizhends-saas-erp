@@ -246,10 +246,10 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                 <th class="c0"><span class="seq-no"><?= e($seq) ?></span></th>
                 <th class="c1" colspan="2">导入时间</th>
                 <th class="c3">客人姓名/片假名</th>
-                <th class="c4" colspan="3">地址</th>
+                <th class="c4" colspan="2">地址</th>
                 <th class="c6">邮编</th>
                 <th class="c7">电话</th>
-                <th class="c8" colspan="2">邮箱</th>
+                <th class="c8" colspan="3">邮箱</th>
                 <th class="c9">支付方式</th>
                 <th class="c10">运送方式</th>
                 <th class="c11">订单状态</th>
@@ -264,10 +264,10 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                     <span class="stack-main"><?= e($customer['name'] ?? '') ?></span>
                     <?php if (trim((string) ($customer['kana'] ?? '')) !== ''): ?><span class="oid-sub"><?= e($customer['kana']) ?></span><?php endif; ?>
                 </td>
-                <td colspan="3" class="address-cell" title="<?= e($customer['address'] ?? '') ?>"><?= e($customer['address'] ?? '') ?></td>
+                <td colspan="2" class="address-cell" title="<?= e($customer['address'] ?? '') ?>"><?= e($customer['address'] ?? '') ?></td>
                 <td><?= e($customer['zip'] ?? '') ?></td>
                 <td><?= e($customer['phone'] ?? '') ?></td>
-                <td colspan="2" class="mail-cell" title="<?= e($customer['mail'] ?? '') ?>"><?= e($customer['mail'] ?? '') ?></td>
+                <td colspan="3" class="mail-cell" title="<?= e($customer['mail'] ?? '') ?>"><?= e($customer['mail'] ?? '') ?></td>
                 <td><?= e($payMethod) ?></td>
                 <td><?= e($shipMethod) ?></td>
                 <td><span class="order-state-tag"><?= e($orderStatus) ?></span></td>
@@ -360,6 +360,12 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                 }
             }
             $titleCellText = $isRakutenItem ? $selectedChoice : (string) ($item['title'] ?? '');
+            $choiceNeedsToggle = $isRakutenItem && (
+                function_exists('mb_strlen') ? mb_strlen($titleCellText, 'UTF-8') > 50 : strlen($titleCellText) > 50
+            );
+            $choiceShortText = $choiceNeedsToggle
+                ? (function_exists('mb_substr') ? mb_substr($titleCellText, 0, 50, 'UTF-8') : substr($titleCellText, 0, 50))
+                : $titleCellText;
             $optionMeta = $isRakutenItem ? '' : $joinLines([
                 (string) ($item['option'] ?? ''),
                 (string) ($item['chinese_option'] ?? ''),
@@ -406,8 +412,14 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                     <?php if ($warehouseMeta !== ''): ?><span class="oid-sub"><?= e($warehouseMeta) ?></span><?php endif; ?>
                 </td>
                 <td><?= e($displayOption) ?></td>
-                <td colspan="2" class="stack-cell product-title-cell" title="<?= e($titleCellText) ?>">
-                    <span class="stack-main"><?= e($titleCellText) ?></span>
+                <td colspan="2" class="stack-cell product-title-cell<?= $isRakutenItem ? ' rakuten-choice-cell' : '' ?>" title="<?= e($titleCellText) ?>">
+                    <?php if ($choiceNeedsToggle): ?>
+                        <span class="stack-main rakuten-choice-short"><?= e($choiceShortText) ?>...</span>
+                        <span class="stack-main rakuten-choice-full" hidden><?= e($titleCellText) ?></span>
+                        <button class="choice-toggle" type="button" data-choice-toggle aria-expanded="false">显示更多</button>
+                    <?php else: ?>
+                        <span class="stack-main"><?= e($titleCellText) ?></span>
+                    <?php endif; ?>
                     <?php if ($optionMeta !== ''): ?><span class="oid-sub"><?= e($optionMeta) ?></span><?php endif; ?>
                 </td>
                 <td><span class="qty-val">×<?= e($item['quantity']) ?></span></td>

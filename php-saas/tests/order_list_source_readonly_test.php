@@ -128,7 +128,7 @@ $assert('平台订单国际物流默认收起', str_contains($html, 'otable sec-
 $assert('订单栏合并客人姓名和片假名表头', str_contains($html, '<th class="c3">客人姓名/片假名</th>'));
 $assert('订单栏不再单独显示收件人表头', !str_contains($html, '<th class="c3">收件人</th>'));
 $assert('订单栏不再单独显示假名表头', !str_contains($html, '<th class="c4">假名</th>'));
-$assert('订单栏地址列让出宽度给邮箱', str_contains($html, '<th class="c4" colspan="3">地址</th>') && str_contains($html, '<th class="c8" colspan="2">邮箱</th>'));
+$assert('订单栏地址列缩小并让出宽度给邮箱', str_contains($html, '<th class="c4" colspan="2">地址</th>') && str_contains($html, '<th class="c8" colspan="3">邮箱</th>'));
 $assert('订单栏不再显示付款状态表头', !str_contains($html, '<th class="c12">付款状态</th>'));
 $assert('订单栏不再显示付款日期表头', !str_contains($html, '<th class="c13">付款日期</th>'));
 $assert('商品表头按审查顺序显示订单明细和店铺', str_contains($html, '订单ID / 明细ID') && str_contains($html, '订单时间 / 店铺') && !str_contains($html, '订单ID / 店铺') && !str_contains($html, '订单时间 / 明细ID'));
@@ -175,6 +175,7 @@ $js = (string) file_get_contents($basePath . '/public/assets/app.js');
 $assert('编辑抽屉支持直接粘贴图片预览并写入隐藏字段', str_contains($js, "document.addEventListener('paste'") && str_contains($js, 'imageFileFromClipboard') && str_contains($js, 'readAsDataURL') && str_contains($js, 'data-image-base64') && str_contains($js, '已粘贴图片，点击提交保存'));
 $assert('编辑抽屉图片保存削除使用异步提交并保持抽屉', str_contains($js, 'submitDrawerImageForm') && str_contains($js, "fetch(action") && str_contains($js, 'clearDrawerImagePreview') && str_contains($js, 'ensureDrawerImageDeleteButton') && str_contains($js, 'X-Requested-With'));
 $assert('编辑抽屉1688刷新异步回填字段并保持抽屉', str_contains($js, 'refreshDrawer1688') && str_contains($js, 'apply1688RefreshFields') && str_contains($js, "fetch(url") && str_contains($js, 'data-field-display'));
+$assert('Rakuten项目选择支持显示更多展开', str_contains($js, 'data-choice-toggle') && str_contains($css, '.rakuten-choice-cell .choice-toggle'));
 
 $routes = (string) file_get_contents($basePath . '/app/Http/routes.php');
 $assert('1688单条刷新路由已注册', str_contains($routes, "post('/orders/1688/refresh'") && str_contains($routes, 'refresh1688Order'));

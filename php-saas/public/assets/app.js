@@ -25,6 +25,21 @@ document.addEventListener('click', function (event) {
     }
   }
 
+  var choiceToggle = target.closest('[data-choice-toggle]');
+  if (choiceToggle) {
+    var choiceCell = choiceToggle.closest('.rakuten-choice-cell');
+    if (choiceCell) {
+      var expanded = choiceToggle.getAttribute('aria-expanded') === 'true';
+      var nextExpanded = !expanded;
+      var shortText = choiceCell.querySelector('.rakuten-choice-short');
+      var fullText = choiceCell.querySelector('.rakuten-choice-full');
+      if (shortText) shortText.hidden = nextExpanded;
+      if (fullText) fullText.hidden = !nextExpanded;
+      choiceToggle.setAttribute('aria-expanded', nextExpanded ? 'true' : 'false');
+      choiceToggle.textContent = nextExpanded ? '收起' : '显示更多';
+    }
+  }
+
   var actionToggle = target.closest('[data-toggle-actions]');
   if (actionToggle) {
     var panelId = actionToggle.getAttribute('data-toggle-actions') || '';
