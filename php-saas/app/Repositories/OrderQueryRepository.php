@@ -243,8 +243,12 @@ SQL);
             $rakutenSubCodeOption = $platform === 'r' ? $this->firstExtra($extra, ['SubCodeOption']) : '';
             $rakutenSelectedChoice = $platform === 'r' ? $this->firstExtra($extra, ['selectedChoice']) : '';
             $itemOption = (string) (($row['item_option'] ?? '') ?: $this->firstExtra($extra, ['SubCodeOption', 'itemOption', 'selectedChoice']));
-            if ($platform === 'r' && $rakutenSubCodeOption !== '') {
-                $itemOption = $rakutenSubCodeOption;
+            if ($platform === 'r') {
+                if ($rakutenSubCodeOption !== '') {
+                    $itemOption = $rakutenSubCodeOption;
+                } elseif ($rakutenSelectedChoice !== '' && trim($itemOption) === trim($rakutenSelectedChoice)) {
+                    $itemOption = '';
+                }
             }
 
             return [

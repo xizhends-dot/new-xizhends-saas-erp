@@ -96,6 +96,15 @@ assert_true(str_contains($html, '<td>颜色:黑色 サイズ:M</td>'), 'Rakuten 
 assert_true(str_contains($html, '<span class="stack-main">包装:不要</span>'), 'Rakuten selected choice is shown in item choice column');
 assert_true(!str_contains($html, '<span class="stack-main">不应展示的商品标题</span>'), 'Rakuten item choice column does not show product title');
 
+$order['items'][0]['option'] = '包装:不要';
+$order['items'][0]['platform_extra']['SubCodeOption'] = '';
+ob_start();
+require $basePath . '/app/Views/tenant/partials/order_block.php';
+$legacyHtml = (string) ob_get_clean();
+
+assert_true(str_contains($legacyHtml, '<td></td>'), 'Rakuten legacy selectedChoice is not reused as product attributes');
+assert_true(str_contains($legacyHtml, '<span class="stack-main">包装:不要</span>'), 'Rakuten legacy selectedChoice still shows in choice column');
+
 echo "Rakuten order display fields test passed.\n";
 
 function assert_true(bool $condition, string $label): void

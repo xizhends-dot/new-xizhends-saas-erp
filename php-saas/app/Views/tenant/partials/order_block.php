@@ -350,10 +350,15 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
                 (string) ($item['item_management_id'] ?? ''),
             ]);
             $isRakutenItem = (string) ($order['platform'] ?? '') === 'r';
-            $displayOption = $isRakutenItem
-                ? ($extraValue($itemExtra, ['SubCodeOption']) ?: (string) ($item['option'] ?? ''))
-                : (string) ($item['option'] ?? '');
             $selectedChoice = $extraValue($itemExtra, ['selectedChoice']);
+            $displayOption = (string) ($item['option'] ?? '');
+            if ($isRakutenItem) {
+                $subCodeOption = $extraValue($itemExtra, ['SubCodeOption']);
+                $displayOption = $subCodeOption !== '' ? $subCodeOption : $displayOption;
+                if ($subCodeOption === '' && $selectedChoice !== '' && trim($displayOption) === trim($selectedChoice)) {
+                    $displayOption = '';
+                }
+            }
             $titleCellText = $isRakutenItem ? $selectedChoice : (string) ($item['title'] ?? '');
             $optionMeta = $isRakutenItem ? '' : $joinLines([
                 (string) ($item['option'] ?? ''),
@@ -540,12 +545,17 @@ $canPriceQuote = \Xizhen\Core\Permission::hasAny($currentUser ?? null, ['订单�
         <?php
         $itemExtra = is_array($item['platform_extra'] ?? null) ? $item['platform_extra'] : [];
         $entryPoint = $extraValue($itemExtra, ['EntryPoint', 'entryPoint', 'product_url', 'url']);
-        $drawerOption = $isRakuten
-            ? ($extraValue($itemExtra, ['SubCodeOption']) ?: (string) ($item['option'] ?? ''))
-            : (string) ($item['option'] ?? '');
         $drawerChoice = $isRakuten
             ? $extraValue($itemExtra, ['selectedChoice'])
             : $extraValue($itemExtra, ['selectedChoice', 'SubCodeOption']);
+        $drawerOption = (string) ($item['option'] ?? '');
+        if ($isRakuten) {
+            $drawerSubCodeOption = $extraValue($itemExtra, ['SubCodeOption']);
+            $drawerOption = $drawerSubCodeOption !== '' ? $drawerSubCodeOption : $drawerOption;
+            if ($drawerSubCodeOption === '' && $drawerChoice !== '' && trim($drawerOption) === trim($drawerChoice)) {
+                $drawerOption = '';
+            }
+        }
         $shipName = (string) (($customer['name'] ?? '') ?: $extraValue($orderExtra, ['ShipName', 'senderName']));
         $shipAddress1 = (string) (($customer['address'] ?? '') ?: $extraValue($orderExtra, ['ShipAddress1', 'senderAddress', 'shipping_address_1']));
         $shipAddress2 = $extraValue($orderExtra, ['ShipAddress2', 'shipping_address_2']);
