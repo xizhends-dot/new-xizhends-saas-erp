@@ -45,6 +45,8 @@ use RuntimeException;
 
 abstract class TenantBaseController
 {
+    private const DEFAULT_WOWMA_SYNC_FOLDERS = ['XIZHENDS', 'Ready_buy'];
+
     protected AppService $service;
     protected CsvImportService $csvImportService;
     protected LegacySettingsService $legacySettings;
@@ -447,6 +449,34 @@ abstract class TenantBaseController
     {
         $number = is_numeric($value) ? (int) $value : $min;
         return max($min, min($max, $number));
+    }
+
+    /** @return array<int, string> */
+    protected function wowmaSyncFoldersFromSettings(array $settings): array
+    {
+        $orders = is_array($settings['orders'] ?? null) ? $settings['orders'] : [];
+        return $this->normalizeWowmaSyncFolders($orders['wowma_sync_folders'] ?? self::DEFAULT_WOWMA_SYNC_FOLDERS);
+    }
+
+    /** @return array<int, string> */
+    protected function wowmaSyncFoldersFromInput(mixed $value): array
+    {
+        return $this->normalizeWowmaSyncFolders($value);
+    }
+
+    /** @return array<int, string> */
+    private function normalizeWowmaSyncFolders(mixed $value): array
+    {
+        $raw = is_array($value) ? $value : (preg_split('/[\r\n,，|]+/', (string) $value) ?: []);
+        $folders = [];
+        foreach ($raw as $item) {
+            $folder = trim((string) $item);
+            if ($folder !== '') {
+                $folders[$folder] = $folder;
+            }
+        }
+
+        return $folders ? array_slice(array_values($folders), 0, 20) : self::DEFAULT_WOWMA_SYNC_FOLDERS;
     }
 
     protected function forbid(string $message): never

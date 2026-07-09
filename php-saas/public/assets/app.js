@@ -53,7 +53,7 @@ document.addEventListener('click', function (event) {
 
   var selectionToggle = target.closest('[data-toggle-selection]');
   if (selectionToggle) {
-    toggleOrderSelection(selectionToggle.closest('.order-page'));
+    toggleOrderSelection(selectionToggle.closest('.order-page'), selectionToggle);
   }
 
   var trigger = target.closest('[data-toggle-logs]');
@@ -307,7 +307,12 @@ function refreshOrderSelection(page) {
   if (toggle) {
     var allSelected = selectable.length > 0 && checked === selectable.length;
     toggle.classList.toggle('on', allSelected);
-    toggle.textContent = allSelected ? '取消全选' : '全选';
+    if (toggle instanceof HTMLInputElement && toggle.type === 'checkbox') {
+      toggle.checked = allSelected;
+      toggle.indeterminate = checked > 0 && checked < selectable.length;
+    } else {
+      toggle.textContent = allSelected ? '取消全选' : '全选';
+    }
   }
   syncSelectionForm(page, 'order-export-form');
   syncSelectionForm(page, 'xizhen-delivery-form');
@@ -315,11 +320,13 @@ function refreshOrderSelection(page) {
   syncSelectionForm(page, 'order-logistics-form');
 }
 
-function toggleOrderSelection(page) {
+function toggleOrderSelection(page, trigger) {
   if (!(page instanceof HTMLElement)) return;
   var selectable = page.querySelectorAll('.order-check, .item-check');
   var checked = page.querySelectorAll('.order-check:checked, .item-check:checked').length;
-  var nextChecked = !(selectable.length > 0 && checked === selectable.length);
+  var nextChecked = trigger instanceof HTMLInputElement && trigger.type === 'checkbox'
+    ? trigger.checked
+    : !(selectable.length > 0 && checked === selectable.length);
   selectable.forEach(function (checkbox) {
     if (!(checkbox instanceof HTMLInputElement)) return;
     checkbox.checked = nextChecked;

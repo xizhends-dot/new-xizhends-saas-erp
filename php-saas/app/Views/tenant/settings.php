@@ -4,6 +4,7 @@ $orders = is_array($settings['orders'] ?? null) ? $settings['orders'] : [];
 $profit = is_array($settings['profit'] ?? null) ? $settings['profit'] : [];
 $logistics = is_array($settings['logistics'] ?? null) ? $settings['logistics'] : [];
 $api1688 = is_array($settings['api_1688'] ?? null) ? $settings['api_1688'] : [];
+$wowmaSyncFolders = array_values(array_filter(array_map('strval', is_array($wowmaSyncFolders ?? null) ? $wowmaSyncFolders : ($orders['wowma_sync_folders'] ?? ['XIZHENDS', 'Ready_buy']))));
 $platformDeductions = is_array($profit['platform_deductions'] ?? null) ? $profit['platform_deductions'] : [];
 $excludedProfitStatuses = array_flip(array_values(array_filter(array_map('strval', is_array($profit['excluded_purchase_statuses'] ?? null) ? $profit['excluded_purchase_statuses'] : ['已取消', '客人取消订单']))));
 $purchaseStatuses = array_values(array_filter(array_map('strval', is_array($purchaseStatuses ?? null) ? $purchaseStatuses : [])));
@@ -84,6 +85,8 @@ $settingsTabs = [
                     <label><span>平台订单同步默认天数</span><input type="number" min="1" max="30" name="platform_sync_default_days" value="<?= e($orders['platform_sync_default_days'] ?? 7) ?>"></label>
                     <label><span>归档周期天数</span><input type="number" min="30" max="3650" name="archive_days" value="<?= e($orders['archive_days'] ?? 180) ?>"></label>
                     <label><span>售价预警指数</span><input type="number" step="0.01" min="0" name="price_warning_index" value="<?= e($orders['price_warning_index'] ?? 0) ?>"></label>
+                    <label class="wide"><span>Wowma 文件夹名称</span><textarea name="wowma_sync_folders" placeholder="XIZHENDS&#10;Ready_buy"><?= e(implode(PHP_EOL, $wowmaSyncFolders)) ?></textarea></label>
+                    <div class="setting-muted wide">同步 Wowma 订单时会先选择这里维护的名称；系统会把所选名称作为 Wowma API 的 orderStatus 参数。</div>
                 </div>
             </section>
 

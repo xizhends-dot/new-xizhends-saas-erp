@@ -28,9 +28,10 @@ final class RakutenOrderService implements PlatformOrderSyncInterface
     }
 
     /**
+     * @param array<string, mixed> $options
      * @return array{ok: bool, message: string, searched: int, inserted: int, updated: int, skipped: int, items_inserted: int, items_updated: int}
      */
-    public function sync(string $tenantKey, int $storeId, int $days, string $operator): array
+    public function sync(string $tenantKey, int $storeId, int $days, string $operator, array $options = []): array
     {
         $store = $this->store->store($tenantKey, $storeId);
         if (!$store || ($store['platform'] ?? '') !== 'r') {

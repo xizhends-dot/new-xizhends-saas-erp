@@ -60,6 +60,7 @@ final class StoreController extends TenantBaseController
             'active' => 'stores',
             'platformNames' => $this->service->tenantPlatformNames($tenantKey),
             'platformSyncServices' => $this->platformOrderSyncRegistry->names(),
+            'wowmaSyncFolders' => $this->wowmaSyncFoldersFromSettings($this->store->tenantSettings($tenantKey)),
             'storeApiFields' => $this->storeApiFieldRegistry()->all(),
             'stores' => $this->service->storesForTenant($tenantKey),
             'billingAccount' => $this->store->tenantBillingAccount($tenantKey),

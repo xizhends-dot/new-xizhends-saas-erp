@@ -175,6 +175,7 @@ final class SettingsController extends TenantBaseController
             'title' => '系统设置',
             'active' => 'settings',
             'settings' => $settings,
+            'wowmaSyncFolders' => $this->wowmaSyncFoldersFromSettings($settings),
             'platformNames' => $this->service->tenantPlatformNames($tenantKey, true),
             'purchaseStatuses' => $this->purchaseStatusService->statusesFor($tenantKey),
             'jpStockPurchaseStatuses' => $this->purchaseStatusService->jpStockStatusesFor($tenantKey),
@@ -209,6 +210,7 @@ final class SettingsController extends TenantBaseController
                 'archive_days' => $this->boundedInt($_POST['archive_days'] ?? 180, 30, 3650),
                 'price_warning_index' => $this->boundedFloat($_POST['price_warning_index'] ?? 0, 0, 999999),
                 'platform_sync_default_days' => $this->boundedInt($_POST['platform_sync_default_days'] ?? 7, 1, 30),
+                'wowma_sync_folders' => $this->wowmaSyncFoldersFromInput($_POST['wowma_sync_folders'] ?? ''),
             ],
             'profit' => [
                 'exchange_rate' => $this->boundedFloat($_POST['exchange_rate'] ?? 0.046, 0.0001, 100),

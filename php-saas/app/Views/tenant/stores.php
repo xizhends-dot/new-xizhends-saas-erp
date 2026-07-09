@@ -13,6 +13,7 @@ $storeAddFee = (int) ($billingAccount['store_add_fee'] ?? 50);
 $storeMonthlyFee = (int) ($billingAccount['store_monthly_fee'] ?? 50);
 $debtSuspendThreshold = (int) ($billingAccount['debt_suspend_threshold'] ?? -300);
 $platformSyncServices = is_array($platformSyncServices ?? null) ? $platformSyncServices : [];
+$wowmaSyncFolders = array_values(array_filter(array_map('strval', is_array($wowmaSyncFolders ?? null) ? $wowmaSyncFolders : ['XIZHENDS', 'Ready_buy'])));
 $storeApiFields = is_array($storeApiFields ?? null) ? $storeApiFields : [];
 $jsonFlags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
 $storeApiFieldsJson = json_encode($storeApiFields, $jsonFlags) ?: '{}';
@@ -105,6 +106,13 @@ $message = trim((string) ($message ?? ''));
                                             <option value="<?= e($days) ?>" <?= $days === 7 ? 'selected' : '' ?>><?= e($days) ?>天</option>
                                         <?php endforeach; ?>
                                     </select>
+                                    <?php if ($platform === 'w'): ?>
+                                        <select name="order_status" aria-label="Wowma 文件夹名称">
+                                            <?php foreach ($wowmaSyncFolders as $folder): ?>
+                                                <option value="<?= e($folder) ?>"><?= e($folder) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    <?php endif; ?>
                                     <button class="btn" type="submit" <?= $apiConfigured ? '' : 'disabled title="请先在编辑页配置 API"' ?>>同步订单</button>
                                 </form>
                             <?php endif; ?>

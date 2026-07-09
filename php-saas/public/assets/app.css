@@ -2036,6 +2036,20 @@ label.ck.warn { color: #475569; }
   font-weight: 600;
 }
 
+.select-all-check {
+  width: 14px;
+  height: 14px;
+  min-height: 0;
+  margin: 0;
+  accent-color: var(--brand-main);
+}
+
+.tbar-count-num {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
 .tbar-actions {
   display: flex;
   gap: 6px;
@@ -2538,6 +2552,10 @@ label.ck.warn { color: #475569; }
 
 .rakuten-choice-cell .stack-main {
   line-height: 1.35;
+}
+
+.rakuten-choice-cell [hidden] {
+  display: none !important;
 }
 
 .rakuten-choice-cell .choice-toggle {

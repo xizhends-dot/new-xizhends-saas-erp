@@ -243,8 +243,17 @@ final class OrderExportController extends TenantBaseController
         $settings = $this->store->tenantSettings($tenantKey);
         $ordersSettings = is_array($settings['orders'] ?? null) ? $settings['orders'] : [];
         $days = $this->boundedInt($ordersSettings['platform_sync_default_days'] ?? 7, 1, 30);
+        $options = [];
+        if ($platform === 'w') {
+            $folder = trim((string) ($_POST['order_status'] ?? $_POST['wowma_folder'] ?? ''));
+            $folders = $this->wowmaSyncFoldersFromSettings($settings);
+            if ($folder === '' || !in_array($folder, $folders, true)) {
+                $this->forbid('请选择有效的 Wowma 文件夹名称后再同步。');
+            }
+            $options['order_status'] = $folder;
+        }
         $operator = $this->currentUserName($tenantKey);
-        $result = $service->sync($tenantKey, $storeId, $days, $operator);
+        $result = $service->sync($tenantKey, $storeId, $days, $operator, $options);
 
         $this->store->addImportExportLog($tenantKey, [
             'type' => 'import',

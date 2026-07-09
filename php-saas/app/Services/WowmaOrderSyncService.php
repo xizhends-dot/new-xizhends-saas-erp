@@ -21,9 +21,10 @@ final class WowmaOrderSyncService extends AbstractPlatformOrderSyncService
     }
 
     /**
+     * @param array<string, mixed> $options
      * @return array{ok: bool, message: string, searched: int, inserted: int, updated: int, skipped: int, items_inserted: int, items_updated: int}
      */
-    public function sync(string $tenantKey, int $storeId, int $days, string $operator): array
+    public function sync(string $tenantKey, int $storeId, int $days, string $operator, array $options = []): array
     {
         $store = $this->store->store($tenantKey, $storeId);
         if (!$store || (string) ($store['platform'] ?? '') !== $this->platformCode()) {
@@ -31,6 +32,11 @@ final class WowmaOrderSyncService extends AbstractPlatformOrderSyncService
         }
 
         $credentials = $this->credentials($store);
+        $selectedStatus = trim((string) ($options['order_status'] ?? $options['folder'] ?? ''));
+        if ($selectedStatus !== '') {
+            $credentials['statuses'] = [$selectedStatus];
+        }
+        $statusLabel = $selectedStatus !== '' ? '【' . $selectedStatus . '】' : '';
         if ($credentials['token'] === '') {
             return $this->markFailure(
                 $tenantKey,
@@ -67,14 +73,15 @@ final class WowmaOrderSyncService extends AbstractPlatformOrderSyncService
             $orders = array_values($ordersById);
             $searched = count($orders);
             if (!$orders) {
-                $message = 'Wowma 没有需要同步的新订单。';
+                $message = 'Wowma' . $statusLabel . '没有需要同步的新订单。';
                 $this->store->markStoreSync($tenantKey, $storeId, '同步完成', $message);
                 return $this->result(true, $message);
             }
 
             $summary = $this->store->upsertPlatformOrders($tenantKey, $orders, $operator);
             $message = sprintf(
-                'Wowma 同步完成：检索 %d 单，新增 %d 单，更新 %d 单，新增商品 %d 件，更新商品 %d 件，跳过 %d 单。',
+                'Wowma%s同步完成：检索 %d 单，新增 %d 单，更新 %d 单，新增商品 %d 件，更新商品 %d 件，跳过 %d 单。',
+                $statusLabel,
                 $searched,
                 (int) ($summary['inserted'] ?? 0),
                 (int) ($summary['updated'] ?? 0),
@@ -86,7 +93,7 @@ final class WowmaOrderSyncService extends AbstractPlatformOrderSyncService
 
             return $this->result(true, $message, $summary, $searched);
         } catch (\Throwable $error) {
-            $message = 'Wowma 同步失败：' . $error->getMessage();
+            $message = 'Wowma' . $statusLabel . '同步失败：' . $error->getMessage();
             $this->store->markStoreSync($tenantKey, $storeId, '同步异常', $message);
             return $this->result(false, $message);
         }

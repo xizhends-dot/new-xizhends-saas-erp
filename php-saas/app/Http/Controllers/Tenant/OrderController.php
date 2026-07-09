@@ -118,6 +118,7 @@ final class OrderController extends TenantBaseController
             'filters' => $filters,
             'platformNames' => $this->service->tenantPlatformNames($tenantKey),
             'platformSyncServices' => $this->platformOrderSyncRegistry->names(),
+            'wowmaSyncFolders' => $this->wowmaSyncFoldersFromSettings($settings),
             'stores' => $stores,
             'statusOptions' => $statusOptions,
             'jpStockStatusOptions' => $jpStockStatusOptions,

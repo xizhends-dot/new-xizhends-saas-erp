@@ -80,8 +80,6 @@ $assert('同步弹窗改为当前绿色小尺寸样式', str_contains($css, '.sy
 $assert('批量表单返回地址移除同步提示参数', str_contains($html, 'name="return" value="/orders?tenant=erp&amp;view=platform"') && !str_contains($html, 'name="return" value="/orders?tenant=erp&amp;view=platform&amp;sync_message=1'));
 
 $expectedOrder = [
-    '已选择',
-    '全选',
     '|',
     '展开详情',
     '更新1688物流',
@@ -101,7 +99,13 @@ foreach ($expectedOrder as $text) {
     }
 }
 
-$assert('已选择计数紧凑显示', str_contains($toolbar, '已选择 <strong>0</strong>/<strong>0</strong>单'));
+$selectAllPosition = strpos($toolbar, 'class="select-all-check"');
+$countPosition = strpos($toolbar, '<span class="tbar-count-num"><strong>0</strong>/<strong>0</strong>单</span>');
+$separatorPosition = strpos($toolbar, '<span class="sep">|</span>');
+$detailPosition = strpos($toolbar, '>展开详情</button>');
+$assert('批量全选改为勾选框', $selectAllPosition !== false && str_contains($toolbar, 'data-toggle-selection="all"') && str_contains($toolbar, 'aria-label="全选订单"'));
+$assert('选择计数不再显示已选择文字', !str_contains($toolbar, '已选择 <strong>') && $countPosition !== false);
+$assert('选择栏顺序为勾选框 计数 分隔 展开详情', $selectAllPosition !== false && $countPosition !== false && $separatorPosition !== false && $detailPosition !== false && $selectAllPosition < $countPosition && $countPosition < $separatorPosition && $separatorPosition < $detailPosition);
 $assert('批量栏不再显示状态适用货源地', !str_contains($toolbar, 'name="status_source"') && !str_contains($toolbar, '状态适用货源地'));
 $assert('批量采购状态下拉不再依赖状态适用货源地', !str_contains($toolbar, 'data-batch-status-target') && !str_contains($toolbar, '请先选择状态适用货源地'));
 $assert('批量栏不再显示采购人分配', !str_contains($toolbar, 'name="buyer"') && !str_contains($toolbar, 'assign_buyer') && !str_contains($toolbar, '>采购人<'));

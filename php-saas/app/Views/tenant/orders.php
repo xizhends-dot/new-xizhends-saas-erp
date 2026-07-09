@@ -54,12 +54,13 @@ $filterValue = static fn (string $key): string => (string) ($filters[$key] ?? ''
 $selectedFilter = static fn (string $key, string $value): string => ((string) ($filters[$key] ?? '') === $value) ? 'selected' : '';
 $checkedFilter = static fn (string $key): string => trim((string) ($filters[$key] ?? '')) !== '' ? 'checked' : '';
 $platformSyncServices = is_array($platformSyncServices ?? null) ? $platformSyncServices : [];
+$wowmaSyncFolders = array_values(array_filter(array_map('strval', is_array($wowmaSyncFolders ?? null) ? $wowmaSyncFolders : ['XIZHENDS', 'Ready_buy'])));
 $currentPlatform = (string) ($platform ?? '');
 $platformSyncName = $currentPlatform !== '' ? (string) ($platformSyncServices[$currentPlatform] ?? '') : '';
 $platformSyncStores = $platformSyncName !== '' ? array_values(array_filter($stores, static fn (array $store): bool => ($store['platform'] ?? '') === $currentPlatform)) : [];
 $platformSyncModalTitle = $platformSyncName !== ''
-    ? '批量同步 ' . $platformSyncName . ' 订单 — 精品【XIZHENDS】'
-    : '批量同步平台订单 — 精品【XIZHENDS】';
+    ? '批量同步 ' . $platformSyncName . ' 订单'
+    : '批量同步平台订单';
 $message = trim((string) ($_GET['message'] ?? ''));
 $syncMessage = !empty($_GET['sync_message']) ? $message : '';
 $hiddenFilters = [
@@ -421,6 +422,13 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
                                     <option value="<?= e($store['id'] ?? '') ?>"><?= e($store['name'] ?? $store['short'] ?? '') ?></option>
                                 <?php endforeach; ?>
                             </select>
+                            <?php if ($currentPlatform === 'w'): ?>
+                                <select name="order_status" aria-label="Wowma 文件夹名称">
+                                    <?php foreach ($wowmaSyncFolders as $folder): ?>
+                                        <option value="<?= e($folder) ?>"><?= e($folder) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            <?php endif; ?>
                             <button class="order-tool-button" type="submit"><?= e((string) ($syncTool['label'] ?? '同步订单')) ?></button>
                         </form>
                     <?php else: ?>
@@ -503,7 +511,7 @@ $renderTool = static function (array $tool) use ($tenantKey, $urlWithQuery, $exp
     <?php endif; ?>
 
     <div class="tbar order-toolbar">
-        <div class="tbar-count">已选择 <strong>0</strong>/<strong><?= e($resultTotal) ?></strong><?= e($resultUnit) ?><?php if ($canSelectAll): ?><button class="select-all-btn" type="button" data-toggle-selection="all">全选</button><?php endif; ?></div>
+        <div class="tbar-count"><?php if ($canSelectAll): ?><input class="select-all-check" type="checkbox" data-toggle-selection="all" aria-label="全选订单"><?php endif; ?><span class="tbar-count-num"><strong>0</strong>/<strong><?= e($resultTotal) ?></strong><?= e($resultUnit) ?></span></div>
         <div class="tbar-actions">
             <span class="sep">|</span>
             <button class="tgl-all detail-toggle" type="button">展开详情</button>

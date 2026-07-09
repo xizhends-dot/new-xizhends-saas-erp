@@ -3650,6 +3650,7 @@ final class JsonStore implements StoreInterface
                 'archive_days' => 180,
                 'price_warning_index' => 0,
                 'platform_sync_default_days' => 7,
+                'wowma_sync_folders' => ['XIZHENDS', 'Ready_buy'],
             ],
             'profit' => [
                 'exchange_rate' => 0.046,

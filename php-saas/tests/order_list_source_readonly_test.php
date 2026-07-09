@@ -176,6 +176,7 @@ $assert('编辑抽屉支持直接粘贴图片预览并写入隐藏字段', str_c
 $assert('编辑抽屉图片保存削除使用异步提交并保持抽屉', str_contains($js, 'submitDrawerImageForm') && str_contains($js, "fetch(action") && str_contains($js, 'clearDrawerImagePreview') && str_contains($js, 'ensureDrawerImageDeleteButton') && str_contains($js, 'X-Requested-With'));
 $assert('编辑抽屉1688刷新异步回填字段并保持抽屉', str_contains($js, 'refreshDrawer1688') && str_contains($js, 'apply1688RefreshFields') && str_contains($js, "fetch(url") && str_contains($js, 'data-field-display'));
 $assert('Rakuten项目选择支持显示更多展开', str_contains($js, 'data-choice-toggle') && str_contains($css, '.rakuten-choice-cell .choice-toggle'));
+$assert('Rakuten项目选择全文默认隐藏不撑高行', str_contains($css, '.rakuten-choice-cell [hidden]') && str_contains($css, 'display: none !important'));
 
 $routes = (string) file_get_contents($basePath . '/app/Http/routes.php');
 $assert('1688单条刷新路由已注册', str_contains($routes, "post('/orders/1688/refresh'") && str_contains($routes, 'refresh1688Order'));
